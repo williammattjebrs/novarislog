@@ -9,9 +9,33 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as MonitoramentoRouteImport } from './routes/monitoramento'
+import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as ColetasRouteImport } from './routes/coletas'
+import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as ArmazemRouteImport } from './routes/armazem'
 import { Route as IndexRouteImport } from './routes/index'
 
+const MonitoramentoRoute = MonitoramentoRouteImport.update({
+  id: '/monitoramento',
+  path: '/monitoramento',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FinanceiroRoute = FinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ColetasRoute = ColetasRouteImport.update({
+  id: '/coletas',
+  path: '/coletas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientesRoute = ClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ArmazemRoute = ArmazemRouteImport.update({
   id: '/armazem',
   path: '/armazem',
@@ -26,31 +50,94 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/armazem': typeof ArmazemRoute
+  '/clientes': typeof ClientesRoute
+  '/coletas': typeof ColetasRoute
+  '/financeiro': typeof FinanceiroRoute
+  '/monitoramento': typeof MonitoramentoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/armazem': typeof ArmazemRoute
+  '/clientes': typeof ClientesRoute
+  '/coletas': typeof ColetasRoute
+  '/financeiro': typeof FinanceiroRoute
+  '/monitoramento': typeof MonitoramentoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/armazem': typeof ArmazemRoute
+  '/clientes': typeof ClientesRoute
+  '/coletas': typeof ColetasRoute
+  '/financeiro': typeof FinanceiroRoute
+  '/monitoramento': typeof MonitoramentoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/armazem'
+  fullPaths:
+    | '/'
+    | '/armazem'
+    | '/clientes'
+    | '/coletas'
+    | '/financeiro'
+    | '/monitoramento'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/armazem'
-  id: '__root__' | '/' | '/armazem'
+  to:
+    | '/'
+    | '/armazem'
+    | '/clientes'
+    | '/coletas'
+    | '/financeiro'
+    | '/monitoramento'
+  id:
+    | '__root__'
+    | '/'
+    | '/armazem'
+    | '/clientes'
+    | '/coletas'
+    | '/financeiro'
+    | '/monitoramento'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ArmazemRoute: typeof ArmazemRoute
+  ClientesRoute: typeof ClientesRoute
+  ColetasRoute: typeof ColetasRoute
+  FinanceiroRoute: typeof FinanceiroRoute
+  MonitoramentoRoute: typeof MonitoramentoRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/monitoramento': {
+      id: '/monitoramento'
+      path: '/monitoramento'
+      fullPath: '/monitoramento'
+      preLoaderRoute: typeof MonitoramentoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/financeiro': {
+      id: '/financeiro'
+      path: '/financeiro'
+      fullPath: '/financeiro'
+      preLoaderRoute: typeof FinanceiroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/coletas': {
+      id: '/coletas'
+      path: '/coletas'
+      fullPath: '/coletas'
+      preLoaderRoute: typeof ColetasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clientes': {
+      id: '/clientes'
+      path: '/clientes'
+      fullPath: '/clientes'
+      preLoaderRoute: typeof ClientesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/armazem': {
       id: '/armazem'
       path: '/armazem'
@@ -71,6 +158,10 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ArmazemRoute: ArmazemRoute,
+  ClientesRoute: ClientesRoute,
+  ColetasRoute: ColetasRoute,
+  FinanceiroRoute: FinanceiroRoute,
+  MonitoramentoRoute: MonitoramentoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
