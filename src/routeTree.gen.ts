@@ -9,27 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as OperacaoRouteImport } from './routes/operacao'
-import { Route as FrotaRouteImport } from './routes/frota'
-import { Route as ComercialRouteImport } from './routes/comercial'
 import { Route as ArmazemRouteImport } from './routes/armazem'
 import { Route as IndexRouteImport } from './routes/index'
 
-const OperacaoRoute = OperacaoRouteImport.update({
-  id: '/operacao',
-  path: '/operacao',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FrotaRoute = FrotaRouteImport.update({
-  id: '/frota',
-  path: '/frota',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ComercialRoute = ComercialRouteImport.update({
-  id: '/comercial',
-  path: '/comercial',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ArmazemRoute = ArmazemRouteImport.update({
   id: '/armazem',
   path: '/armazem',
@@ -44,64 +26,31 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/armazem': typeof ArmazemRoute
-  '/comercial': typeof ComercialRoute
-  '/frota': typeof FrotaRoute
-  '/operacao': typeof OperacaoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/armazem': typeof ArmazemRoute
-  '/comercial': typeof ComercialRoute
-  '/frota': typeof FrotaRoute
-  '/operacao': typeof OperacaoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/armazem': typeof ArmazemRoute
-  '/comercial': typeof ComercialRoute
-  '/frota': typeof FrotaRoute
-  '/operacao': typeof OperacaoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/armazem' | '/comercial' | '/frota' | '/operacao'
+  fullPaths: '/' | '/armazem'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/armazem' | '/comercial' | '/frota' | '/operacao'
-  id: '__root__' | '/' | '/armazem' | '/comercial' | '/frota' | '/operacao'
+  to: '/' | '/armazem'
+  id: '__root__' | '/' | '/armazem'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ArmazemRoute: typeof ArmazemRoute
-  ComercialRoute: typeof ComercialRoute
-  FrotaRoute: typeof FrotaRoute
-  OperacaoRoute: typeof OperacaoRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/operacao': {
-      id: '/operacao'
-      path: '/operacao'
-      fullPath: '/operacao'
-      preLoaderRoute: typeof OperacaoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/frota': {
-      id: '/frota'
-      path: '/frota'
-      fullPath: '/frota'
-      preLoaderRoute: typeof FrotaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/comercial': {
-      id: '/comercial'
-      path: '/comercial'
-      fullPath: '/comercial'
-      preLoaderRoute: typeof ComercialRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/armazem': {
       id: '/armazem'
       path: '/armazem'
@@ -122,9 +71,6 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ArmazemRoute: ArmazemRoute,
-  ComercialRoute: ComercialRoute,
-  FrotaRoute: FrotaRoute,
-  OperacaoRoute: OperacaoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
