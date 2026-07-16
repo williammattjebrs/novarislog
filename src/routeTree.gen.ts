@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as OperacaoRouteImport } from './routes/operacao'
 import { Route as FrotaRouteImport } from './routes/frota'
+import { Route as ArmazemRouteImport } from './routes/armazem'
 import { Route as IndexRouteImport } from './routes/index'
 
 const OperacaoRoute = OperacaoRouteImport.update({
@@ -23,6 +24,11 @@ const FrotaRoute = FrotaRouteImport.update({
   path: '/frota',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ArmazemRoute = ArmazemRouteImport.update({
+  id: '/armazem',
+  path: '/armazem',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,30 +37,34 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/armazem': typeof ArmazemRoute
   '/frota': typeof FrotaRoute
   '/operacao': typeof OperacaoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/armazem': typeof ArmazemRoute
   '/frota': typeof FrotaRoute
   '/operacao': typeof OperacaoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/armazem': typeof ArmazemRoute
   '/frota': typeof FrotaRoute
   '/operacao': typeof OperacaoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/frota' | '/operacao'
+  fullPaths: '/' | '/armazem' | '/frota' | '/operacao'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/frota' | '/operacao'
-  id: '__root__' | '/' | '/frota' | '/operacao'
+  to: '/' | '/armazem' | '/frota' | '/operacao'
+  id: '__root__' | '/' | '/armazem' | '/frota' | '/operacao'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ArmazemRoute: typeof ArmazemRoute
   FrotaRoute: typeof FrotaRoute
   OperacaoRoute: typeof OperacaoRoute
 }
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FrotaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/armazem': {
+      id: '/armazem'
+      path: '/armazem'
+      fullPath: '/armazem'
+      preLoaderRoute: typeof ArmazemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ArmazemRoute: ArmazemRoute,
   FrotaRoute: FrotaRoute,
   OperacaoRoute: OperacaoRoute,
 }
