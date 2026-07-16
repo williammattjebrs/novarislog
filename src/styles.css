@@ -193,6 +193,3 @@
   color: var(--foreground);
   outline: none;
 }
-@utility input {
-  &:focus { border-color: var(--primary); }
-}
