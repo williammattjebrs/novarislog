@@ -15,16 +15,16 @@ import { orders, routes, throughputSeries, slaSeries, statusLabel, statusTone } 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "CargoHub — Torre de controle logística" },
+      { title: "Novaris — Torre de Controle Integrado" },
       {
         name: "description",
         content:
           "Hub de gestão para operador logístico: pedidos, rotas, frota, armazém e financeiro em uma única torre de controle.",
       },
-      { property: "og:title", content: "CargoHub — Torre de controle logística" },
+      { property: "og:title", content: "Novaris — Torre de Controle Integrado" },
       {
         property: "og:description",
-        content: "Opere pedidos, rotas, frota, armazém e financeiro em tempo real.",
+        content: "Hub de gestão para operador logístico: pedidos, rotas, frota, armazém e financeiro em uma única torre de controle.",
       },
     ],
   }),
