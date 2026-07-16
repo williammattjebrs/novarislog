@@ -12,13 +12,21 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-const navItems = [
+type NavItem = {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  exact?: boolean;
+  badge?: string;
+};
+
+const navItems: NavItem[] = [
   { to: "/", label: "Torre de controle", icon: LayoutDashboard, exact: true },
   { to: "/operacao", label: "Operação", icon: PackageSearch, badge: "18" },
   { to: "/frota", label: "Frota & Motoristas", icon: Truck },
   { to: "/armazem", label: "Armazém & Estoque", icon: Warehouse },
   { to: "/comercial", label: "Comercial & Financeiro", icon: Building2 },
-] as const;
+];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
