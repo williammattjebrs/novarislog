@@ -182,3 +182,14 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
+
+@utility input {
+  width: 100%;
+  background-color: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  outline: none;
+}
