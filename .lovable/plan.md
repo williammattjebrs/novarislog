@@ -1,102 +1,126 @@
 
-# Reestruturação em 5 Módulos
+# Plano — Evolução do Hub Logístico
 
-Vamos reorganizar o hub logístico substituindo a estrutura atual (Operação/Frota/Armazém/Comercial) por **5 módulos** conforme solicitado. Manteremos a **Torre de Controle** como home (`/`) e adicionaremos rotas dedicadas para cada módulo. Continua **front-end only** com mock data — pronto para conectar ao Lovable Cloud depois.
+Cinco frentes, sem ativar backend ainda. Todos os dados atuais serão **zerados** para permitir testes reais, e todo registro passa a ter ações (mudar status, previsão, observação, custos).
 
-## Estrutura de rotas
+## 1. Controle de acesso (front-only)
 
-```text
-/                    Torre de Controle (dashboard geral)
-/clientes            Módulo 1 — Clientes, Tabelas de Frete, Cotação, CRM
-/coletas             Módulo 2 — Coletas & Entregas (fluxo NF-e → CT-e)
-/monitoramento       Módulo 3 — Monitoramento ponta a ponta / Follow-up
-/armazem             Módulo 4 — WMS (remessa → estoque → separação → retorno)
-/financeiro          Módulo 5 — Financeiro completo (receitas + despesas)
-```
+- Tela `/login` com email + seleção de perfil (mock — sem senha real).
+- 5 perfis: **Admin, Comercial, Operação, Armazém, Financeiro**.
+- `AuthContext` guarda usuário atual em `localStorage`.
+- `AppShell` mostra só os módulos permitidos por perfil:
+  - Admin: tudo
+  - Comercial: Clientes, Torre
+  - Operação: Coletas, Monitoramento, Torre
+  - Armazém: Armazém, Torre
+  - Financeiro: Financeiro, Torre
+- Botão de logout + trocar perfil no topo.
+- Pronto para plugar em auth real depois (basta trocar o context).
 
-Rotas antigas `/operacao`, `/frota`, `/comercial` são removidas; o conteúdo relevante (frota/motoristas) é absorvido pelo Monitoramento e Financeiro.
+## 2. Módulo Clientes — Tabelas por cliente + Upload Excel
 
-## Módulo 1 — Clientes & Comercial (`/clientes`)
+- Cliente pode ser **CNPJ único** ou **conglomerado** (grupo com várias empresas/CNPJs).
+- Ao clicar no cliente, abre página `/clientes/$id` com abas:
+  - **Dados / CNPJs** — lista de CNPJs do grupo
+  - **Tabelas de frete** — várias tabelas por cliente, cada uma com:
+    - modalidade: **Fracionada** ou **Lotação**
+    - origem/destino (UF ou cidade), faixas de peso, valor/kg, ad valorem, GRIS, pedágio, mínimo, prazo
+    - vigência (início/fim)
+    - botão **Importar Excel** (parse client-side via SheetJS já suportado ou parser simples CSV — usando `FileReader` + template padronizado)
+  - **Cotações** — histórico de cotações aprovadas (viram "tabela ad-hoc" válida para aquele roteiro)
+  - **CRM** — deals do cliente
+- Simulador de cotação continua, mas agora salva no histórico do cliente e pode ser "aprovada" (vira roteiro válido).
 
-Abas internas:
-- **Clientes** — CRUD (mock) com dados fiscais, contato, segmento, contratos.
-- **Tabela de frete** — por cliente: origem/destino, faixa de peso, valor por kg, ad valorem, GRIS, pedágio, taxas mínimas.
-- **Cotação / Simulação** — form com origem, destino, peso, volumes, valor NF → calcula frete usando tabela do cliente. Botão "salvar cotação" alimenta o CRM.
-- **CRM (pipeline)** — kanban com estágios: Lead → Cotação enviada → Negociação → Fechado / Perdido. Cards com cliente, valor estimado, próximo follow-up, responsável.
+## 3. Fluxo NF-e → Ordem de Coleta → CT-e (com divergência)
 
-## Módulo 2 — Coletas & Entregas (`/coletas`)
-
-Fluxo em estágios (pipeline visual + tabela):
-`NF-e recebida → Coleta agendada → Em coleta → Coletado → Aguardando CT-e → Pronto para viagem → Em viagem`
-
-- Botão **Importar XML NF-e** e **Importar XML CT-e** (mock: drag-and-drop que simula parsing e move o pedido de estágio).
-- Cada pedido mostra: chave NF, cliente, remetente, destinatário, peso/volumes, valor NF, motorista/veículo alocado, CT-e vinculado.
-- Ações: agendar coleta, marcar coletado, vincular CT-e, liberar para viagem.
-
-## Módulo 3 — Monitoramento / Torre de Controle Ponta a Ponta (`/monitoramento`)
-
-- Filtros: cliente, destino (UF/cidade), data, status.
-- Visões (tabs): **Lista completa**, **Por cliente**, **Por destino**, **Por data**.
-- Cada entrega com timeline de eventos (coletado → em trânsito → chegou base → em rota → entregue), previsão vs. real, ocorrências.
-- Painel de **Follow-up**: entregas críticas (atrasadas / sem evento >Xh), botão "Disparar follow ao cliente" (mock — abre modal com template de mensagem WhatsApp/e-mail).
-- Placeholder de integração: card "Conectar API de rastreamento" (Cargon, Buonny, etc.) com estado "não conectado".
-
-## Módulo 4 — Armazém / WMS (`/armazem`)
-
-Fluxo completo de armazenagem de terceiros:
+Nova rota `/coletas` reescrita em torno de **Ordens de Coleta**:
 
 ```text
-NF Remessa p/ Estocagem → Conferência → Endereçamento → Estoque
-Estoque → NF Venda do cliente → Tarefa de Separação → Conferência → NF Retorno Simbólico → Baixa de estoque
+XML NF-e recebido
+   ↓ busca roteiro (remetente + cidade coleta + cidade entrega)
+   ├─ achou tabela/cotação → gera ORDEM DE COLETA automática com valor
+   └─ não achou           → fica em "AGUARDA VINCULAÇÃO" (ação humana)
+                             usuário vincula tabela ou cria cotação
+Ordem valorizada
+   ↓ agenda coleta → em coleta → coletado
+   ↓ aguarda CT-e
+XML CT-e recebido
+   ↓ compara valor CT-e × valor da ordem
+   ├─ dentro da tolerância (%) → ok, gera Ordem de Transporte
+   └─ fora da tolerância        → marca "DIVERGÊNCIA" (badge + diff),
+                                  registra para o financeiro, mas segue fluxo
+Ordem de Transporte
+   ├─ tipo MIDDLE MILE (transferência entre bases)
+   └─ tipo LAST MILE  (entrega final)
+   ↓ em viagem → entregue
 ```
 
-Abas:
-- **Entradas** — NFs de remessa recebidas, com botão importar XML (mock), conferência e endereçamento.
-- **Estoque** — saldo por cliente/SKU/endereço, giro, mínimo.
-- **Saídas & Separação** — NFs de venda do cliente, tarefas de separação (pendente / em separação / concluída), aguardando NF retorno.
-- **Movimentações** — histórico de entradas/saídas/transferências.
+- **Tolerância configurável** em Configurações (default 2%). Divergência > tolerância = badge vermelho + card no financeiro.
+- Cada Ordem de Transporte tem seleção **Frota própria** ou **Terceiro** (com campo "valor pago ao terceiro").
+- Upload de XML NF-e/CT-e via `<input type=file>` com `DOMParser` real (extrai chave, valor, emitente, destinatário, cidades) — sem backend, mas parse é real.
 
-## Módulo 5 — Financeiro (`/financeiro`)
+## 4. Custo por entrega
 
-- **Receitas** — ordens de coleta valorizadas via tabela/cotação, CT-es emitidos, títulos a receber, recebidos, vencidos.
-- **Despesas** — cadastro por natureza: **Fixas** (aluguel, folha, seguros), **Variáveis** (combustível, pedágio, manutenção), **Frete de terceiros** (subcontratação), **Administrativas**.
-- **Fluxo de caixa** — projetado vs. realizado por semana/mês.
-- **Resultado por área** — receita − despesas por módulo (Coletas, Armazém, Admin) mostrando margem em tempo real.
-- **Rentabilidade por cliente** — receita − custo estimado por cliente.
+Cada ordem/entrega tem card **Custo**:
 
-## Design system
+- **Se terceiro**: campo único "Valor pago ao terceiro" + observação.
+- **Se frota própria**: parametrização em `/configuracoes/custos-frota`:
+  - preço diesel R$/L, consumo km/L do veículo
+  - Arla R$/L + consumo
+  - pedágio (valor manual ou tabela por rota)
+  - comissão motorista (% do frete ou R$/entrega)
+  - depreciação R$/km
+  - outros (manutenção prevista R$/km)
+- Sistema calcula custo estimado automático (km × custos) + campos editáveis para custo real.
+- **Margem em tempo real** por entrega (receita CT-e − custo total).
 
-- Mantemos o tema dark cockpit atual (cores, tipografia, `panel`, `num`, tokens de status). Nenhuma mudança em `styles.css` além de eventuais utilitários novos.
-- Componentes reutilizáveis novos: `StageBadge`, `Pipeline` (kanban horizontal), `TimelineEvent`, `MetricCard`, `Tabs` (leve, sem shadcn).
+## 5. Interações em todos os registros
 
-## Mock data
+Padrão universal — todo card/linha (cliente, ordem, entrega, NF, tarefa de armazém, título) tem menu de ações:
 
-Expandir `src/lib/mock-data.ts` com:
-- `freightTables`, `quotations`, `crmDeals`
-- `pickups` (com estágio + NF/CT-e vinculados), `xmlEvents`
-- `warehouseInbound`, `warehouseOutbound`, `pickTasks`, `stockMovements`
-- `expenses` (fixas/variáveis/frete), `cashflow`, `resultByArea`
+- **Alterar status** (dropdown com estágios válidos do fluxo)
+- **Informar previsão** (data/hora com picker nativo)
+- **Adicionar observação** (histórico com timestamp e autor)
+- **Anexar arquivo** (mock — só nome do arquivo)
+- **Registrar ocorrência** (com categoria: atraso, avaria, recusa, etc.)
 
-## Navegação
+Componente reutilizável `RecordActions` + `Timeline` para o histórico.
 
-Atualizar `AppShell` com os 5 itens + Torre de Controle. Atualizar `__root.tsx` metadados.
+## 6. Torre de Controle — mapa do Brasil com pins
+
+- Substitui o gráfico de linhas por **mapa real** com pins geográficos das entregas ativas.
+- Vamos usar **Leaflet + OpenStreetMap** (tiles grátis, sem token, sem conector). Carregamento client-side (`<ClientOnly>` + `React.lazy`).
+- Pins coloridos por status (em rota, entregue, ocorrência, atrasado).
+- Clique no pin abre popup com dados da entrega + link para detalhe.
+- Mantidos os KPIs superiores e a lista de ocorrências ao lado.
+
+## 7. Limpeza dos dados
+
+- `src/lib/mock-data.ts` fica **vazio de exemplos** — só define tipos e retorna arrays vazios.
+- Novo `src/lib/mock-store.ts`: store em `localStorage` com CRUD para cada entidade (clientes, tabelas, ordens, CT-es, custos, ocorrências), para o usuário testar de verdade criando registros à mão ou subindo XMLs/Excels.
+- Todas as telas passam a ler/escrever do store, não do array estático.
 
 ## Detalhes técnicos
 
-- Todas as rotas seguem o padrão TanStack Router já em uso (`createFileRoute` + `head()` com meta próprio).
-- Import de XML é **simulado**: `<input type="file">` que lê o texto e faz parse simples via `DOMParser` para extrair chave/valor/emitente — sem backend. Fica pronto pra plugar no Cloud depois.
-- CRM Kanban é feito com colunas flex + cards arrastáveis (sem lib externa — HTML5 drag&drop nativo).
-- Sem novas dependências npm.
+- Zero dependência nova, **exceto Leaflet** (`leaflet` + `react-leaflet` + `@types/leaflet`) para o mapa. Nada de Mapbox/Google (usuário escolheu pins geográficos — OSM é grátis, sem conector).
+- Excel: parse via **SheetJS (`xlsx`)** client-side — biblioteca leve, sem backend.
+- XML: `DOMParser` nativo, sem lib.
+- Persistência: `localStorage` (chave `novaris:*`), pronto para trocar por Lovable Cloud depois — camada de acesso já isolada em `mock-store.ts`.
+- Rotas novas: `/login`, `/clientes/$id`, `/configuracoes/custos-frota`, `/configuracoes/tolerancia`.
+- Componentes novos: `AuthContext`, `RoleGate`, `RecordActions`, `Timeline`, `BrazilMap`, `ExcelUpload`, `XmlDrop`, `DivergenceBadge`, `CostPanel`.
 
-## Entrega em uma passada
+## Arquivos a criar/editar
 
-Criarei/editarei em paralelo:
-- `src/lib/mock-data.ts` (expandir)
-- `src/components/AppShell.tsx` (nav)
-- `src/components/pipeline.tsx`, `src/components/tabs.tsx` (auxiliares)
-- `src/routes/clientes.tsx`, `coletas.tsx`, `monitoramento.tsx`, `armazem.tsx` (reescrito), `financeiro.tsx`
-- remover `src/routes/operacao.tsx`, `frota.tsx`, `comercial.tsx`
-- `src/routes/index.tsx` (ajustar KPIs para novos módulos)
-- `src/routes/__root.tsx` (metadados)
+**Novos**
+- `src/lib/auth.tsx`, `src/lib/mock-store.ts`, `src/lib/xml-parser.ts`, `src/lib/excel-parser.ts`, `src/lib/cost-calc.ts`
+- `src/components/RoleGate.tsx`, `RecordActions.tsx`, `Timeline.tsx`, `BrazilMap.tsx`, `DivergenceBadge.tsx`, `CostPanel.tsx`
+- `src/routes/login.tsx`, `clientes.$id.tsx`, `coletas.$id.tsx`, `configuracoes.tsx`, `configuracoes.custos-frota.tsx`
 
-Após confirmar, executo tudo de uma vez.
+**Reescritos**
+- `src/lib/mock-data.ts` (esvaziado, só tipos)
+- `src/routes/index.tsx` (mapa Brasil no lugar do gráfico)
+- `src/routes/clientes.tsx`, `coletas.tsx`, `monitoramento.tsx`, `armazem.tsx`, `financeiro.tsx` (interações + store)
+- `src/components/AppShell.tsx` (perfil no header + gate de menus)
+- `src/routes/__root.tsx` (AuthProvider)
+
+Se aprovar, executo tudo em uma passada.

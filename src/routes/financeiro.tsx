@@ -1,39 +1,58 @@
+// Módulo 5 — Financeiro completo.
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
-import { useMemo, useState } from "react";
-import { Wallet, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, DollarSign, PieChart } from "lucide-react";
-import {
-  invoices,
-  expenses,
-  clients,
-  cashflowSeries,
-  statusTone,
-  toneClass,
-  type ExpenseType,
-  type ExpenseArea,
-} from "@/lib/mock-data";
+import { RoleGate } from "@/components/RoleGate";
+import { useState } from "react";
+import { Wallet, TrendingUp, TrendingDown, Plus, AlertTriangle } from "lucide-react";
+import { useInvoices, useExpenses, useOrders, useConfig, newId } from "@/lib/mock-store";
+import { calcOrderCost } from "@/lib/cost-calc";
+import { fmtBRL, statusTone, toneClass, type Expense, type ExpenseType, type ExpenseArea } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/financeiro")({
   head: () => ({
     meta: [
-      { title: "Financeiro | CargoHub" },
-      { name: "description", content: "Controle financeiro completo: receita de fretes, despesas fixas, variáveis, subcontratação, fluxo de caixa e rentabilidade por área e cliente." },
+      { title: "Financeiro | Novaris" },
+      { name: "description", content: "Receitas, despesas fixas/variáveis, fluxo de caixa, rentabilidade por cliente e por área." },
     ],
   }),
-  component: FinanceiroPage,
+  component: () => (
+    <RoleGate path="/financeiro">
+      <FinanceiroPage />
+    </RoleGate>
+  ),
 });
 
-type Tab = "visao" | "receitas" | "despesas" | "fluxo" | "resultado";
-
 function FinanceiroPage() {
-  const [tab, setTab] = useState<Tab>("visao");
+  const invoices = useInvoices();
+  const expenses = useExpenses();
+  const orders = useOrders();
+  const [cfg] = useConfig();
+  const [tab, setTab] = useState<"receitas" | "despesas" | "rentabilidade" | "divergencias">("receitas");
+  const [showNew, setShowNew] = useState(false);
 
-  const receitaMes = invoices.reduce((s, i) => s + i.valor, 0);
-  const despesaMes = expenses.reduce((s, e) => s + e.valor, 0);
-  const aReceber = invoices.filter(i => i.status === "aberta" || i.status === "emitida").reduce((s, i) => s + i.valor, 0);
-  const vencidas = invoices.filter(i => i.status === "vencida").reduce((s, i) => s + i.valor, 0);
-  const margem = receitaMes - despesaMes;
-  const margemPct = (margem / receitaMes) * 100;
+  const totalReceita = invoices.list.reduce((s, i) => s + i.valor, 0);
+  const totalDespesa = expenses.list.reduce((s, e) => s + e.valor, 0);
+  const emAtraso = invoices.list.filter((i) => i.status === "vencida").reduce((s, i) => s + i.valor, 0);
+  const receber = invoices.list.filter((i) => i.status === "aberta" || i.status === "emitida").reduce((s, i) => s + i.valor, 0);
+
+  const divergencias = orders.list.filter((o) => o.stage === "cte_divergente");
+
+  const porTipo = expenses.list.reduce<Record<ExpenseType, number>>(
+    (acc, e) => { acc[e.tipo] = (acc[e.tipo] ?? 0) + e.valor; return acc; },
+    { fixa: 0, variavel: 0, frete_terceiros: 0, administrativa: 0 },
+  );
+
+  // Rentabilidade por ordem
+  const orderMargin = orders.list.map((o) => {
+    const custo = calcOrderCost(o.costs, cfg.frota, o.valorFrete).total;
+    return { id: o.id, cliente: o.clienteNome, receita: o.cteValor ?? o.valorFrete, custo, margem: (o.cteValor ?? o.valorFrete) - custo };
+  });
+  const porCliente = orderMargin.reduce<Record<string, { rec: number; custo: number }>>((acc, o) => {
+    acc[o.cliente] = acc[o.cliente] ?? { rec: 0, custo: 0 };
+    acc[o.cliente].rec += o.receita;
+    acc[o.cliente].custo += o.custo;
+    return acc;
+  }, {});
 
   return (
     <AppShell>
@@ -41,312 +60,269 @@ function FinanceiroPage() {
         <div className="flex items-end justify-between flex-wrap gap-3">
           <div>
             <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Módulo 5</div>
-            <h1 className="mt-1 text-2xl md:text-3xl font-semibold flex items-center gap-2">
-              <Wallet className="h-6 w-6 text-primary" /> Financeiro
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">Receitas de frete, despesas por natureza, fluxo de caixa e rentabilidade em tempo real</p>
+            <h1 className="mt-1 text-2xl md:text-3xl font-semibold">Financeiro</h1>
+            <p className="text-sm text-muted-foreground mt-1">Receita, despesas, divergências e rentabilidade em tempo real.</p>
           </div>
+          <button onClick={() => setShowNew(true)} className="inline-flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 text-primary px-3 py-2 text-sm hover:bg-primary/20">
+            <Plus className="h-4 w-4" /> Nova despesa
+          </button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <BigKpi l="Receita do mês" v={`R$ ${(receitaMes/1000).toFixed(0)}k`} icon={TrendingUp} tone="success" delta="+8.2%" up />
-          <BigKpi l="Despesa do mês" v={`R$ ${(despesaMes/1000).toFixed(0)}k`} icon={TrendingDown} tone="danger" delta="+4.1%" up={false} />
-          <BigKpi l="Margem" v={`R$ ${(margem/1000).toFixed(0)}k`} icon={DollarSign} tone={margem>0?"success":"danger"} delta={`${margemPct.toFixed(1)}%`} up={margem>0} />
-          <BigKpi l="A receber" v={`R$ ${(aReceber/1000).toFixed(0)}k`} icon={Wallet} tone="cyan" delta={`${invoices.filter(i=>i.status!=="paga"&&i.status!=="vencida").length} títulos`} />
-          <BigKpi l="Vencidas" v={`R$ ${(vencidas/1000).toFixed(0)}k`} icon={PieChart} tone="danger" delta="cobrança" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Kpi icon={TrendingUp} tone="text-success" label="Receita total" v={fmtBRL(totalReceita)} />
+          <Kpi icon={TrendingDown} tone="text-danger" label="Despesa total" v={fmtBRL(totalDespesa)} />
+          <Kpi icon={Wallet} tone="text-primary" label="A receber" v={fmtBRL(receber)} />
+          <Kpi icon={AlertTriangle} tone="text-danger" label="Vencido" v={fmtBRL(emAtraso)} />
         </div>
 
         <div className="flex items-center gap-1 border-b border-border overflow-x-auto">
           {([
-            ["visao","Visão geral"],
-            ["receitas","Receitas · Fretes"],
-            ["despesas","Despesas"],
-            ["fluxo","Fluxo de caixa"],
-            ["resultado","Resultado por área/cliente"],
-          ] as [Tab,string][]).map(([t,l]) => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`px-4 py-2 text-sm border-b-2 -mb-px whitespace-nowrap ${tab===t?"border-primary text-primary":"border-transparent text-muted-foreground hover:text-foreground"}`}>
-              {l}
-            </button>
+            ["receitas", "Receitas"],
+            ["despesas", "Despesas"],
+            ["rentabilidade", "Rentabilidade"],
+            ["divergencias", `Divergências CT-e (${divergencias.length})`],
+          ] as const).map(([t, l]) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-4 py-2 text-sm border-b-2 -mb-px whitespace-nowrap ${
+                tab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >{l}</button>
           ))}
         </div>
 
-        {tab === "visao" && <VisaoGeral />}
-        {tab === "receitas" && <Receitas />}
-        {tab === "despesas" && <Despesas />}
-        {tab === "fluxo" && <FluxoCaixa />}
-        {tab === "resultado" && <Resultado />}
+        {tab === "receitas" && (
+          <div className="panel overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <th className="text-left font-normal px-4 py-2.5">Nº</th>
+                  <th className="text-left font-normal">Cliente</th>
+                  <th className="text-left font-normal">Tipo</th>
+                  <th className="text-left font-normal">Emissão</th>
+                  <th className="text-left font-normal">Vencimento</th>
+                  <th className="text-right font-normal">Valor</th>
+                  <th className="text-left font-normal pr-4">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.list.map((i) => (
+                  <tr key={i.numero} className="border-t border-border">
+                    <td className="px-4 py-2.5 num text-primary text-xs">{i.numero}</td>
+                    <td className="text-xs">{i.clienteNome}</td>
+                    <td className="text-xs">{i.tipo}</td>
+                    <td className="num text-xs">{i.emissao}</td>
+                    <td className="num text-xs">{i.vencimento}</td>
+                    <td className="text-right num">{fmtBRL(i.valor)}</td>
+                    <td className="pr-4"><span className={`text-[11px] px-2 py-0.5 rounded border ${toneClass(statusTone(i.status))}`}>{i.status}</span></td>
+                  </tr>
+                ))}
+                {invoices.list.length === 0 && (
+                  <tr><td colSpan={7} className="py-8 text-center text-xs text-muted-foreground">Sem receitas. Emissão automática ocorre quando um CT-e é importado em <b>Coletas</b>.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {tab === "despesas" && (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <MiniStat label="Fixas" v={fmtBRL(porTipo.fixa)} />
+              <MiniStat label="Variáveis" v={fmtBRL(porTipo.variavel)} />
+              <MiniStat label="Frete terceiros" v={fmtBRL(porTipo.frete_terceiros)} />
+              <MiniStat label="Administrativas" v={fmtBRL(porTipo.administrativa)} />
+            </div>
+            <div className="panel overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                    <th className="text-left font-normal px-4 py-2.5">Descrição</th>
+                    <th className="text-left font-normal">Tipo</th>
+                    <th className="text-left font-normal">Área</th>
+                    <th className="text-left font-normal">Fornecedor</th>
+                    <th className="text-right font-normal">Valor</th>
+                    <th className="text-left font-normal">Vencimento</th>
+                    <th className="text-left font-normal pr-4">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {expenses.list.map((e) => (
+                    <tr key={e.id} className="border-t border-border">
+                      <td className="px-4 py-2.5 text-xs">{e.descricao}</td>
+                      <td className="text-xs">{e.tipo.replace("_", " ")}</td>
+                      <td className="text-xs">{e.area}</td>
+                      <td className="text-xs">{e.fornecedor}</td>
+                      <td className="text-right num">{fmtBRL(e.valor)}</td>
+                      <td className="num text-xs">{e.vencimento}</td>
+                      <td className="pr-4"><span className={`text-[11px] px-2 py-0.5 rounded border ${toneClass(statusTone(e.status))}`}>{e.status}</span></td>
+                    </tr>
+                  ))}
+                  {expenses.list.length === 0 && (
+                    <tr><td colSpan={7} className="py-8 text-center text-xs text-muted-foreground">Nenhuma despesa cadastrada.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        {tab === "rentabilidade" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="panel p-4">
+              <div className="font-display text-base mb-3">Por cliente</div>
+              <div className="space-y-2">
+                {Object.entries(porCliente).map(([cli, v]) => {
+                  const margem = v.rec - v.custo;
+                  const pct = v.rec > 0 ? (margem / v.rec) * 100 : 0;
+                  return (
+                    <div key={cli} className="flex justify-between text-sm border-b border-border pb-2">
+                      <span>{cli}</span>
+                      <div className="text-right">
+                        <div className="num">{fmtBRL(v.rec)} <span className="text-muted-foreground text-xs">rec.</span></div>
+                        <div className={`num text-xs ${margem >= 0 ? "text-success" : "text-danger"}`}>
+                          margem {fmtBRL(margem)} · {pct.toFixed(1)}%
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {Object.keys(porCliente).length === 0 && (
+                  <div className="text-xs text-muted-foreground text-center py-6">Sem ordens ainda.</div>
+                )}
+              </div>
+            </div>
+            <div className="panel p-4">
+              <div className="font-display text-base mb-3">Ordem × Custo × Margem</div>
+              <div className="space-y-1.5 text-xs">
+                {orderMargin.slice(0, 20).map((o) => (
+                  <div key={o.id} className="grid grid-cols-4 gap-2 border-b border-border pb-1.5">
+                    <span className="num text-primary truncate">{o.id.slice(0, 10)}</span>
+                    <span className="num text-right">{fmtBRL(o.receita)}</span>
+                    <span className="num text-right text-accent">{fmtBRL(o.custo)}</span>
+                    <span className={`num text-right ${o.margem >= 0 ? "text-success" : "text-danger"}`}>{fmtBRL(o.margem)}</span>
+                  </div>
+                ))}
+                {orderMargin.length === 0 && <div className="text-muted-foreground text-center py-6">Sem dados.</div>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === "divergencias" && (
+          <div className="panel overflow-x-auto">
+            <div className="p-4 border-b border-border text-sm">
+              Ordens onde o valor do CT-e diverge da ordem de coleta acima da tolerância (±{cfg.toleranciaDivergenciaPercent}%).
+            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <th className="text-left font-normal px-4 py-2.5">Ordem</th>
+                  <th className="text-left font-normal">Cliente</th>
+                  <th className="text-right font-normal">Ordem</th>
+                  <th className="text-right font-normal">CT-e</th>
+                  <th className="text-right font-normal">Diff</th>
+                  <th className="text-right font-normal pr-4">%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {divergencias.map((o) => {
+                  const diff = (o.cteValor ?? 0) - o.valorFrete;
+                  return (
+                    <tr key={o.id} className="border-t border-border">
+                      <td className="px-4 py-2.5 num text-primary text-xs">{o.id.slice(0, 12)}</td>
+                      <td className="text-xs">{o.clienteNome}</td>
+                      <td className="text-right num text-xs">{fmtBRL(o.valorFrete)}</td>
+                      <td className="text-right num text-xs">{fmtBRL(o.cteValor ?? 0)}</td>
+                      <td className={`text-right num text-xs ${diff > 0 ? "text-accent" : "text-info"}`}>{fmtBRL(diff)}</td>
+                      <td className="text-right num text-xs text-danger pr-4">{o.divergenciaPercent?.toFixed(2)}%</td>
+                    </tr>
+                  );
+                })}
+                {divergencias.length === 0 && (
+                  <tr><td colSpan={6} className="py-8 text-center text-xs text-muted-foreground">Nenhuma divergência acima da tolerância.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      {showNew && (
+        <NewExpenseModal onClose={() => setShowNew(false)} onSave={(e) => { expenses.add(e); setShowNew(false); }} />
+      )}
     </AppShell>
   );
 }
 
-function BigKpi({ l, v, icon: Icon, tone, delta, up }: { l: string; v: string; icon: typeof Wallet; tone: "success" | "danger" | "cyan"; delta: string; up?: boolean }) {
-  const color = tone === "danger" ? "text-danger" : tone === "success" ? "text-success" : "text-primary";
+function Kpi({ icon: Icon, label, v, tone }: { icon: typeof Wallet; label: string; v: string; tone: string }) {
   return (
     <div className="panel p-4">
       <div className="flex items-center justify-between">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground">{l}</div>
-        <Icon className={`h-4 w-4 ${color}`} />
+        <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
+        <Icon className={`h-4 w-4 ${tone}`} />
       </div>
-      <div className={`num text-2xl md:text-3xl mt-2 ${color}`}>{v}</div>
-      <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-        {up === true && <ArrowUpRight className="h-3 w-3 text-success" />}
-        {up === false && <ArrowDownRight className="h-3 w-3 text-danger" />}
-        {delta}
-      </div>
+      <div className="num text-2xl mt-2">{v}</div>
     </div>
   );
 }
 
-function VisaoGeral() {
-  const byType: Record<ExpenseType, number> = { fixa: 0, variavel: 0, frete_terceiros: 0, administrativa: 0 };
-  expenses.forEach(e => { byType[e.tipo] += e.valor; });
-  const total = Object.values(byType).reduce((a,b) => a+b, 0);
+function MiniStat({ label, v }: { label: string; v: string }) {
+  return (
+    <div className="rounded-md border border-border p-3">
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="num text-base mt-1">{v}</div>
+    </div>
+  );
+}
+
+function NewExpenseModal({ onClose, onSave }: { onClose: () => void; onSave: (e: Expense) => void }) {
+  const [desc, setDesc] = useState("");
+  const [tipo, setTipo] = useState<ExpenseType>("fixa");
+  const [area, setArea] = useState<ExpenseArea>("operacao");
+  const [fornecedor, setFornecedor] = useState("");
+  const [valor, setValor] = useState(0);
+  const [vencimento, setVencimento] = useState(new Date().toISOString().slice(0, 10));
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div className="panel p-4">
-        <div className="font-display text-lg mb-3">Despesas por natureza</div>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="panel w-full max-w-md p-5" onClick={(e) => e.stopPropagation()}>
+        <div className="font-display text-lg mb-3">Nova despesa</div>
         <div className="space-y-3">
-          {(Object.entries(byType) as [ExpenseType, number][]).map(([k, v]) => {
-            const pct = (v / total) * 100;
-            const label = { fixa: "Fixas", variavel: "Variáveis", frete_terceiros: "Frete terceiros", administrativa: "Administrativas" }[k];
-            return (
-              <div key={k}>
-                <div className="flex justify-between text-sm">
-                  <span>{label}</span>
-                  <span className="num">R$ {(v/1000).toFixed(0)}k <span className="text-muted-foreground text-xs">({pct.toFixed(0)}%)</span></span>
-                </div>
-                <div className="h-1.5 mt-1 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
-                </div>
-              </div>
-            );
-          })}
+          <input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Descrição" className="input" />
+          <div className="grid grid-cols-2 gap-3">
+            <select value={tipo} onChange={(e) => setTipo(e.target.value as ExpenseType)} className="input">
+              <option value="fixa">Fixa</option>
+              <option value="variavel">Variável</option>
+              <option value="frete_terceiros">Frete terceiros</option>
+              <option value="administrativa">Administrativa</option>
+            </select>
+            <select value={area} onChange={(e) => setArea(e.target.value as ExpenseArea)} className="input">
+              <option value="operacao">Operação</option>
+              <option value="armazem">Armazém</option>
+              <option value="frota">Frota</option>
+              <option value="administrativa">Administrativa</option>
+              <option value="comercial">Comercial</option>
+            </select>
+          </div>
+          <input value={fornecedor} onChange={(e) => setFornecedor(e.target.value)} placeholder="Fornecedor" className="input" />
+          <div className="grid grid-cols-2 gap-3">
+            <input type="number" step="0.01" value={valor} onChange={(e) => setValor(Number(e.target.value))} placeholder="Valor" className="input num" />
+            <input type="date" value={vencimento} onChange={(e) => setVencimento(e.target.value)} className="input" />
+          </div>
         </div>
-      </div>
-      <div className="panel p-4">
-        <div className="font-display text-lg mb-3">Fluxo semanal</div>
-        <CashflowChart />
-      </div>
-    </div>
-  );
-}
-
-function Receitas() {
-  return (
-    <div className="panel overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
-            <th className="text-left font-normal px-4 py-2.5">Documento</th>
-            <th className="text-left font-normal">Cliente</th>
-            <th className="text-left font-normal">Tipo</th>
-            <th className="text-left font-normal">Emissão</th>
-            <th className="text-left font-normal">Vencimento</th>
-            <th className="text-right font-normal">Valor</th>
-            <th className="text-left font-normal pl-4 pr-4">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {invoices.map((i) => (
-            <tr key={i.numero} className="border-t border-border hover:bg-elevated/50">
-              <td className="px-4 py-3 num text-primary text-xs">{i.numero}</td>
-              <td className="font-medium">{i.cliente}</td>
-              <td className="text-xs text-muted-foreground">{i.tipo}</td>
-              <td className="num text-xs">{i.emissao}</td>
-              <td className={`num text-xs ${i.status==="vencida"?"text-danger":""}`}>{i.vencimento}</td>
-              <td className="text-right num">R$ {i.valor.toLocaleString("pt-BR")}</td>
-              <td className="pl-4 pr-4"><span className={`text-[11px] px-2 py-0.5 rounded border ${toneClass(statusTone(i.status))}`}>{i.status}</span></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function Despesas() {
-  const [tipo, setTipo] = useState<ExpenseType | "todas">("todas");
-  const list = tipo === "todas" ? expenses : expenses.filter(e => e.tipo === tipo);
-  const labels: Record<ExpenseType, string> = { fixa: "Fixas", variavel: "Variáveis", frete_terceiros: "Frete terceiros", administrativa: "Administrativas" };
-
-  return (
-    <div className="space-y-3">
-      <div className="flex gap-2 flex-wrap">
-        <button onClick={() => setTipo("todas")} className={`px-3 py-1.5 text-xs rounded-md border ${tipo==="todas"?"border-primary/50 bg-primary/10 text-primary":"border-border"}`}>Todas</button>
-        {(Object.keys(labels) as ExpenseType[]).map(k => (
-          <button key={k} onClick={() => setTipo(k)} className={`px-3 py-1.5 text-xs rounded-md border ${tipo===k?"border-primary/50 bg-primary/10 text-primary":"border-border"}`}>
-            {labels[k]}
-          </button>
-        ))}
-        <div className="flex-1" />
-        <button className="px-3 py-1.5 text-xs rounded-md border border-primary/40 bg-primary/10 text-primary">+ Nova despesa</button>
-      </div>
-      <div className="panel overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
-              <th className="text-left font-normal px-4 py-2.5">Descrição</th>
-              <th className="text-left font-normal">Tipo</th>
-              <th className="text-left font-normal">Área</th>
-              <th className="text-left font-normal">Fornecedor</th>
-              <th className="text-left font-normal">Vencimento</th>
-              <th className="text-right font-normal">Valor</th>
-              <th className="text-left font-normal pl-4 pr-4">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((e) => (
-              <tr key={e.id} className="border-t border-border hover:bg-elevated/50">
-                <td className="px-4 py-3">
-                  <div className="font-medium">{e.descricao}</div>
-                  {e.recorrente && <div className="text-[10px] text-muted-foreground">recorrente</div>}
-                </td>
-                <td className="text-xs">{labels[e.tipo]}</td>
-                <td className="text-xs capitalize">{e.area}</td>
-                <td className="text-xs">{e.fornecedor}</td>
-                <td className={`num text-xs ${e.status==="vencida"?"text-danger":""}`}>{e.vencimento}</td>
-                <td className="text-right num">R$ {e.valor.toLocaleString("pt-BR")}</td>
-                <td className="pl-4 pr-4"><span className={`text-[11px] px-2 py-0.5 rounded border ${toneClass(statusTone(e.status))}`}>{e.status}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function CashflowChart() {
-  const w = 500, h = 180, pad = 20;
-  const maxV = Math.max(...cashflowSeries.flatMap(s => [s.receita, s.despesa]));
-  const step = (w - pad*2) / (cashflowSeries.length - 1);
-  const y = (v: number) => h - pad - (v / maxV) * (h - pad*2);
-
-  const receitaPts = cashflowSeries.map((s, i) => `${pad + i*step},${y(s.receita)}`).join(" ");
-  const despesaPts = cashflowSeries.map((s, i) => `${pad + i*step},${y(s.despesa)}`).join(" ");
-
-  return (
-    <div>
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-44">
-        <polyline points={receitaPts} fill="none" stroke="var(--success)" strokeWidth="2" />
-        <polyline points={despesaPts} fill="none" stroke="var(--danger)" strokeWidth="2" strokeDasharray="4 4" />
-        {cashflowSeries.map((s, i) => (
-          <text key={s.semana} x={pad + i*step} y={h-4} textAnchor="middle" fontSize="9" fill="oklch(0.6 0.02 260)">{s.semana}</text>
-        ))}
-      </svg>
-      <div className="flex items-center gap-4 text-xs mt-2">
-        <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 bg-success" /> Receita</span>
-        <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 bg-danger" /> Despesa</span>
-      </div>
-    </div>
-  );
-}
-
-function FluxoCaixa() {
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div className="panel p-4 lg:col-span-2">
-        <div className="font-display text-lg mb-3">Receita vs. Despesa por semana</div>
-        <CashflowChart />
-      </div>
-      <div className="panel p-4">
-        <div className="font-display text-lg mb-3">Saldos</div>
-        <table className="w-full text-sm">
-          <tbody>
-            {cashflowSeries.map(s => {
-              const saldo = s.receita - s.despesa;
-              return (
-                <tr key={s.semana} className="border-t border-border first:border-0">
-                  <td className="py-2 num">{s.semana}</td>
-                  <td className="text-right num text-success">+{(s.receita/1000).toFixed(0)}k</td>
-                  <td className="text-right num text-danger">-{(s.despesa/1000).toFixed(0)}k</td>
-                  <td className={`text-right num font-medium ${saldo>0?"text-success":"text-danger"}`}>{(saldo/1000).toFixed(0)}k</td>
-                </tr>
-              );
+        <div className="flex justify-end gap-2 mt-4">
+          <button onClick={onClose} className="text-sm px-3 py-1.5 rounded border border-border hover:bg-elevated">Cancelar</button>
+          <button
+            onClick={() => onSave({
+              id: newId("DES"), descricao: desc, tipo, area, fornecedor, valor,
+              vencimento: new Date(vencimento).toLocaleDateString("pt-BR"),
+              status: "prevista", recorrente: tipo === "fixa",
             })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function Resultado() {
-  const areas: ExpenseArea[] = ["operacao", "armazem", "frota", "administrativa", "comercial"];
-  const receitaTotal = invoices.reduce((s, i) => s + i.valor, 0);
-
-  // Aloca receita proporcional simulada por área
-  const receitaPorArea: Record<ExpenseArea, number> = {
-    operacao: receitaTotal * 0.55,
-    armazem: receitaTotal * 0.25,
-    frota: receitaTotal * 0.12,
-    administrativa: receitaTotal * 0.04,
-    comercial: receitaTotal * 0.04,
-  };
-
-  const clientesAtivos = clients.filter(c => c.faturamentoMes > 0);
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div className="panel p-4">
-        <div className="font-display text-lg mb-3">Resultado por área</div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
-              <th className="text-left font-normal py-2">Área</th>
-              <th className="text-right font-normal">Receita</th>
-              <th className="text-right font-normal">Despesa</th>
-              <th className="text-right font-normal">Margem</th>
-            </tr>
-          </thead>
-          <tbody>
-            {areas.map(a => {
-              const desp = expenses.filter(e => e.area === a).reduce((s, e) => s + e.valor, 0);
-              const rec = receitaPorArea[a];
-              const mrg = rec - desp;
-              return (
-                <tr key={a} className="border-t border-border">
-                  <td className="py-2.5 capitalize">{a}</td>
-                  <td className="text-right num text-success">R$ {(rec/1000).toFixed(0)}k</td>
-                  <td className="text-right num text-danger">R$ {(desp/1000).toFixed(0)}k</td>
-                  <td className={`text-right num font-medium ${mrg>0?"text-success":"text-danger"}`}>R$ {(mrg/1000).toFixed(0)}k</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="panel p-4">
-        <div className="font-display text-lg mb-3">Rentabilidade por cliente</div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
-              <th className="text-left font-normal py-2">Cliente</th>
-              <th className="text-right font-normal">Receita</th>
-              <th className="text-right font-normal">Custo est.</th>
-              <th className="text-right font-normal">Margem</th>
-            </tr>
-          </thead>
-          <tbody>
-            {clientesAtivos.map(c => {
-              const custo = c.faturamentoMes * 0.72; // 28% margem base simulada
-              const mrg = c.faturamentoMes - custo;
-              const pct = (mrg / c.faturamentoMes) * 100;
-              return (
-                <tr key={c.cnpj} className="border-t border-border">
-                  <td className="py-2.5 font-medium">{c.nome}</td>
-                  <td className="text-right num">R$ {(c.faturamentoMes/1000).toFixed(0)}k</td>
-                  <td className="text-right num text-danger">R$ {(custo/1000).toFixed(0)}k</td>
-                  <td className={`text-right num font-medium ${pct>20?"text-success":pct>10?"text-accent":"text-danger"}`}>{pct.toFixed(1)}%</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+            className="text-sm px-3 py-1.5 rounded bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25"
+          >Salvar</button>
+        </div>
       </div>
     </div>
   );

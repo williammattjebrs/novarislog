@@ -1,67 +1,210 @@
-import { createFileRoute } from "@tanstack/react-router";
+// Módulo 2 — Coletas & Ordens: NF-e → Ordem de Coleta → CT-e → Transporte.
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
-import { useMemo, useState } from "react";
-import { FileUp, FileCheck2, Truck, ArrowRight, Package } from "lucide-react";
-import { pickups, pickupStages, statusTone, toneClass, type PickupStage, type Pickup } from "@/lib/mock-data";
+import { RoleGate } from "@/components/RoleGate";
+import { useState, useRef, useMemo } from "react";
+import { FileUp, FileCheck2, Package, Truck, AlertTriangle, ArrowRight, Link2 } from "lucide-react";
+import { useOrders, useClients, useFreightTables, useQuotations, useInvoices, useConfig, newId } from "@/lib/mock-store";
+import {
+  ORDER_STAGES, statusTone, toneClass, stageLabel, fmtBRL,
+  type Order, type OrderStage,
+} from "@/lib/mock-data";
+import { parseNFe, parseCTe, readFileText } from "@/lib/xml-parser";
+import { findFreightTable, findQuotation, calcFreight } from "@/lib/cost-calc";
+import { lookupCoords } from "@/lib/geo";
+import { RecordActions } from "@/components/RecordActions";
+import { DivergenceBadge } from "@/components/DivergenceBadge";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/coletas")({
   head: () => ({
     meta: [
-      { title: "Coletas & Entregas | CargoHub" },
-      { name: "description", content: "Gestão de coletas e entregas com importação automática de XML de NF-e e CT-e, do agendamento à saída para viagem." },
+      { title: "Coletas & Ordens | Novaris" },
+      { name: "description", content: "Fluxo NF-e → Ordem de Coleta → CT-e → Ordem de Transporte com detecção de divergência." },
     ],
   }),
-  component: ColetasPage,
+  component: () => (
+    <RoleGate path="/coletas">
+      <ColetasPage />
+    </RoleGate>
+  ),
 });
 
 function ColetasPage() {
-  const [items, setItems] = useState<Pickup[]>(pickups);
-  const [filtroStage, setFiltroStage] = useState<PickupStage | "todos">("todos");
+  const orders = useOrders();
+  const clients = useClients();
+  const tables = useFreightTables();
+  const quotes = useQuotations();
+  const invoices = useInvoices();
+  const [cfg] = useConfig();
+  const { user } = useAuth();
+  const autor = user?.nome ?? "sistema";
+
+  const [filtro, setFiltro] = useState<OrderStage | "todos">("todos");
+  const [selected, setSelected] = useState<string | null>(null);
+  const nfeInput = useRef<HTMLInputElement>(null);
+  const cteInput = useRef<HTMLInputElement>(null);
 
   const porStage = useMemo(() => {
-    const map: Record<PickupStage, Pickup[]> = {
-      nfe_recebida: [], coleta_agendada: [], em_coleta: [], coletado: [],
-      aguardando_cte: [], pronto_viagem: [], em_viagem: [],
-    };
-    items.forEach(p => { map[p.stage].push(p); });
-    return map;
-  }, [items]);
+    const m: Record<string, number> = {};
+    ORDER_STAGES.forEach((s) => (m[s.id] = 0));
+    orders.list.forEach((o) => (m[o.stage] = (m[o.stage] ?? 0) + 1));
+    return m;
+  }, [orders.list]);
 
-  const filtered = filtroStage === "todos" ? items : items.filter(p => p.stage === filtroStage);
+  const filtered = filtro === "todos" ? orders.list : orders.list.filter((o) => o.stage === filtro);
 
-  function importXml(tipo: "nfe" | "cte") {
-    // Prototype: simula processamento do XML avançando um item
-    if (tipo === "nfe") {
-      const novo: Pickup = {
-        id: `COL-${9010 + items.length}`,
-        cliente: "Cliente XML",
-        chaveNFe: "35240700000000000000550010000" + Math.floor(Math.random() * 1e12),
-        numeroNFe: String(Math.floor(Math.random() * 999999)).padStart(6, "0"),
-        remetente: "Importado via XML",
-        destinatario: "A definir",
-        cidadeDestino: "—",
-        peso: 400, volumes: 12, valorNF: 24_800,
-        stage: "nfe_recebida",
-        atualizadoEm: "agora",
-      };
-      setItems([novo, ...items]);
-    } else {
-      // Primeiro pickup aguardando CT-e avança
-      setItems(items.map(p => p.stage === "aguardando_cte"
-        ? { ...p, stage: "pronto_viagem", cteNumero: `CTe ${443_000 + Math.floor(Math.random() * 500)}`, atualizadoEm: "agora" }
-        : p));
+  // ----------------------------------------------------
+  // Upload NF-e
+  // ----------------------------------------------------
+  async function importNFe(files: FileList) {
+    if (clients.list.length === 0) {
+      alert("Cadastre ao menos um cliente antes de importar NF-e (a NF é vinculada por CNPJ do remetente).");
+      return;
     }
+    let ok = 0, fail = 0;
+    for (const f of Array.from(files)) {
+      const text = await readFileText(f);
+      const p = parseNFe(text);
+      if (!p) { fail++; continue; }
+
+      // Cliente = quem tem esse CNPJ como remetente (emitente)
+      const client = clients.list.find((c) => c.cnpjs.some((x) => x.cnpj.replace(/\D/g, "") === p.emitente.cnpj.replace(/\D/g, "")));
+      const clienteId = client?.id ?? "";
+      const clienteNome = client?.nome ?? `(sem cliente) ${p.emitente.nome}`;
+
+      // Busca tabela/cotação
+      const table = clienteId
+        ? findFreightTable(tables.list, {
+            clienteId,
+            ufColeta: p.emitente.uf,
+            cidadeColeta: p.emitente.cidade,
+            ufEntrega: p.destinatario.uf,
+            cidadeEntrega: p.destinatario.cidade,
+          })
+        : null;
+      const quote = !table && clienteId
+        ? findQuotation(quotes.list, {
+            clienteId,
+            ufColeta: p.emitente.uf,
+            ufEntrega: p.destinatario.uf,
+          })
+        : null;
+
+      let valorFrete = 0;
+      let origemValor: Order["origemValor"] = "";
+      let refValor: string | undefined = undefined;
+      if (table) {
+        const c = calcFreight(table, { peso: p.pesoBruto, valorNF: p.valorTotal });
+        valorFrete = c.total;
+        origemValor = "tabela";
+        refValor = table.id;
+      } else if (quote) {
+        valorFrete = quote.valorCalculado;
+        origemValor = "cotacao";
+        refValor = quote.id;
+      }
+
+      const coords = lookupCoords(p.destinatario.cidade, p.destinatario.uf);
+
+      const order: Order = {
+        id: newId("ORD"),
+        clienteId,
+        clienteNome,
+        chaveNFe: p.chave,
+        numeroNFe: p.numero,
+        remetente: p.emitente.nome,
+        remetenteCnpj: p.emitente.cnpj,
+        cidadeColeta: p.emitente.cidade,
+        ufColeta: p.emitente.uf,
+        destinatario: p.destinatario.nome,
+        destinatarioCnpj: p.destinatario.cnpj,
+        cidadeEntrega: p.destinatario.cidade,
+        ufEntrega: p.destinatario.uf,
+        peso: p.pesoBruto,
+        volumes: p.volumes,
+        valorNF: p.valorTotal,
+        valorFrete,
+        origemValor,
+        refValor,
+        transportType: "",
+        stage: valorFrete > 0 ? "valorizada" : "aguarda_vinculacao",
+        costs: { execMode: "" },
+        latDestino: coords?.[0],
+        lngDestino: coords?.[1],
+        timeline: [
+          {
+            quando: new Date().toISOString(),
+            autor,
+            tipo: "sistema",
+            texto: `NF-e ${p.numero} importada · ${valorFrete > 0 ? `valorizada por ${origemValor} (${refValor})` : "sem match de tabela — aguarda vinculação"}`,
+          },
+        ],
+        criadoEm: new Date().toISOString(),
+        atualizadoEm: new Date().toISOString(),
+      };
+      orders.add(order);
+      ok++;
+    }
+    alert(`✓ ${ok} NF-e(s) importada(s)${fail > 0 ? ` · ${fail} com erro de parsing` : ""}`);
+    if (nfeInput.current) nfeInput.current.value = "";
   }
 
-  function avancarStage(id: string) {
-    const ordem: PickupStage[] = ["nfe_recebida", "coleta_agendada", "em_coleta", "coletado", "aguardando_cte", "pronto_viagem", "em_viagem"];
-    setItems(items.map(p => {
-      if (p.id !== id) return p;
-      const idx = ordem.indexOf(p.stage);
-      const nova = ordem[Math.min(idx + 1, ordem.length - 1)];
-      return { ...p, stage: nova, atualizadoEm: "agora" };
-    }));
+  // ----------------------------------------------------
+  // Upload CT-e
+  // ----------------------------------------------------
+  async function importCTe(files: FileList) {
+    let ok = 0;
+    for (const f of Array.from(files)) {
+      const text = await readFileText(f);
+      const p = parseCTe(text);
+      if (!p) continue;
+
+      // Casa por chave da NF-e referenciada
+      const order = orders.list.find((o) =>
+        (p.chaveNFeReferenciada && o.chaveNFe === p.chaveNFeReferenciada) ||
+        (o.stage === "aguardando_cte" || o.stage === "coletado"),
+      );
+      if (!order) continue;
+
+      const diff = order.valorFrete > 0 ? ((p.valorTotal - order.valorFrete) / order.valorFrete) * 100 : 0;
+      const stage: OrderStage = Math.abs(diff) > cfg.toleranciaDivergenciaPercent ? "cte_divergente" : "cte_ok";
+
+      orders.update(order.id, {
+        cteChave: p.chave,
+        cteNumero: p.numero,
+        cteValor: p.valorTotal,
+        divergenciaPercent: diff,
+        stage,
+        atualizadoEm: new Date().toISOString(),
+        timeline: [
+          ...order.timeline,
+          {
+            quando: new Date().toISOString(),
+            autor,
+            tipo: "sistema",
+            texto: `CT-e ${p.numero} vinculado · ${fmtBRL(p.valorTotal)} · divergência ${diff.toFixed(2)}% ${stage === "cte_divergente" ? "(FORA da tolerância)" : "(dentro da tolerância)"}`,
+          },
+        ],
+      });
+
+      // Emite fatura (mock)
+      invoices.add({
+        numero: `CTe ${p.numero}`,
+        clienteNome: order.clienteNome,
+        emissao: new Date().toLocaleDateString("pt-BR"),
+        vencimento: new Date(Date.now() + 30 * 86400_000).toLocaleDateString("pt-BR"),
+        valor: p.valorTotal,
+        status: "aberta",
+        tipo: "CTe",
+      });
+      ok++;
+    }
+    alert(`✓ ${ok} CT-e(s) vinculado(s) a ordens`);
+    if (cteInput.current) cteInput.current.value = "";
   }
+
+  const sel = selected ? orders.list.find((o) => o.id === selected) : null;
 
   return (
     <AppShell>
@@ -69,109 +212,249 @@ function ColetasPage() {
         <div className="flex items-end justify-between flex-wrap gap-3">
           <div>
             <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Módulo 2</div>
-            <h1 className="mt-1 text-2xl md:text-3xl font-semibold">Coletas & Entregas</h1>
-            <p className="text-sm text-muted-foreground mt-1">Fluxo NF-e → coleta → CT-e → viagem</p>
+            <h1 className="mt-1 text-2xl md:text-3xl font-semibold">Coletas & Ordens</h1>
+            <p className="text-sm text-muted-foreground mt-1">NF-e → Ordem de Coleta → CT-e → Ordem de Transporte · tolerância ±{cfg.toleranciaDivergenciaPercent}%</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => importXml("nfe")} className="inline-flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 text-primary px-3 py-2 text-sm hover:bg-primary/20">
+            <label className="inline-flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 text-primary px-3 py-2 text-sm hover:bg-primary/20 cursor-pointer">
               <FileUp className="h-4 w-4" /> Importar XML NF-e
-            </button>
-            <button onClick={() => importXml("cte")} className="inline-flex items-center gap-2 rounded-md border border-accent/40 bg-accent/10 text-accent px-3 py-2 text-sm hover:bg-accent/20">
+              <input ref={nfeInput} type="file" multiple accept=".xml" className="hidden" onChange={(e) => e.target.files && importNFe(e.target.files)} />
+            </label>
+            <label className="inline-flex items-center gap-2 rounded-md border border-accent/40 bg-accent/10 text-accent px-3 py-2 text-sm hover:bg-accent/20 cursor-pointer">
               <FileCheck2 className="h-4 w-4" /> Importar XML CT-e
-            </button>
+              <input ref={cteInput} type="file" multiple accept=".xml" className="hidden" onChange={(e) => e.target.files && importCTe(e.target.files)} />
+            </label>
           </div>
         </div>
 
         {/* Pipeline */}
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2">
-          {pickupStages.map((s, i) => {
-            const count = porStage[s.id].length;
-            const active = filtroStage === s.id;
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-11 gap-1.5">
+          {ORDER_STAGES.map((s, i) => {
+            const count = porStage[s.id] ?? 0;
+            const active = filtro === s.id;
             return (
               <button
                 key={s.id}
-                onClick={() => setFiltroStage(active ? "todos" : s.id)}
-                className={`panel p-3 text-left relative transition-colors ${active ? "border-primary/60 bg-primary/5" : "hover:border-border/70"}`}
+                onClick={() => setFiltro(active ? "todos" : s.id)}
+                className={`panel p-2.5 text-left relative transition-colors ${active ? "border-primary/60 bg-primary/5" : "hover:border-border/70"}`}
               >
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                  {i + 1}. {i < 3 ? <Package className="h-3 w-3" /> : i < 5 ? <FileCheck2 className="h-3 w-3" /> : <Truck className="h-3 w-3" />}
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  {i + 1}. {i < 5 ? <Package className="h-2.5 w-2.5" /> : i < 8 ? <FileCheck2 className="h-2.5 w-2.5" /> : <Truck className="h-2.5 w-2.5" />}
                 </div>
-                <div className="text-xs mt-1 leading-tight">{s.label}</div>
-                <div className="num text-2xl mt-2 text-primary">{count}</div>
-                {i < pickupStages.length - 1 && (
-                  <ArrowRight className="hidden xl:block absolute -right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-border" />
-                )}
+                <div className="text-[11px] mt-0.5 leading-tight">{s.label}</div>
+                <div className={`num text-xl mt-1 ${s.id === "cte_divergente" || s.id === "ocorrencia" ? "text-danger" : "text-primary"}`}>{count}</div>
               </button>
             );
           })}
         </div>
-
-        {filtroStage !== "todos" && (
-          <button onClick={() => setFiltroStage("todos")} className="text-xs text-primary hover:underline">
+        {filtro !== "todos" && (
+          <button onClick={() => setFiltro("todos")} className="text-xs text-primary hover:underline">
             ← ver todos os estágios
           </button>
         )}
 
-        <div className="panel overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                <th className="text-left font-normal px-4 py-2.5">Pedido</th>
-                <th className="text-left font-normal">Cliente</th>
-                <th className="text-left font-normal">NF-e</th>
-                <th className="text-left font-normal">CT-e</th>
-                <th className="text-left font-normal">Destino</th>
-                <th className="text-right font-normal">Peso/Vol</th>
-                <th className="text-right font-normal">Valor NF</th>
-                <th className="text-left font-normal">Motorista</th>
-                <th className="text-left font-normal">Estágio</th>
-                <th className="text-right font-normal pr-4">Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p) => (
-                <tr key={p.id} className="border-t border-border hover:bg-elevated/50">
-                  <td className="px-4 py-3 num text-primary">{p.id}</td>
-                  <td className="font-medium">{p.cliente}</td>
-                  <td className="num text-xs">
-                    <div>{p.numeroNFe}</div>
-                    <div className="text-[10px] text-muted-foreground truncate max-w-[140px]" title={p.chaveNFe}>{p.chaveNFe.slice(0, 20)}…</div>
-                  </td>
-                  <td className="num text-xs">{p.cteNumero ?? <span className="text-muted-foreground">—</span>}</td>
-                  <td className="text-xs">{p.cidadeDestino}</td>
-                  <td className="text-right num text-xs">{p.peso}kg / {p.volumes}v</td>
-                  <td className="text-right num text-xs">R$ {p.valorNF.toLocaleString("pt-BR")}</td>
-                  <td className="text-xs">
-                    {p.motorista ? (
-                      <>
-                        <div>{p.motorista}</div>
-                        <div className="num text-[10px] text-muted-foreground">{p.placa}</div>
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground">a alocar</span>
-                    )}
-                  </td>
-                  <td>
-                    <span className={`text-[11px] px-2 py-0.5 rounded border ${toneClass(statusTone(p.stage))}`}>
-                      {pickupStages.find(s => s.id === p.stage)?.label}
-                    </span>
-                  </td>
-                  <td className="text-right pr-4">
-                    {p.stage !== "em_viagem" && (
-                      <button onClick={() => avancarStage(p.id)} className="text-xs text-primary hover:underline">
-                        avançar →
-                      </button>
-                    )}
-                  </td>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Lista */}
+          <div className={`panel overflow-x-auto ${sel ? "lg:col-span-2" : "lg:col-span-3"}`}>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <th className="text-left font-normal px-4 py-2.5">Ordem</th>
+                  <th className="text-left font-normal">Cliente</th>
+                  <th className="text-left font-normal">Rota</th>
+                  <th className="text-right font-normal">Ordem</th>
+                  <th className="text-right font-normal">CT-e</th>
+                  <th className="text-left font-normal">Estágio</th>
+                  <th className="text-right font-normal pr-4">Ações</th>
                 </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr><td colSpan={10} className="text-center py-8 text-muted-foreground text-sm">Nenhum pedido neste estágio</td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((o) => (
+                  <tr key={o.id} className={`border-t border-border hover:bg-elevated/50 cursor-pointer ${sel?.id === o.id ? "bg-elevated/60" : ""}`} onClick={() => setSelected(o.id)}>
+                    <td className="px-4 py-3 num text-primary text-xs">{o.id.slice(0, 12)}</td>
+                    <td className="text-xs">
+                      <div className="font-medium">{o.clienteNome}</div>
+                      <div className="num text-muted-foreground">NF {o.numeroNFe}</div>
+                    </td>
+                    <td className="text-xs">{o.cidadeColeta}/{o.ufColeta} → {o.cidadeEntrega}/{o.ufEntrega}</td>
+                    <td className="text-right num text-xs">
+                      <div>{fmtBRL(o.valorFrete)}</div>
+                      <div className="text-[9px] text-muted-foreground">{o.origemValor || "—"}</div>
+                    </td>
+                    <td className="text-right num text-xs">
+                      {o.cteValor ? (
+                        <div>
+                          <div>{fmtBRL(o.cteValor)}</div>
+                          {o.divergenciaPercent != null && (
+                            <DivergenceBadge percent={o.divergenciaPercent} tolerancia={cfg.toleranciaDivergenciaPercent} />
+                          )}
+                        </div>
+                      ) : <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td>
+                      <span className={`text-[11px] px-2 py-0.5 rounded border ${toneClass(statusTone(o.stage))}`}>
+                        {stageLabel(o.stage)}
+                      </span>
+                    </td>
+                    <td className="text-right pr-4" onClick={(e) => e.stopPropagation()}>
+                      <RecordActions
+                        statusOptions={ORDER_STAGES.map((s) => ({ id: s.id, label: s.label }))}
+                        currentStatus={o.stage}
+                        onChangeStatus={(next, entry) => {
+                          orders.update(o.id, { stage: next as OrderStage, timeline: [...o.timeline, entry], atualizadoEm: new Date().toISOString() });
+                        }}
+                        onAddEntry={(entry) => orders.update(o.id, { timeline: [...o.timeline, entry], atualizadoEm: new Date().toISOString() })}
+                      />
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr><td colSpan={7} className="py-8 text-center text-xs text-muted-foreground">
+                    Nenhuma ordem. Importe um XML de NF-e para começar.
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {sel && (
+            <OrderDetail
+              order={sel}
+              onClose={() => setSelected(null)}
+              onUpdate={(patch) => orders.update(sel.id, { ...patch, atualizadoEm: new Date().toISOString() })}
+            />
+          )}
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function OrderDetail({ order, onClose, onUpdate }: {
+  order: Order;
+  onClose: () => void;
+  onUpdate: (patch: Partial<Order>) => void;
+}) {
+  const [cfg] = useConfig();
+  const tables = useFreightTables();
+  const quotes = useQuotations();
+
+  // Sugestões de match manual quando aguarda vinculação
+  const suggestions = order.stage === "aguarda_vinculacao" ? tables.list.filter(
+    (t) => t.clienteId === order.clienteId && t.ativa,
+  ) : [];
+
+  return (
+    <div className="panel p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-xs text-muted-foreground uppercase tracking-wider">Ordem</div>
+          <div className="font-display text-lg num text-primary">{order.id}</div>
+        </div>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xs">fechar</button>
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <Info label="Cliente" v={order.clienteNome} />
+        <Info label="Peso" v={`${order.peso} kg · ${order.volumes} vol.`} />
+        <Info label="NF-e" v={`${order.numeroNFe}`} />
+        <Info label="Valor NF" v={fmtBRL(order.valorNF)} />
+        <Info label="Coleta" v={`${order.cidadeColeta}/${order.ufColeta}`} />
+        <Info label="Entrega" v={`${order.cidadeEntrega}/${order.ufEntrega}`} />
+      </div>
+
+      {order.stage === "aguarda_vinculacao" && (
+        <div className="rounded-md border border-accent/40 bg-accent/10 p-3">
+          <div className="flex items-center gap-2 text-accent text-sm font-medium">
+            <AlertTriangle className="h-4 w-4" /> Aguarda vinculação de valor
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">Sem tabela ou cotação aprovada para {order.cidadeColeta}/{order.ufColeta} → {order.cidadeEntrega}/{order.ufEntrega}.</p>
+          {suggestions.length > 0 ? (
+            <div className="mt-2 space-y-1">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Vincular manualmente:</div>
+              {suggestions.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => onUpdate({
+                    valorFrete: t.modalidade === "lotacao" ? (t.valorLotacao ?? 0) : 0,
+                    origemValor: "manual",
+                    refValor: t.id,
+                    stage: "valorizada",
+                    timeline: [...order.timeline, {
+                      quando: new Date().toISOString(),
+                      autor: "sistema",
+                      tipo: "sistema",
+                      texto: `Vinculada manualmente à tabela ${t.nome}`,
+                    }],
+                  })}
+                  className="w-full text-left text-xs px-2 py-1.5 rounded border border-border hover:bg-elevated flex items-center gap-2"
+                >
+                  <Link2 className="h-3 w-3" /> {t.nome}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs text-muted-foreground mt-2">
+              <Link to="/clientes" className="text-primary hover:underline">Cadastre uma tabela</Link> para este cliente.
+            </div>
+          )}
+          <div className="mt-2">
+            <button
+              onClick={() => {
+                const v = Number(prompt("Valor manual do frete (R$):") ?? 0);
+                if (v > 0) onUpdate({
+                  valorFrete: v,
+                  origemValor: "manual",
+                  stage: "valorizada",
+                  timeline: [...order.timeline, {
+                    quando: new Date().toISOString(), autor: "sistema", tipo: "sistema",
+                    texto: `Valor manual definido: ${fmtBRL(v)}`,
+                  }],
+                });
+              }}
+              className="text-xs text-primary hover:underline"
+            >… ou definir valor manual</button>
+          </div>
+        </div>
+      )}
+
+      <div>
+        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Valor da ordem</div>
+        <div className="num text-2xl">{fmtBRL(order.valorFrete)}</div>
+        <div className="text-[10px] text-muted-foreground">origem: {order.origemValor || "—"} {order.refValor ? `· ${order.refValor}` : ""}</div>
+      </div>
+
+      {order.cteValor != null && (
+        <div className="rounded-md border border-border p-3">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Conferência CT-e</div>
+          <div className="flex justify-between text-xs"><span>Ordem</span><span className="num">{fmtBRL(order.valorFrete)}</span></div>
+          <div className="flex justify-between text-xs"><span>CT-e</span><span className="num">{fmtBRL(order.cteValor)}</span></div>
+          <div className="flex justify-between text-xs pt-1 border-t border-border mt-1">
+            <span>Divergência</span>
+            <DivergenceBadge percent={order.divergenciaPercent ?? 0} tolerancia={cfg.toleranciaDivergenciaPercent} />
+          </div>
+        </div>
+      )}
+
+      {(order.stage === "cte_ok" || order.stage === "cte_divergente") && !order.transportType && (
+        <div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Tipo de transporte</div>
+          <div className="flex gap-2">
+            <button onClick={() => onUpdate({ transportType: "middle", stage: "em_viagem" })} className="flex-1 text-xs px-3 py-1.5 rounded border border-border hover:bg-elevated"><ArrowRight className="h-3 w-3 inline" /> Middle Mile</button>
+            <button onClick={() => onUpdate({ transportType: "last", stage: "em_viagem" })} className="flex-1 text-xs px-3 py-1.5 rounded border border-border hover:bg-elevated"><Truck className="h-3 w-3 inline" /> Last Mile</button>
+          </div>
+        </div>
+      )}
+
+      <Link to="/monitoramento" className="text-xs text-primary hover:underline">Ver rastreamento e custos completos →</Link>
+    </div>
+  );
+}
+
+function Info({ label, v }: { label: string; v: string }) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-sm">{v}</div>
+    </div>
   );
 }
