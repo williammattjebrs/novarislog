@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as MonitoramentoRouteImport } from './routes/monitoramento'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ColetasRouteImport } from './routes/coletas'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as ArmazemRouteImport } from './routes/armazem'
@@ -31,6 +32,11 @@ const LoginRoute = LoginRouteImport.update({
 const FinanceiroRoute = FinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ColetasRoute = ColetasRouteImport.update({
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/armazem': typeof ArmazemRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/coletas': typeof ColetasRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
   '/login': typeof LoginRoute
   '/monitoramento': typeof MonitoramentoRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/armazem': typeof ArmazemRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/coletas': typeof ColetasRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
   '/login': typeof LoginRoute
   '/monitoramento': typeof MonitoramentoRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/armazem': typeof ArmazemRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/coletas': typeof ColetasRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
   '/login': typeof LoginRoute
   '/monitoramento': typeof MonitoramentoRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/armazem'
     | '/clientes'
     | '/coletas'
+    | '/configuracoes'
     | '/financeiro'
     | '/login'
     | '/monitoramento'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/armazem'
     | '/clientes'
     | '/coletas'
+    | '/configuracoes'
     | '/financeiro'
     | '/login'
     | '/monitoramento'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/armazem'
     | '/clientes'
     | '/coletas'
+    | '/configuracoes'
     | '/financeiro'
     | '/login'
     | '/monitoramento'
@@ -128,6 +140,7 @@ export interface RootRouteChildren {
   ArmazemRoute: typeof ArmazemRoute
   ClientesRoute: typeof ClientesRouteWithChildren
   ColetasRoute: typeof ColetasRoute
+  ConfiguracoesRoute: typeof ConfiguracoesRoute
   FinanceiroRoute: typeof FinanceiroRoute
   LoginRoute: typeof LoginRoute
   MonitoramentoRoute: typeof MonitoramentoRoute
@@ -154,6 +167,13 @@ declare module '@tanstack/react-router' {
       path: '/financeiro'
       fullPath: '/financeiro'
       preLoaderRoute: typeof FinanceiroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/configuracoes': {
+      id: '/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof ConfiguracoesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/coletas': {
@@ -211,6 +231,7 @@ const rootRouteChildren: RootRouteChildren = {
   ArmazemRoute: ArmazemRoute,
   ClientesRoute: ClientesRouteWithChildren,
   ColetasRoute: ColetasRoute,
+  ConfiguracoesRoute: ConfiguracoesRoute,
   FinanceiroRoute: FinanceiroRoute,
   LoginRoute: LoginRoute,
   MonitoramentoRoute: MonitoramentoRoute,
