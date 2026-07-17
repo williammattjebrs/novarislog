@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MonitoramentoRouteImport } from './routes/monitoramento'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as ColetasRouteImport } from './routes/coletas'
 import { Route as ClientesRouteImport } from './routes/clientes'
@@ -19,6 +20,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const MonitoramentoRoute = MonitoramentoRouteImport.update({
   id: '/monitoramento',
   path: '/monitoramento',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FinanceiroRoute = FinanceiroRouteImport.update({
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/clientes': typeof ClientesRoute
   '/coletas': typeof ColetasRoute
   '/financeiro': typeof FinanceiroRoute
+  '/login': typeof LoginRoute
   '/monitoramento': typeof MonitoramentoRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/clientes': typeof ClientesRoute
   '/coletas': typeof ColetasRoute
   '/financeiro': typeof FinanceiroRoute
+  '/login': typeof LoginRoute
   '/monitoramento': typeof MonitoramentoRoute
 }
 export interface FileRoutesById {
@@ -70,6 +78,7 @@ export interface FileRoutesById {
   '/clientes': typeof ClientesRoute
   '/coletas': typeof ColetasRoute
   '/financeiro': typeof FinanceiroRoute
+  '/login': typeof LoginRoute
   '/monitoramento': typeof MonitoramentoRoute
 }
 export interface FileRouteTypes {
@@ -80,6 +89,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/coletas'
     | '/financeiro'
+    | '/login'
     | '/monitoramento'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -88,6 +98,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/coletas'
     | '/financeiro'
+    | '/login'
     | '/monitoramento'
   id:
     | '__root__'
@@ -96,6 +107,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/coletas'
     | '/financeiro'
+    | '/login'
     | '/monitoramento'
   fileRoutesById: FileRoutesById
 }
@@ -105,6 +117,7 @@ export interface RootRouteChildren {
   ClientesRoute: typeof ClientesRoute
   ColetasRoute: typeof ColetasRoute
   FinanceiroRoute: typeof FinanceiroRoute
+  LoginRoute: typeof LoginRoute
   MonitoramentoRoute: typeof MonitoramentoRoute
 }
 
@@ -115,6 +128,13 @@ declare module '@tanstack/react-router' {
       path: '/monitoramento'
       fullPath: '/monitoramento'
       preLoaderRoute: typeof MonitoramentoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/financeiro': {
@@ -161,6 +181,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClientesRoute: ClientesRoute,
   ColetasRoute: ColetasRoute,
   FinanceiroRoute: FinanceiroRoute,
+  LoginRoute: LoginRoute,
   MonitoramentoRoute: MonitoramentoRoute,
 }
 export const routeTree = rootRouteImport
