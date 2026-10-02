@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Calculator } from "lucide-react";
-import { fmtBRL } from "@/lib/mock-data";
+import { Calculator, Save } from "lucide-react";
+import { fmtBRL, TIPOS_CAMINHAO } from "@/lib/mock-data";
+import { CityPicker, type City } from "./CityPicker";
+import { useRouteRates, newId } from "@/lib/mock-store";
 
 // Simulador de preço: custos diretos + % sobre a receita (impostos e margem) → preço final.
 // Preço = (contratação + mão de obra + adm + seguro) / (1 − impostos% − margem%)
@@ -20,10 +22,37 @@ export function FreightSimulator() {
   const impostos = preco * v.impostosPercent / 100;
   const margem = preco * v.margemPercent / 100;
 
+  const rates = useRouteRates();
+  const [origem, setOrigem] = useState<City | null>(null);
+  const [destino, setDestino] = useState<City | null>(null);
+  const [tipo, setTipo] = useState("Truck");
+  const [peso, setPeso] = useState(0);
+
+  function salvar() {
+    if (!origem || !destino) { alert("Selecione origem e destino na lista do IBGE."); return; }
+    if (divisor <= 0 || preco <= 0) { alert("Preencha os custos para gerar o preço."); return; }
+    rates.add({
+      id: newId("RT"), origemCidade: origem.nome, origemUf: origem.uf, destinoCidade: destino.nome, destinoUf: destino.uf,
+      peso, valorNF: v.valorNF, valorFrete: Math.round(preco * 100) / 100, tipoCaminhao: tipo, criadoEm: new Date().toISOString(),
+    });
+    alert(`Rota ${origem.nome}/${origem.uf} → ${destino.nome}/${destino.uf} salva na tabela padrão.`);
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div className="panel p-5 space-y-4">
-        <div className="flex items-center gap-2"><Calculator className="h-4 w-4 text-primary" /><div className="font-display text-lg">Custos da operação</div></div>
+        <div className="font-display text-lg">Rota</div>
+        <div className="grid grid-cols-2 gap-3">
+          <F l="Origem (IBGE)"><CityPicker value={origem} onChange={setOrigem} /></F>
+          <F l="Destino (IBGE)"><CityPicker value={destino} onChange={setDestino} /></F>
+          <F l="Tipo de veículo">
+            <select className="input" value={tipo} onChange={(e) => setTipo(e.target.value)}>
+              {TIPOS_CAMINHAO.map((t) => <option key={t}>{t}</option>)}
+            </select>
+          </F>
+          <F l="Peso (kg)"><input type="number" className="input num" value={peso || ""} onChange={(e) => setPeso(Number(e.target.value))} /></F>
+        </div>
+        <div className="flex items-center gap-2 pt-2"><Calculator className="h-4 w-4 text-primary" /><div className="font-display text-lg">Custos da operação</div></div>
         <div className="grid grid-cols-2 gap-3">
           <F l="Contratação (R$)"><input type="number" className="input num" value={v.contratacao || ""} onChange={set("contratacao")} /></F>
           <F l="Mão de obra (R$)"><input type="number" className="input num" value={v.maoObra || ""} onChange={set("maoObra")} /></F>
@@ -51,6 +80,9 @@ export function FreightSimulator() {
           <div className="num text-4xl text-primary mt-1">{divisor > 0 ? fmtBRL(preco) : "—"}</div>
           {divisor <= 0 && <div className="text-xs text-danger mt-1">Impostos + margem não podem somar 100% ou mais.</div>}
         </div>
+        <button onClick={salvar} className="mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded bg-primary text-primary-foreground text-sm">
+          <Save className="h-4 w-4" /> Salvar na tabela padrão
+        </button>
       </div>
     </div>
   );
