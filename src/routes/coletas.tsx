@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useState, useRef, useMemo } from "react";
 import { FileUp, FileCheck2, Package, Truck, AlertTriangle, ArrowRight, Link2 } from "lucide-react";
-import { useOrders, useClients, useFreightTables, useQuotations, useInvoices, useConfig, newId } from "@/lib/mock-store";
+import { useOrders, useClients, useFreightTables, useRouteRates, useQuotations, useInvoices, useConfig, newId } from "@/lib/mock-store";
 import {
   ORDER_STAGES, statusTone, toneClass, stageLabel, fmtBRL,
   type Order, type OrderStage,
@@ -35,6 +35,7 @@ function ColetasPage() {
   const orders = useOrders();
   const clients = useClients();
   const tables = useFreightTables();
+  const routeRates = useRouteRates();
   const quotes = useQuotations();
   const invoices = useInvoices();
   const [cfg] = useConfig();
@@ -92,6 +93,14 @@ function ColetasPage() {
           })
         : null;
 
+      // Rotas (cliente > padrão) por cidade origem/destino
+      const sameCity = (a?: string, b?: string) => (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
+      const matchRoute = (r: { origemCidade: string; destinoCidade: string; origemUf: string; destinoUf: string }) =>
+        sameCity(r.origemCidade, p.emitente.cidade) && sameCity(r.destinoCidade, p.destinatario.cidade) &&
+        r.origemUf === p.emitente.uf && r.destinoUf === p.destinatario.uf;
+      const rotaCliente = !table && !quote && clienteId ? routeRates.list.find((r) => r.clienteId === clienteId && matchRoute(r)) : undefined;
+      const rotaPadrao = !table && !quote && !rotaCliente ? routeRates.list.find((r) => !r.clienteId && matchRoute(r)) : undefined;
+
       let valorFrete = 0;
       let origemValor: Order["origemValor"] = "";
       let refValor: string | undefined = undefined;
@@ -104,6 +113,14 @@ function ColetasPage() {
         valorFrete = quote.valorCalculado;
         origemValor = "cotacao";
         refValor = quote.id;
+      } else if (rotaCliente) {
+        valorFrete = rotaCliente.valorFrete;
+        origemValor = "rota_cliente";
+        refValor = rotaCliente.id;
+      } else if (rotaPadrao) {
+        valorFrete = rotaPadrao.valorFrete;
+        origemValor = "rota_padrao";
+        refValor = rotaPadrao.id;
       }
 
       const coords = lookupCoords(p.destinatario.cidade, p.destinatario.uf);

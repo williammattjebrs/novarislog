@@ -58,6 +58,23 @@ export interface FreightTable {
   valorLotacao?: number;
 }
 
+// ---------- Rotas padrão / rotas do cliente ----------
+export const TIPOS_CAMINHAO = ["Fiorino", "VUC", "3/4", "Toco", "Truck", "Carreta", "Bitrem", "Rodotrem"] as const;
+export interface RouteRate {
+  id: string;
+  clienteId?: string;        // vazio = rota padrão
+  baseRouteId?: string;      // rota padrão de origem (quando copiada p/ cliente)
+  origemCidade: string;
+  origemUf: string;
+  destinoCidade: string;
+  destinoUf: string;
+  peso: number;              // kg de referência
+  valorNF: number;
+  valorFrete: number;
+  tipoCaminhao: string;
+  criadoEm: string;
+}
+
 // ---------- Cotações ----------
 export interface Quotation {
   id: string;
@@ -154,7 +171,7 @@ export interface Order {
 
   // vinculação de tabela/cotação
   valorFrete: number;                    // valor da ordem
-  origemValor: "tabela" | "cotacao" | "manual" | "";
+  origemValor: "tabela" | "cotacao" | "rota_cliente" | "rota_padrao" | "manual" | "";
   refValor?: string;                     // FreightTable.id ou Quotation.id
 
   // CT-e
