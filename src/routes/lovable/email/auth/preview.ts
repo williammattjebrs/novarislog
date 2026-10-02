@@ -18,7 +18,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "Logistics Hub Pro"
+const SITE_NAME = "Novaris"
 const ROOT_DOMAIN = "novarislog.com.br"
 
 // Sample data for preview mode ONLY (not used in actual email sending).

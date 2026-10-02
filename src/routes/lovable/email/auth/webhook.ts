@@ -9,7 +9,7 @@ import { EmailChangeEmail } from '@/lib/email-templates/email-change'
 import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 
 // Configuration
-const SITE_NAME = "Logistics Hub Pro"
+const SITE_NAME = "Novaris"
 const SENDER_DOMAIN = "notify.novarislog.com.br"
 const ROOT_DOMAIN = "novarislog.com.br"
 const FROM_DOMAIN = "novarislog.com.br"
