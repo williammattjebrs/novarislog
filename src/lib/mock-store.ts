@@ -4,7 +4,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type {
-  Client, FreightTable, Quotation, CRMDeal, Order,
+  Client, FreightTable, RouteRate, Quotation, CRMDeal, Order,
   WarehouseInbound, WarehouseOutbound, StockItem, Invoice, Expense,
   AppConfig,
 } from "./mock-data";
@@ -16,6 +16,7 @@ const isBrowser = typeof window !== "undefined";
 type StoreKey =
   | "clients"
   | "freightTables"
+  | "routeRates"
   | "quotations"
   | "crmDeals"
   | "orders"
@@ -97,6 +98,7 @@ function useCollection<T extends { id?: string }>(
 // ==================================================================
 export const useClients = () => useCollection<Client>("clients");
 export const useFreightTables = () => useCollection<FreightTable>("freightTables");
+export const useRouteRates = () => useCollection<RouteRate>("routeRates");
 export const useQuotations = () => useCollection<Quotation>("quotations");
 export const useCRMDeals = () => useCollection<CRMDeal>("crmDeals");
 export const useOrders = () => useCollection<Order>("orders");
@@ -154,7 +156,7 @@ export function getConfigSync(): AppConfig {
 
 export function resetAllData() {
   if (!isBrowser) return;
-  (["clients", "freightTables", "quotations", "crmDeals", "orders",
+  (["clients", "freightTables", "routeRates", "quotations", "crmDeals", "orders",
     "warehouseInbound", "warehouseOutbound", "stock", "invoices", "expenses"] as StoreKey[]
   ).forEach((k) => {
     localStorage.removeItem(PREFIX + k);
