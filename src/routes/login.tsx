@@ -32,14 +32,8 @@ function LoginPage() {
   return (
     <div className="min-h-screen grid place-items-center p-4 bg-background">
       <div className="w-full max-w-md">
-        <div className="flex items-center gap-3 mb-6 justify-center">
-          <div className="h-11 w-11 rounded-md bg-primary/10 border border-primary/30 grid place-items-center">
-            <Truck className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <div className="font-display text-xl font-semibold">NOVARIS</div>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">hub logístico integrado</div>
-          </div>
+        <div className="flex items-center mb-6 justify-center">
+          <img src={logo.url} alt="Novaris — Operador Logístico Integrado" className="h-20 w-auto" />
         </div>
 
         <form onSubmit={handleSubmit} className="panel p-6 space-y-4">
