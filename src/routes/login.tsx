@@ -1,3 +1,4 @@
+import logo from "@/assets/novaris-logo.png.asset.json";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth, ROLE_LABEL, type Role } from "@/lib/auth";
