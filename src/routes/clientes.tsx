@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useState, useMemo } from "react";
+import { RouteRatesTable } from "@/components/RouteRatesTable";
+import { FreightSimulator } from "@/components/FreightSimulator";
 import { Users, Plus, Search, Building2 } from "lucide-react";
 import { useClients, useCRMDeals, useFreightTables, useQuotations, newId } from "@/lib/mock-store";
 import { statusTone, toneClass, fmtBRL, type CRMStage, type Client } from "@/lib/mock-data";
@@ -34,7 +36,7 @@ function ClientesPage() {
   const quotes = useQuotations();
   const deals = useCRMDeals();
 
-  const [tab, setTab] = useState<"clientes" | "crm">("clientes");
+  const [tab, setTab] = useState<"clientes" | "rotas" | "simulador" | "crm">("clientes");
   const [busca, setBusca] = useState("");
   const [showNew, setShowNew] = useState(false);
 
@@ -71,7 +73,7 @@ function ClientesPage() {
         </div>
 
         <div className="flex items-center gap-1 border-b border-border overflow-x-auto">
-          {(["clientes", "crm"] as const).map((t) => (
+          {(["clientes", "rotas", "simulador", "crm"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -79,10 +81,19 @@ function ClientesPage() {
                 tab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t === "clientes" ? "Clientes" : "CRM · Pipeline"}
+              {t === "clientes" ? "Clientes" : t === "rotas" ? "Tabela padrão (rotas)" : t === "simulador" ? "Simulador de frete" : "CRM · Pipeline"}
             </button>
           ))}
         </div>
+
+        {tab === "rotas" && (
+          <>
+            <p className="text-sm text-muted-foreground">Rotas de referência para todos os clientes. Em cada cliente você pode trazer estas rotas e ajustar os valores só para ele.</p>
+            <RouteRatesTable />
+          </>
+        )}
+
+        {tab === "simulador" && <FreightSimulator />}
 
         {tab === "clientes" && (
           <>

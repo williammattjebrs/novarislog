@@ -3,6 +3,7 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useState, useRef } from "react";
+import { RouteRatesTable } from "@/components/RouteRatesTable";
 import { ArrowLeft, Plus, FileUp, Trash2, Check } from "lucide-react";
 import {
   useClients, useFreightTables, useQuotations, newId,
@@ -30,7 +31,7 @@ function ClienteDetalhe() {
   const tables = useFreightTables();
   const quotes = useQuotations();
   const client = clients.list.find((c) => c.id === id);
-  const [tab, setTab] = useState<"dados" | "tabelas" | "cotacoes">("dados");
+  const [tab, setTab] = useState<"dados" | "rotas" | "tabelas" | "cotacoes">("dados");
   const [showTable, setShowTable] = useState(false);
 
   if (!client) {
