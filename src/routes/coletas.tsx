@@ -3,13 +3,14 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useState, useRef, useMemo } from "react";
-import { FileUp, FileCheck2, Package, Truck, AlertTriangle, ArrowRight, Link2 } from "lucide-react";
+import { FileUp, FileCheck2, Package, Truck, AlertTriangle, ArrowRight, Link2, Search, Download, Printer } from "lucide-react";
 import { useOrders, useClients, useFreightTables, useRouteRates, useQuotations, useInvoices, useConfig, newId } from "@/lib/mock-store";
 import {
   ORDER_STAGES, statusTone, toneClass, stageLabel, fmtBRL,
   type Order, type OrderStage,
 } from "@/lib/mock-data";
 import { parseNFe, parseCTe, readFileText } from "@/lib/xml-parser";
+import { exportCsv, printReport } from "@/lib/export-utils";
 import { findFreightTable, findQuotation, calcFreight } from "@/lib/cost-calc";
 import { lookupCoords } from "@/lib/geo";
 import { RecordActions } from "@/components/RecordActions";
@@ -54,7 +55,17 @@ function ColetasPage() {
     return m;
   }, [orders.list]);
 
-  const filtered = filtro === "todos" ? orders.list : orders.list.filter((o) => o.stage === filtro);
+  const [busca, setBusca] = useState("");
+  const base = filtro === "todos" ? orders.list : orders.list.filter((o) => o.stage === filtro);
+  const q = busca.trim().toLowerCase();
+  const filtered = q
+    ? base.filter((o) =>
+        [o.id, o.clienteNome, String(o.numeroNFe), `${o.cidadeColeta}/${o.ufColeta}`, `${o.cidadeEntrega}/${o.ufEntrega}`]
+          .join(" ")
+          .toLowerCase()
+          .includes(q),
+      )
+    : base;
 
   // ----------------------------------------------------
   // Upload NF-e
@@ -222,6 +233,29 @@ function ColetasPage() {
     if (cteInput.current) cteInput.current.value = "";
   }
 
+  function ordensExportData(): [string, string[], (string | number)[][]] {
+    const headers = [
+      "Ordem", "Cliente", "NF-e", "Remetente", "Origem", "Destino",
+      "Valor NF (R$)", "Valor Ordem (R$)", "Valor CT-e (R$)", "Divergência (%)",
+      "Estágio", "Peso (kg)", "Volumes",
+    ];
+    const rows = filtered.map((o) => [
+      o.id, o.clienteNome, o.numeroNFe, o.remetente,
+      `${o.cidadeColeta}/${o.ufColeta}`, `${o.cidadeEntrega}/${o.ufEntrega}`,
+      o.valorNF, o.valorFrete, o.cteValor ?? "", o.divergenciaPercent ?? "",
+      stageLabel(o.stage), o.peso, o.volumes,
+    ]);
+    return ["Ordens de Coleta", headers, rows];
+  }
+  function exportOrdensExcel() {
+    const [, headers, rows] = ordensExportData();
+    exportCsv(`coletas-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  }
+  function exportOrdensPdf() {
+    const [titulo, headers, rows] = ordensExportData();
+    printReport(titulo, `${filtered.length} ordem(ns) · gerado em ${new Date().toLocaleString("pt-BR")}`, headers, rows);
+  }
+
   const sel = selected ? orders.list.find((o) => o.id === selected) : null;
 
   return (
@@ -284,6 +318,19 @@ function ColetasPage() {
             ← ver todos os estágios
           </button>
         )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="h-3.5 w-3.5 absolute left-2 top-2.5 text-muted-foreground" />
+            <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por ordem, cliente, NF-e ou rota" className="input pl-7 text-sm" />
+          </div>
+          <button onClick={exportOrdensExcel} className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-elevated">
+            <Download className="h-4 w-4" /> Excel
+          </button>
+          <button onClick={exportOrdensPdf} className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-elevated">
+            <Printer className="h-4 w-4" /> PDF
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Lista */}

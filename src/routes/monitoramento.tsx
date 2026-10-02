@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useState, useMemo } from "react";
-import { Filter, MessageSquare, X, Truck } from "lucide-react";
+import { Filter, MessageSquare, X, Truck, Search } from "lucide-react";
 import { useOrders, useConfig } from "@/lib/mock-store";
 import { fmtBRL, stageLabel, statusTone, toneClass, type Order } from "@/lib/mock-data";
 import { Timeline } from "@/components/Timeline";
@@ -34,14 +34,21 @@ function MonitoramentoPage() {
   const { user } = useAuth();
   const [uf, setUf] = useState("");
   const [cliente, setCliente] = useState("");
+  const [busca, setBusca] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [followFor, setFollowFor] = useState<Order | null>(null);
 
   const clientes = useMemo(() => Array.from(new Set(orders.list.map((o) => o.clienteNome))), [orders.list]);
 
+  const q = busca.trim().toLowerCase();
   const filtered = orders.list.filter((o) =>
     (!uf || o.ufEntrega === uf) &&
-    (!cliente || o.clienteNome === cliente),
+    (!cliente || o.clienteNome === cliente) &&
+    (!q ||
+      [o.id, o.clienteNome, String(o.numeroNFe), o.destinatario ?? "", `${o.cidadeColeta}/${o.ufColeta}`, `${o.cidadeEntrega}/${o.ufEntrega}`]
+        .join(" ")
+        .toLowerCase()
+        .includes(q)),
   );
 
   const criticas = filtered.filter((o) => o.stage === "ocorrencia" || o.stage === "cte_divergente");
@@ -64,7 +71,10 @@ function MonitoramentoPage() {
             {clientes.map((c) => <option key={c}>{c}</option>)}
           </select>
           <input value={uf} onChange={(e) => setUf(e.target.value.toUpperCase())} placeholder="UF destino" maxLength={2} className="input max-w-[100px] num" />
-          <div className="flex-1" />
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="h-3.5 w-3.5 absolute left-2 top-2.5 text-muted-foreground" />
+            <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por ordem, cliente, NF, destino" className="input pl-7" />
+          </div>
           <span className="text-xs text-muted-foreground">{filtered.length} entregas · {criticas.length} críticas</span>
         </div>
 
