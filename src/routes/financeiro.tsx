@@ -3,8 +3,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useState } from "react";
-import { Wallet, TrendingUp, TrendingDown, Plus, AlertTriangle } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown, Plus, AlertTriangle, Search, Download, Printer, FileWarning } from "lucide-react";
 import { useInvoices, useExpenses, useOrders, useConfig, newId } from "@/lib/mock-store";
+import { exportCsv, printReport } from "@/lib/export-utils";
 import { calcOrderCost } from "@/lib/cost-calc";
 import { fmtBRL, statusTone, toneClass, type Expense, type ExpenseType, type ExpenseArea } from "@/lib/mock-data";
 
@@ -54,6 +55,38 @@ function FinanceiroPage() {
     return acc;
   }, {});
 
+  const [busca, setBusca] = useState("");
+  const qt = busca.trim().toLowerCase();
+  const receitasF = qt
+    ? invoices.list.filter((i) => `${i.numero} ${i.clienteNome} ${i.tipo} ${i.status}`.toLowerCase().includes(qt))
+    : invoices.list;
+  const despesasF = qt
+    ? expenses.list.filter((e) => `${e.descricao} ${e.tipo} ${e.area} ${e.fornecedor} ${e.status}`.toLowerCase().includes(qt))
+    : expenses.list;
+
+  function tabExport(): [string, string[], (string | number)[][]] {
+    const hoje = new Date().toLocaleDateString("pt-BR");
+    if (tab === "receitas")
+      return ["Receitas", ["Nº", "Cliente", "Tipo", "Emissão", "Vencimento", "Valor (R$)", "Status"],
+        receitasF.map((i) => [i.numero, i.clienteNome, i.tipo, i.emissao, i.vencimento, i.valor, i.status])];
+    if (tab === "despesas")
+      return ["Despesas", ["Descrição", "Tipo", "Área", "Fornecedor", "Valor (R$)", "Vencimento", "Status"],
+        despesasF.map((e) => [e.descricao, e.tipo, e.area, e.fornecedor, e.valor, e.vencimento, e.status])];
+    if (tab === "divergencias")
+      return ["Divergências CT-e", ["Ordem", "Cliente", "Valor Ordem (R$)", "Valor CT-e (R$)", "Diferença (R$)", "Divergência (%)"],
+        divergencias.map((o) => [o.id, o.clienteNome, o.valorFrete, o.cteValor ?? 0, (o.cteValor ?? 0) - o.valorFrete, o.divergenciaPercent ?? 0])];
+    return ["Rentabilidade por cliente", ["Cliente", "Receita (R$)", "Custo (R$)", "Margem (R$)"],
+      Object.entries(porCliente).map(([cli, v]) => [cli, v.rec, v.custo, v.rec - v.custo])];
+  }
+  function exportTabExcel() {
+    const [nome, headers, rows] = tabExport();
+    exportCsv(`financeiro-${nome.toLowerCase().replace(/\s+/g, "-")}-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  }
+  function exportTabPdf() {
+    const [nome, headers, rows] = tabExport();
+    printReport(`Financeiro — ${nome}`, `gerado em ${hoje}`, headers, rows);
+  }
+
   return (
     <AppShell>
       <div className="p-4 md:p-6 space-y-5">
@@ -68,11 +101,12 @@ function FinanceiroPage() {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <Kpi icon={TrendingUp} tone="text-success" label="Receita total" v={fmtBRL(totalReceita)} />
           <Kpi icon={TrendingDown} tone="text-danger" label="Despesa total" v={fmtBRL(totalDespesa)} />
           <Kpi icon={Wallet} tone="text-primary" label="A receber" v={fmtBRL(receber)} />
           <Kpi icon={AlertTriangle} tone="text-danger" label="Vencido" v={fmtBRL(emAtraso)} />
+          <Kpi icon={FileWarning} tone={divergencias.length ? "text-danger" : "text-success"} label="Divergências CT-e" v={String(divergencias.length)} />
         </div>
 
         <div className="flex items-center gap-1 border-b border-border overflow-x-auto">
@@ -92,6 +126,19 @@ function FinanceiroPage() {
           ))}
         </div>
 
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="h-3.5 w-3.5 absolute left-2 top-2.5 text-muted-foreground" />
+            <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar na aba atual" className="input pl-7 text-sm" />
+          </div>
+          <button onClick={exportTabExcel} className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-elevated">
+            <Download className="h-4 w-4" /> Excel
+          </button>
+          <button onClick={exportTabPdf} className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-elevated">
+            <Printer className="h-4 w-4" /> PDF
+          </button>
+        </div>
+
         {tab === "receitas" && (
           <div className="panel overflow-x-auto">
             <table className="w-full text-sm">
@@ -107,7 +154,7 @@ function FinanceiroPage() {
                 </tr>
               </thead>
               <tbody>
-                {invoices.list.map((i) => (
+                {receitasF.map((i) => (
                   <tr key={i.numero} className="border-t border-border">
                     <td className="px-4 py-2.5 num text-primary text-xs">{i.numero}</td>
                     <td className="text-xs">{i.clienteNome}</td>
@@ -118,7 +165,7 @@ function FinanceiroPage() {
                     <td className="pr-4"><span className={`text-[11px] px-2 py-0.5 rounded border ${toneClass(statusTone(i.status))}`}>{i.status}</span></td>
                   </tr>
                 ))}
-                {invoices.list.length === 0 && (
+                {receitasF.length === 0 && (
                   <tr><td colSpan={7} className="py-8 text-center text-xs text-muted-foreground">Sem receitas. Emissão automática ocorre quando um CT-e é importado em <b>Coletas</b>.</td></tr>
                 )}
               </tbody>
@@ -148,7 +195,7 @@ function FinanceiroPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {expenses.list.map((e) => (
+                  {despesasF.map((e) => (
                     <tr key={e.id} className="border-t border-border">
                       <td className="px-4 py-2.5 text-xs">{e.descricao}</td>
                       <td className="text-xs">{e.tipo.replace("_", " ")}</td>
@@ -159,7 +206,7 @@ function FinanceiroPage() {
                       <td className="pr-4"><span className={`text-[11px] px-2 py-0.5 rounded border ${toneClass(statusTone(e.status))}`}>{e.status}</span></td>
                     </tr>
                   ))}
-                  {expenses.list.length === 0 && (
+                  {despesasF.length === 0 && (
                     <tr><td colSpan={7} className="py-8 text-center text-xs text-muted-foreground">Nenhuma despesa cadastrada.</td></tr>
                   )}
                 </tbody>

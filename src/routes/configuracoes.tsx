@@ -5,7 +5,8 @@ import { RoleGate } from "@/components/RoleGate";
 import { useConfig, resetAllData } from "@/lib/mock-store";
 import { DEFAULT_CONFIG, DEFAULT_EMAIL_INBOX, DEFAULT_EMAIL_TEMPLATE, ORDER_STAGES } from "@/lib/mock-data";
 import { Mail } from "lucide-react";
-import { Settings, RotateCcw, Trash2 } from "lucide-react";
+import { Settings, RotateCcw, Trash2, DatabaseBackup, Upload } from "lucide-react";
+import { downloadBackup, restoreBackup } from "@/lib/export-utils";
 
 export const Route = createFileRoute("/configuracoes")({
   head: () => ({
