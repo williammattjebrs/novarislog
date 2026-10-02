@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
-  LayoutDashboard, Users, PackageSearch, Radar,  Wallet, Settings,
+  LayoutDashboard, Users, PackageSearch, Radar, Wallet, Settings, UserCog,
   Radio, Bell, Search, LogOut,
 } from "lucide-react";
 import logo from "@/assets/novaris-logo.png.asset.json";
