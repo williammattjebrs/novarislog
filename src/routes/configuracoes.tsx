@@ -3,7 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useConfig, resetAllData } from "@/lib/mock-store";
-import { DEFAULT_CONFIG } from "@/lib/mock-data";
+import { DEFAULT_CONFIG, DEFAULT_EMAIL_INBOX, DEFAULT_EMAIL_TEMPLATE, ORDER_STAGES } from "@/lib/mock-data";
+import { Mail } from "lucide-react";
 import { Settings, RotateCcw, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/configuracoes")({
@@ -26,6 +27,11 @@ function ConfigPage() {
   function u<K extends keyof typeof cfg.frota>(k: K, v: number) {
     setCfg({ ...cfg, frota: { ...cfg.frota, [k]: v } });
   }
+
+  const inbox = cfg.emailInbox ?? DEFAULT_EMAIL_INBOX;
+  const tpl = cfg.emailTemplate ?? DEFAULT_EMAIL_TEMPLATE;
+  const setInbox = (p: Partial<typeof inbox>) => setCfg({ ...cfg, emailInbox: { ...inbox, ...p } });
+  const setTpl = (p: Partial<typeof tpl>) => setCfg({ ...cfg, emailTemplate: { ...tpl, ...p } });
 
   return (
     <AppShell>
@@ -78,13 +84,61 @@ function ConfigPage() {
           ><RotateCcw className="h-3 w-3" /> restaurar padrões</button>
         </section>
 
+        <section className="panel p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <Mail className="h-4 w-4 text-primary" />
+            <div className="font-display text-lg">Captação de XML por e-mail</div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Caixa empresarial de onde os XML de NF-e/CT-e serão lidos automaticamente e confrontados com as tabelas de frete.
+            A leitura começa assim que a conta de e-mail for autorizada.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <F label="Provedor">
+              <select value={inbox.provedor} onChange={(e) => setInbox({ provedor: e.target.value as typeof inbox.provedor })} className="input">
+                <option value="gmail">Google Workspace / Gmail</option>
+                <option value="outlook">Microsoft 365 / Outlook</option>
+                <option value="imap">Outro (IMAP)</option>
+              </select>
+            </F>
+            <F label="E-mail empresarial"><input value={inbox.endereco} onChange={(e) => setInbox({ endereco: e.target.value })} placeholder="xml@novaris.com.br" className="input" /></F>
+            <F label="Filtro de busca"><input value={inbox.filtro} onChange={(e) => setInbox({ filtro: e.target.value })} className="input num" /></F>
+            <F label="Verificar a cada (min)"><input type="number" value={inbox.intervaloMin} onChange={(e) => setInbox({ intervaloMin: Number(e.target.value) })} className="input num" /></F>
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={inbox.ativo} onChange={(e) => setInbox({ ativo: e.target.checked })} /> Ativar leitura automática
+          </label>
+        </section>
+
+        <section className="panel p-5 space-y-3">
+          <div className="font-display text-lg">Layout do e-mail de rastreio ao cliente</div>
+          <p className="text-sm text-muted-foreground">
+            Variáveis: {"{{cliente}} {{nf}} {{ordem}} {{origem}} {{destino}} {{status}} {{situacao}} {{local}} {{previsao}} {{destinatario}}"}
+          </p>
+          <F label="Assunto"><input value={tpl.assunto} onChange={(e) => setTpl({ assunto: e.target.value })} className="input" /></F>
+          <F label="Corpo"><textarea value={tpl.corpo} onChange={(e) => setTpl({ corpo: e.target.value })} className="input min-h-[180px]" /></F>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={tpl.autoEnvio} onChange={(e) => setTpl({ autoEnvio: e.target.checked })} /> Envio automático ao atualizar o rastreio
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {ORDER_STAGES.map((s) => {
+              const on = tpl.estagiosAuto.includes(s.id);
+              return (
+                <button key={s.id} onClick={() => setTpl({ estagiosAuto: on ? tpl.estagiosAuto.filter((x) => x !== s.id) : [...tpl.estagiosAuto, s.id] })}
+                  className={`text-xs px-2 py-1 rounded border ${on ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>{s.label}</button>
+              );
+            })}
+          </div>
+          <button onClick={() => setCfg({ ...cfg, emailTemplate: DEFAULT_EMAIL_TEMPLATE })} className="text-xs text-primary hover:underline inline-flex items-center gap-1"><RotateCcw className="h-3 w-3" /> restaurar modelo</button>
+        </section>
+
         <section className="panel p-5 space-y-3 border-danger/40">
           <div className="flex items-center gap-2">
             <Trash2 className="h-4 w-4 text-danger" />
             <div className="font-display text-lg text-danger">Zona perigosa</div>
           </div>
           <p className="text-sm text-muted-foreground">
-            Apaga todos os clientes, tabelas, ordens, CT-es, estoque e financeiro. Útil para começar testes do zero.
+            Apaga todos os clientes, tabelas, ordens, CT-es, CT-es e financeiro. Útil para começar testes do zero.
           </p>
           <button
             onClick={() => {
