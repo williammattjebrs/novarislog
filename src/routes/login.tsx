@@ -31,7 +31,7 @@ function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) navigate({ to: search.redirect || "/" }, { replace: true });
+    if (!loading && user) navigate({ to: search.redirect || "/", replace: true });
   }, [loading, user, navigate, search.redirect]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -46,7 +46,7 @@ function LoginPage() {
           setErro(err);
           return;
         }
-        navigate({ to: search.redirect || "/" }, { replace: true });
+        navigate({ to: search.redirect || "/", replace: true });
       } else {
         const r = await signUp(nome.trim(), email.trim(), senha);
         if (r.erro) {

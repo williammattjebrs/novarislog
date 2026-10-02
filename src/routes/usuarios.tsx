@@ -52,7 +52,9 @@ function UsuariosPage() {
     setErro(null);
     setBusy(true);
     try {
-      await invite({ nome: nome.trim(), email: email.trim(), role });
+      await invite({
+        data: { nome: nome.trim(), email: email.trim(), role },
+      });
       setMsg(`Convite enviado para ${email.trim()}. O usuário define a senha pelo link recebido no e-mail.`);
       setNome("");
       setEmail("");
@@ -69,7 +71,7 @@ function UsuariosPage() {
     setMsg(null);
     setErro(null);
     try {
-      await changeRole({ userId, role: novoRole });
+      await changeRole({ data: { userId, role: novoRole } });
       queryClient.invalidateQueries({ queryKey: ["users"] });
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Falha ao alterar o perfil.");
@@ -81,7 +83,7 @@ function UsuariosPage() {
     setMsg(null);
     setErro(null);
     try {
-      await remove({ userId });
+      await remove({ data: { userId } });
       queryClient.invalidateQueries({ queryKey: ["users"] });
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Falha ao excluir o usuário.");

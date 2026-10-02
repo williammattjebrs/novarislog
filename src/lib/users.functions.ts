@@ -86,7 +86,7 @@ export const inviteUser = createServerFn({ method: "POST" })
     await assertAdmin(context.supabase, context.userId);
     const supabaseAdmin = await adminClient();
     const { data: created, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(data.email, {
-      user_metadata: { nome: data.nome },
+      data: { nome: data.nome },
     });
     if (error) throw new Error(error.message);
     const uid = created.user?.id;
