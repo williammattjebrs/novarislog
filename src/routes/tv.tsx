@@ -263,14 +263,20 @@ function TvPage() {
 
         <div className="panel p-5">
           <Title>Atenção agora</Title>
-          {[...k.atrasadas, ...k.ocorr].length === 0 && <div className="text-success text-sm">Nenhuma carga atrasada ou com ocorrência.</div>}
+          {[...k.ocorr, ...k.atrasadas, ...k.diverg].length === 0 && <div className="text-success text-sm">Nenhuma carga atrasada, com ocorrência ou divergência.</div>}
           <div className="space-y-2">
-            {[...k.ocorr, ...k.atrasadas].slice(0, 8).map((o) => (
-              <div key={o.id} className="border-l-2 border-danger pl-3 py-1">
-                <div className="text-sm flex justify-between"><span className="truncate">{o.clienteNome}</span><span className="num text-xs text-muted-foreground">NF {o.numeroNFe}</span></div>
-                <div className="text-xs text-muted-foreground">{o.cidadeColeta}/{o.ufColeta} → {o.cidadeEntrega}/{o.ufEntrega} · {stageLabel(o.stage)}{o.previsaoEntrega ? ` · prev. ${new Date(o.previsaoEntrega).toLocaleDateString("pt-BR")}` : ""}</div>
-              </div>
-            ))}
+            {[...k.ocorr, ...k.atrasadas, ...k.diverg].slice(0, 8).map((o) => {
+              const tone = o.stage === "cte_divergente" ? "border-warning" : "border-danger";
+              const extra = o.stage === "cte_divergente" && o.cteValor != null
+                ? ` · CT-e ${fmtBRL(o.cteValor)} vs ordem ${fmtBRL(o.valorFrete)}`
+                : "";
+              return (
+                <div key={o.id} className={`border-l-2 ${tone} pl-3 py-1`}>
+                  <div className="text-sm flex justify-between"><span className="truncate">{o.clienteNome}</span><span className="num text-xs text-muted-foreground">NF {o.numeroNFe}</span></div>
+                  <div className="text-xs text-muted-foreground">{o.cidadeColeta}/{o.ufColeta} → {o.cidadeEntrega}/{o.ufEntrega} · {stageLabel(o.stage)}{extra}{o.previsaoEntrega ? ` · prev. ${new Date(o.previsaoEntrega).toLocaleDateString("pt-BR")}` : ""}</div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

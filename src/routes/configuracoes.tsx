@@ -5,7 +5,8 @@ import { RoleGate } from "@/components/RoleGate";
 import { useConfig, resetAllData } from "@/lib/mock-store";
 import { DEFAULT_CONFIG, DEFAULT_EMAIL_INBOX, DEFAULT_EMAIL_TEMPLATE, ORDER_STAGES } from "@/lib/mock-data";
 import { Mail } from "lucide-react";
-import { Settings, RotateCcw, Trash2 } from "lucide-react";
+import { Settings, RotateCcw, Trash2, DatabaseBackup, Upload } from "lucide-react";
+import { downloadBackup, restoreBackup } from "@/lib/export-utils";
 
 export const Route = createFileRoute("/configuracoes")({
   head: () => ({
@@ -32,6 +33,19 @@ function ConfigPage() {
   const tpl = cfg.emailTemplate ?? DEFAULT_EMAIL_TEMPLATE;
   const setInbox = (p: Partial<typeof inbox>) => setCfg({ ...cfg, emailInbox: { ...inbox, ...p } });
   const setTpl = (p: Partial<typeof tpl>) => setCfg({ ...cfg, emailTemplate: { ...tpl, ...p } });
+
+  function onRestoreFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    f.text()
+      .then((text) => {
+        const n = restoreBackup(text);
+        alert(`Backup restaurado (${n} coleção/ões). A página vai recarregar.`);
+        window.location.reload();
+      })
+      .catch(() => alert("Arquivo de backup inválido."));
+    e.target.value = "";
+  }
 
   return (
     <AppShell>
@@ -130,6 +144,27 @@ function ConfigPage() {
             })}
           </div>
           <button onClick={() => setCfg({ ...cfg, emailTemplate: DEFAULT_EMAIL_TEMPLATE })} className="text-xs text-primary hover:underline inline-flex items-center gap-1"><RotateCcw className="h-3 w-3" /> restaurar modelo</button>
+        </section>
+
+        <section className="panel p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <DatabaseBackup className="h-4 w-4 text-primary" />
+            <div className="font-display text-lg">Backup dos dados</div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Baixa tudo o que está cadastrado (clientes, tabelas, ordens, financeiro e configurações) em um arquivo <b>.json</b>.
+            Guarde-o e use-o para restaurar, inclusive em outro navegador ou computador.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={downloadBackup}
+              className="text-sm px-3 py-1.5 rounded border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
+            >Baixar backup</button>
+            <label className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded border border-border hover:bg-elevated cursor-pointer">
+              <Upload className="h-4 w-4" /> Restaurar backup
+              <input type="file" accept=".json,application/json" className="hidden" onChange={onRestoreFile} />
+            </label>
+          </div>
         </section>
 
         <section className="panel p-5 space-y-3 border-danger/40">
