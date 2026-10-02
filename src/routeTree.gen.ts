@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TvRouteImport } from './routes/tv'
 import { Route as MonitoramentoRouteImport } from './routes/monitoramento'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
@@ -18,6 +19,11 @@ import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 
+const TvRoute = TvRouteImport.update({
+  id: '/tv',
+  path: '/tv',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MonitoramentoRoute = MonitoramentoRouteImport.update({
   id: '/monitoramento',
   path: '/monitoramento',
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/financeiro': typeof FinanceiroRoute
   '/login': typeof LoginRoute
   '/monitoramento': typeof MonitoramentoRoute
+  '/tv': typeof TvRoute
   '/clientes/$id': typeof ClientesIdRoute
 }
 export interface FileRoutesByTo {
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/financeiro': typeof FinanceiroRoute
   '/login': typeof LoginRoute
   '/monitoramento': typeof MonitoramentoRoute
+  '/tv': typeof TvRoute
   '/clientes/$id': typeof ClientesIdRoute
 }
 export interface FileRoutesById {
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/financeiro': typeof FinanceiroRoute
   '/login': typeof LoginRoute
   '/monitoramento': typeof MonitoramentoRoute
+  '/tv': typeof TvRoute
   '/clientes/$id': typeof ClientesIdRoute
 }
 export interface FileRouteTypes {
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/financeiro'
     | '/login'
     | '/monitoramento'
+    | '/tv'
     | '/clientes/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/financeiro'
     | '/login'
     | '/monitoramento'
+    | '/tv'
     | '/clientes/$id'
   id:
     | '__root__'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/financeiro'
     | '/login'
     | '/monitoramento'
+    | '/tv'
     | '/clientes/$id'
   fileRoutesById: FileRoutesById
 }
@@ -131,10 +143,18 @@ export interface RootRouteChildren {
   FinanceiroRoute: typeof FinanceiroRoute
   LoginRoute: typeof LoginRoute
   MonitoramentoRoute: typeof MonitoramentoRoute
+  TvRoute: typeof TvRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tv': {
+      id: '/tv'
+      path: '/tv'
+      fullPath: '/tv'
+      preLoaderRoute: typeof TvRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/monitoramento': {
       id: '/monitoramento'
       path: '/monitoramento'
@@ -214,6 +234,7 @@ const rootRouteChildren: RootRouteChildren = {
   FinanceiroRoute: FinanceiroRoute,
   LoginRoute: LoginRoute,
   MonitoramentoRoute: MonitoramentoRoute,
+  TvRoute: TvRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
