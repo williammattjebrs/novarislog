@@ -30,9 +30,11 @@ export function exportCsv(filename: string, headers: string[], rows: (string | n
 }
 
 function htmlEscape(s: string | number): string {
-  return String(s ?? "").replace(/[&<>"]/g, (c) =>
-    c === "&" ? "&" : c === "<" ? "<" : c === ">" ? ">" : """,
-  );
+  return String(s ?? "")
+    .replace(/&/g, "&" + "amp;")
+    .replace(/</g, "&" + "lt;")
+    .replace(/>/g, "&" + "gt;")
+    .replace(/"/g, "&" + "quot;");
 }
 
 // Gera o PDF via impressão do navegador (Salvar como PDF) — sem dependências.
