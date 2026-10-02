@@ -65,7 +65,6 @@ function FinanceiroPage() {
     : expenses.list;
 
   function tabExport(): [string, string[], (string | number)[][]] {
-    const hoje = new Date().toLocaleDateString("pt-BR");
     if (tab === "receitas")
       return ["Receitas", ["Nº", "Cliente", "Tipo", "Emissão", "Vencimento", "Valor (R$)", "Status"],
         receitasF.map((i) => [i.numero, i.clienteNome, i.tipo, i.emissao, i.vencimento, i.valor, i.status])];
@@ -84,7 +83,7 @@ function FinanceiroPage() {
   }
   function exportTabPdf() {
     const [nome, headers, rows] = tabExport();
-    printReport(`Financeiro — ${nome}`, `gerado em ${hoje}`, headers, rows);
+    printReport(`Financeiro — ${nome}`, `gerado em ${new Date().toLocaleDateString("pt-BR")}`, headers, rows);
   }
 
   return (
