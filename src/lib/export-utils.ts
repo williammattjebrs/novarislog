@@ -30,7 +30,9 @@ export function exportCsv(filename: string, headers: string[], rows: (string | n
 }
 
 function htmlEscape(s: string | number): string {
-  return String(s ?? "").replace(/[&<>]/g, (c) => (c === "&" ? "&" : c === "<" ? "<" : ">"));
+  return String(s ?? "").replace(/[&<>"]/g, (c) =>
+    c === "&" ? "&" : c === "<" ? "<" : c === ">" ? ">" : """,
+  );
 }
 
 // Gera o PDF via impressão do navegador (Salvar como PDF) — sem dependências.
@@ -90,6 +92,15 @@ export function restoreBackup(json: string): number {
   const dados = parsed.dados ?? {};
   let n = 0;
   if (isBrowser()) {
+    const chavesBackup = new Set(Object.keys(dados));
+    // remove chaves locais que não existem no backup (restauração fiel)
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(PREFIX) && !chavesBackup.has(k)) {
+        localStorage.removeItem(k);
+        i--; // índices shiftam após removeItem
+      }
+    }
     for (const [k, v] of Object.entries(dados)) {
       if (k.startsWith(PREFIX)) {
         localStorage.setItem(k, v);
