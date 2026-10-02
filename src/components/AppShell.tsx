@@ -16,6 +16,7 @@ const NAV: NavItem[] = [
   { to: "/coletas", label: "Coletas & Ordens", icon: PackageSearch },
   { to: "/monitoramento", label: "Monitoramento", icon: Radar },
   { to: "/financeiro", label: "Financeiro", icon: Wallet },
+  { to: "/tv", label: "Indicadores (TV)", icon: Radio },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
