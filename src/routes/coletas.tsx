@@ -35,6 +35,7 @@ function ColetasPage() {
   const orders = useOrders();
   const clients = useClients();
   const tables = useFreightTables();
+  const routeRates = useRouteRates();
   const quotes = useQuotations();
   const invoices = useInvoices();
   const [cfg] = useConfig();
