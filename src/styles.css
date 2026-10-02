@@ -52,7 +52,7 @@
   --radius: 0.5rem;
 
   /* Cockpit dark palette */
-  --background: oklch(0.17 0.02 260);        /* #0B1220 */
+  --background: oklch(0.17 0.035 265);        /* #0B1220 */
   --foreground: oklch(0.96 0.01 250);
   --panel: oklch(0.21 0.02 260);              /* #111827 */
   --panel-foreground: oklch(0.96 0.01 250);
@@ -64,20 +64,20 @@
   --popover: oklch(0.23 0.025 260);
   --popover-foreground: oklch(0.96 0.01 250);
 
-  --primary: oklch(0.82 0.15 200);            /* cyan #22D3EE */
-  --primary-foreground: oklch(0.17 0.02 260);
+  --primary: oklch(0.70 0.20 45);            /* cyan #22D3EE */
+  --primary-foreground: oklch(0.98 0 0);
   --secondary: oklch(0.28 0.03 260);
   --secondary-foreground: oklch(0.96 0.01 250);
   --muted: oklch(0.25 0.02 260);
   --muted-foreground: oklch(0.68 0.02 258);
-  --accent: oklch(0.78 0.16 75);              /* amber #F59E0B */
+  --accent: oklch(0.78 0.12 230);              /* amber #F59E0B */
   --accent-foreground: oklch(0.17 0.02 260);
 
   --destructive: oklch(0.65 0.22 25);
   --destructive-foreground: oklch(0.98 0 0);
   --border: oklch(0.32 0.02 260 / 0.6);
   --input: oklch(0.28 0.02 260);
-  --ring: oklch(0.82 0.15 200);
+  --ring: oklch(0.70 0.20 45);
 
   --cyan: oklch(0.82 0.15 200);
   --amber: oklch(0.78 0.16 75);
