@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
-  LayoutDashboard, Users, PackageSearch, Radar, Warehouse, Wallet, Settings,
+  LayoutDashboard, Users, PackageSearch, Radar, Mail, Wallet, Settings,
   Radio, Bell, Search, LogOut,
 } from "lucide-react";
 import { useAuth, ROLE_LABEL, canAccess, type Role } from "@/lib/auth";
@@ -13,7 +13,7 @@ const NAV: NavItem[] = [
   { to: "/clientes", label: "Clientes & CRM", icon: Users },
   { to: "/coletas", label: "Coletas & Ordens", icon: PackageSearch },
   { to: "/monitoramento", label: "Monitoramento", icon: Radar },
-  { to: "/armazem", label: "Armazém (WMS)", icon: Warehouse },
+  { to: "/caixa-xml", label: "Caixa de XML (e-mail)", icon: Mail },
   { to: "/financeiro", label: "Financeiro", icon: Wallet },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ];
@@ -34,7 +34,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <div className="leading-tight">
             <div className="font-display text-sm font-semibold tracking-wide">NOVARIS</div>
-            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">hub logístico</div>
+            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">TMS</div>
           </div>
         </div>
 

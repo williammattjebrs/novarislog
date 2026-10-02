@@ -300,7 +300,6 @@ function NewExpenseModal({ onClose, onSave }: { onClose: () => void; onSave: (e:
             </select>
             <select value={area} onChange={(e) => setArea(e.target.value as ExpenseArea)} className="input">
               <option value="operacao">Operação</option>
-              <option value="armazem">Armazém</option>
               <option value="frota">Frota</option>
               <option value="administrativa">Administrativa</option>
               <option value="comercial">Comercial</option>

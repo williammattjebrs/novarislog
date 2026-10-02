@@ -1,9 +1,9 @@
-// Controle de acesso front-only. Perfis: admin, comercial, operacao, armazem, financeiro.
+// Controle de acesso front-only. Perfis: admin, comercial, operacao, financeiro.
 // Persistência em localStorage. Pronto para trocar por auth real depois.
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
-export type Role = "admin" | "comercial" | "operacao" | "armazem" | "financeiro";
+export type Role = "admin" | "comercial" | "operacao" | "financeiro";
 
 export interface AuthUser {
   email: string;
@@ -53,10 +53,9 @@ export function useAuth() {
 
 // mapeamento perfil → módulos permitidos
 export const ROLE_ACCESS: Record<Role, string[]> = {
-  admin: ["/", "/clientes", "/coletas", "/monitoramento", "/armazem", "/financeiro", "/configuracoes"],
+  admin: ["/", "/clientes", "/coletas", "/monitoramento", "/caixa-xml", "/financeiro", "/configuracoes"],
   comercial: ["/", "/clientes"],
-  operacao: ["/", "/coletas", "/monitoramento"],
-  armazem: ["/", "/armazem"],
+  operacao: ["/", "/coletas", "/monitoramento", "/caixa-xml"],
   financeiro: ["/", "/financeiro", "/configuracoes"],
 };
 
@@ -64,7 +63,6 @@ export const ROLE_LABEL: Record<Role, string> = {
   admin: "Administrador",
   comercial: "Comercial",
   operacao: "Operação",
-  armazem: "Armazém",
   financeiro: "Financeiro",
 };
 
