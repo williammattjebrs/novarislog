@@ -15,6 +15,7 @@ import { lookupCoords } from "@/lib/geo";
 import { RecordActions } from "@/components/RecordActions";
 import { DivergenceBadge } from "@/components/DivergenceBadge";
 import { useAuth } from "@/lib/auth";
+import { ColetasTriage } from "@/components/ColetasTriage";
 
 export const Route = createFileRoute("/coletas")({
   head: () => ({
@@ -226,6 +227,20 @@ function ColetasPage() {
             </label>
           </div>
         </div>
+
+        <ColetasTriage
+          orders={orders.list}
+          cfg={cfg}
+          onSelect={setSelected}
+          onEmitirSugerido={(o) => {
+            setSelected(o.id);
+            orders.update(o.id, {
+              stage: "aguardando_cte",
+              timeline: [...o.timeline, { quando: new Date().toISOString(), autor, tipo: "sistema", texto: `Emissão de CT-e solicitada no valor sugerido ${fmtBRL(o.valorFrete)} (${o.origemValor})` }],
+              atualizadoEm: new Date().toISOString(),
+            });
+          }}
+        />
 
         {/* Pipeline */}
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-11 gap-1.5">

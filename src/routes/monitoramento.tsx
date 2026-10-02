@@ -11,6 +11,8 @@ import { CostPanel } from "@/components/CostPanel";
 import { DivergenceBadge } from "@/components/DivergenceBadge";
 import { RecordActions } from "@/components/RecordActions";
 import { ORDER_STAGES, type OrderStage } from "@/lib/mock-data";
+import { TrackingPanel } from "@/components/TrackingPanel";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/monitoramento")({
   head: () => ({
@@ -29,6 +31,7 @@ export const Route = createFileRoute("/monitoramento")({
 function MonitoramentoPage() {
   const orders = useOrders();
   const [cfg] = useConfig();
+  const { user } = useAuth();
   const [uf, setUf] = useState("");
   const [cliente, setCliente] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
@@ -104,7 +107,7 @@ function MonitoramentoPage() {
                   <tr key={o.id} onClick={() => setSelected(o.id)} className={`border-t border-border hover:bg-elevated/50 cursor-pointer ${sel?.id === o.id ? "bg-elevated/60" : ""}`}>
                     <td className="px-4 py-3 num text-primary text-xs">{o.id.slice(0, 12)}</td>
                     <td className="text-xs">{o.clienteNome}</td>
-                    <td className="text-xs">{o.cidadeEntrega}/{o.ufEntrega}</td>
+                    <td className="text-xs">{o.cidadeEntrega}/{o.ufEntrega}{o.rastreio && <div className="text-[10px] text-muted-foreground">{o.rastreio.situacao}</div>}</td>
                     <td className="text-right num text-xs">{fmtBRL(o.valorFrete)}</td>
                     <td className="text-right num text-xs">
                       {o.cteValor ? (
@@ -151,6 +154,14 @@ function MonitoramentoPage() {
                 <Timeline entries={sel.timeline} />
               </div>
 
+              <TrackingPanel
+                key={sel.id}
+                order={sel}
+                cfg={cfg}
+                autor={user?.nome ?? "sistema"}
+                onUpdate={(patch) => orders.update(sel.id, patch)}
+              />
+
               <CostPanel
                 costs={sel.costs}
                 valorFrete={sel.valorFrete}
@@ -169,8 +180,7 @@ function MonitoramentoPage() {
 
         <div className="panel p-4 text-xs text-muted-foreground flex items-center gap-2">
           <Truck className="h-3.5 w-3.5" />
-          Integração de rastreamento (Cargon, Buonny, etc.) · <span className="text-accent">não conectado</span>
-          <button className="ml-auto text-primary hover:underline">conectar</button>
+          Integração de rastreamento (Cargon, Buonny, etc.) · <span className="text-accent">não conectada</span> — use o apontamento manual ao abrir cada entrega.
         </div>
       </div>
 

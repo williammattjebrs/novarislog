@@ -168,6 +168,8 @@ export interface Order {
   motorista?: string;
   placa?: string;
   previsaoEntrega?: string;              // ISO
+  emailCliente?: string;                 // destinatário dos avisos de rastreio
+  rastreio?: { situacao: string; local: string; atualizadoEm: string; fonte: "manual" | "integracao" };
 
   stage: OrderStage;
   costs: OrderCosts;
@@ -260,6 +262,45 @@ export interface FrotaCostParams {
 export interface AppConfig {
   toleranciaDivergenciaPercent: number; // default 2
   frota: FrotaCostParams;
+  emailInbox?: EmailInboxConfig;
+  emailTemplate?: EmailTemplateConfig;
+}
+
+export interface EmailInboxConfig {
+  provedor: "gmail" | "outlook" | "imap";
+  endereco: string;
+  filtro: string;          // ex: has:attachment filename:xml
+  ativo: boolean;
+  intervaloMin: number;
+}
+
+export interface EmailTemplateConfig {
+  assunto: string;
+  corpo: string;
+  autoEnvio: boolean;
+  estagiosAuto: string[];
+}
+
+export const DEFAULT_EMAIL_INBOX: EmailInboxConfig = {
+  provedor: "gmail", endereco: "", filtro: "has:attachment filename:xml", ativo: false, intervaloMin: 5,
+};
+
+export const DEFAULT_EMAIL_TEMPLATE: EmailTemplateConfig = {
+  assunto: "Atualização da sua entrega NF {{nf}} — {{status}}",
+  corpo: "Olá {{cliente}},\n\nSua entrega da NF {{nf}} ({{origem}} → {{destino}}) está em: {{status}}.\nSituação atual: {{situacao}} — {{local}}\nPrevisão de entrega: {{previsao}}\n\nAtenciosamente,\nNovaris · Operador Logístico Integrado",
+  autoEnvio: false,
+  estagiosAuto: ["em_viagem", "entregue", "ocorrencia"],
+};
+
+export function renderTemplate(tpl: string, o: Order, stageName: string): string {
+  const vars: Record<string, string> = {
+    cliente: o.clienteNome, nf: o.numeroNFe, ordem: o.id,
+    origem: `${o.cidadeColeta}/${o.ufColeta}`, destino: `${o.cidadeEntrega}/${o.ufEntrega}`,
+    status: stageName, situacao: o.rastreio?.situacao ?? "—", local: o.rastreio?.local ?? "—",
+    previsao: o.previsaoEntrega ? new Date(o.previsaoEntrega).toLocaleDateString("pt-BR") : "a confirmar",
+    destinatario: o.destinatario,
+  };
+  return tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? "");
 }
 
 // ==================================================================
