@@ -18,11 +18,12 @@ const NAV: NavItem[] = [
   { to: "/financeiro", label: "Financeiro", icon: Wallet },
   { to: "/tv", label: "Indicadores (TV)", icon: Radio },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
+  { to: "/usuarios", label: "Usuários & acessos", icon: UserCog },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const role: Role = user?.role ?? "operacao";
 
   const items = NAV.filter((i) => user && canAccess(role, i.to));
@@ -67,7 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <div className="text-sm truncate">{user.nome}</div>
                 <div className="text-[11px] text-muted-foreground">{ROLE_LABEL[role]}</div>
               </div>
-              <button onClick={logout} className="text-muted-foreground hover:text-danger" title="Sair">
+              <button onClick={signOut} className="text-muted-foreground hover:text-danger" title="Sair">
                 <LogOut className="h-4 w-4" />
               </button>
             </div>
