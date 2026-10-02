@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, Trash2, Copy } from "lucide-react";
+import { CityPicker } from "@/components/CityPicker";
 import { useRouteRates, newId } from "@/lib/mock-store";
 import { fmtBRL, TIPOS_CAMINHAO, type RouteRate } from "@/lib/mock-data";
 
@@ -52,10 +53,10 @@ export function RouteRatesTable({ clienteId }: { clienteId?: string }) {
           <tbody>
             {list.map((r) => (
               <tr key={r.id} className="border-t border-border">
-                <td className="px-3 py-1.5"><input className="input h-8" value={r.origemCidade} onChange={(e) => upd(r, { origemCidade: e.target.value })} /></td>
-                <td><input className="input h-8 w-14" maxLength={2} value={r.origemUf} onChange={(e) => upd(r, { origemUf: e.target.value.toUpperCase() })} /></td>
-                <td><input className="input h-8" value={r.destinoCidade} onChange={(e) => upd(r, { destinoCidade: e.target.value })} /></td>
-                <td><input className="input h-8 w-14" maxLength={2} value={r.destinoUf} onChange={(e) => upd(r, { destinoUf: e.target.value.toUpperCase() })} /></td>
+                <td className="px-3 py-1.5 min-w-52"><CityPicker value={r.origemCidade ? { nome: r.origemCidade, uf: r.origemUf } : null} onChange={(x) => upd(r, { origemCidade: x?.nome ?? "", origemUf: x?.uf ?? "" })} /></td>
+                <td><span className="text-xs">{r.origemUf}</span></td>
+                <td className="min-w-52"><CityPicker value={r.destinoCidade ? { nome: r.destinoCidade, uf: r.destinoUf } : null} onChange={(x) => upd(r, { destinoCidade: x?.nome ?? "", destinoUf: x?.uf ?? "" })} /></td>
+                <td><span className="text-xs">{r.destinoUf}</span></td>
                 <td><input type="number" className="input h-8 num text-right w-24" value={r.peso} onChange={(e) => upd(r, { peso: Number(e.target.value) })} /></td>
                 <td><input type="number" className="input h-8 num text-right w-28" value={r.valorNF} onChange={(e) => upd(r, { valorNF: Number(e.target.value) })} /></td>
                 <td><input type="number" className="input h-8 num text-right w-28" value={r.valorFrete} onChange={(e) => upd(r, { valorFrete: Number(e.target.value) })} /></td>
@@ -71,10 +72,10 @@ export function RouteRatesTable({ clienteId }: { clienteId?: string }) {
               </tr>
             ))}
             <tr className="border-t border-border bg-elevated/30">
-              <td className="px-3 py-1.5"><input className="input h-8" placeholder="Cidade origem" value={f.origemCidade} onChange={(e) => setF({ ...f, origemCidade: e.target.value })} /></td>
-              <td><input className="input h-8 w-14" placeholder="UF" maxLength={2} value={f.origemUf} onChange={(e) => setF({ ...f, origemUf: e.target.value })} /></td>
-              <td><input className="input h-8" placeholder="Cidade destino" value={f.destinoCidade} onChange={(e) => setF({ ...f, destinoCidade: e.target.value })} /></td>
-              <td><input className="input h-8 w-14" placeholder="UF" maxLength={2} value={f.destinoUf} onChange={(e) => setF({ ...f, destinoUf: e.target.value })} /></td>
+              <td className="px-3 py-1.5 min-w-52"><CityPicker value={f.origemCidade ? { nome: f.origemCidade, uf: f.origemUf } : null} onChange={(x) => setF({ ...f, origemCidade: x?.nome ?? "", origemUf: x?.uf ?? "" })} /></td>
+              <td><span className="text-xs">{f.origemUf}</span></td>
+              <td className="min-w-52"><CityPicker value={f.destinoCidade ? { nome: f.destinoCidade, uf: f.destinoUf } : null} onChange={(x) => setF({ ...f, destinoCidade: x?.nome ?? "", destinoUf: x?.uf ?? "" })} /></td>
+              <td><span className="text-xs">{f.destinoUf}</span></td>
               <td><input type="number" className="input h-8 num text-right w-24" value={f.peso || ""} placeholder="0" onChange={(e) => setF({ ...f, peso: Number(e.target.value) })} /></td>
               <td><input type="number" className="input h-8 num text-right w-28" value={f.valorNF || ""} placeholder="0" onChange={(e) => setF({ ...f, valorNF: Number(e.target.value) })} /></td>
               <td><input type="number" className="input h-8 num text-right w-28" value={f.valorFrete || ""} placeholder="0" onChange={(e) => setF({ ...f, valorFrete: Number(e.target.value) })} /></td>

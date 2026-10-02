@@ -50,3 +50,36 @@ export function CityPicker({ value, onChange, placeholder }: { value: City | nul
     </div>
   );
 }
+
+function lev(a: string, b: string) {
+  const m = a.length, n = b.length;
+  const d = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    let prev = d[0]; d[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const t = d[j];
+      d[j] = Math.min(d[j] + 1, d[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = t;
+    }
+  }
+  return d[n];
+}
+const clean = (s: string) => norm(s).replace(/[^a-z0-9 ]/g, " ").replace(/\b(d[aeo]s?)\b/g, " ").replace(/\s+/g, "").trim();
+
+// Corrige o nome da cidade da NF para o nome oficial do IBGE quando for parecido (mesma UF).
+export async function correctCity(nome: string, uf: string): Promise<string> {
+  const list = await loadCities();
+  if (!list.length || !nome) return nome;
+  const pool = list.filter((c) => c.uf === (uf || "").toUpperCase());
+  const target = clean(nome);
+  let best: City | null = null, bestScore = 0;
+  for (const c of pool) {
+    const k = clean(c.nome);
+    if (k === target) return c.nome;
+    const score = 1 - lev(k, target) / Math.max(k.length, target.length);
+    if (score > bestScore) { bestScore = score; best = c; }
+  }
+  return best && bestScore >= 0.75 ? best.nome : nome;
+}
+
+export const sameCityName = (a?: string, b?: string) => clean(a ?? "") === clean(b ?? "");

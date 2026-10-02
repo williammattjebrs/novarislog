@@ -17,6 +17,7 @@ import { RecordActions } from "@/components/RecordActions";
 import { DivergenceBadge } from "@/components/DivergenceBadge";
 import { useAuth } from "@/lib/auth";
 import { ColetasTriage } from "@/components/ColetasTriage";
+import { correctCity, sameCityName } from "@/components/CityPicker";
 
 export const Route = createFileRoute("/coletas")({
   head: () => ({
@@ -76,10 +77,16 @@ function ColetasPage() {
       return;
     }
     let ok = 0, fail = 0;
+    const corrigidas: string[] = [];
     for (const f of Array.from(files)) {
       const text = await readFileText(f);
       const p = parseNFe(text);
       if (!p) { fail++; continue; }
+      // Corrige nomes de cidades da NF para o cadastro oficial do IBGE
+      for (const part of [p.emitente, p.destinatario]) {
+        const fixed = await correctCity(part.cidade, part.uf);
+        if (fixed !== part.cidade) { corrigidas.push(`${part.cidade} → ${fixed}`); part.cidade = fixed; }
+      }
 
       // Cliente = quem tem esse CNPJ como remetente (emitente)
       const client = clients.list.find((c) => c.cnpjs.some((x) => x.cnpj.replace(/\D/g, "") === p.emitente.cnpj.replace(/\D/g, "")));
@@ -105,7 +112,7 @@ function ColetasPage() {
         : null;
 
       // Rotas (cliente > padrão) por cidade origem/destino
-      const sameCity = (a?: string, b?: string) => (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
+      const sameCity = sameCityName;
       const matchRoute = (r: { origemCidade: string; destinoCidade: string; origemUf: string; destinoUf: string }) =>
         sameCity(r.origemCidade, p.emitente.cidade) && sameCity(r.destinoCidade, p.destinatario.cidade) &&
         r.origemUf === p.emitente.uf && r.destinoUf === p.destinatario.uf;
@@ -175,7 +182,7 @@ function ColetasPage() {
       orders.add(order);
       ok++;
     }
-    alert(`✓ ${ok} NF-e(s) importada(s)${fail > 0 ? ` · ${fail} com erro de parsing` : ""}`);
+    alert(`✓ ${ok} NF-e(s) importada(s)${fail > 0 ? ` · ${fail} com erro de parsing` : ""}${corrigidas.length ? `\n\nCidades corrigidas pelo IBGE:\n${[...new Set(corrigidas)].join("\n")}` : ""}`);
     if (nfeInput.current) nfeInput.current.value = "";
   }
 
