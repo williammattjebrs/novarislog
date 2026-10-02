@@ -13,7 +13,7 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
-const ROLES: Role[] = ["admin", "comercial", "operacao", "armazem", "financeiro"];
+const ROLES: Role[] = ["admin", "comercial", "operacao", "financeiro"];
 
 function LoginPage() {
   const { login, user } = useAuth();
