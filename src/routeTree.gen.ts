@@ -15,7 +15,6 @@ import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ColetasRouteImport } from './routes/coletas'
 import { Route as ClientesRouteImport } from './routes/clientes'
-import { Route as ArmazemRouteImport } from './routes/armazem'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 
@@ -49,11 +48,6 @@ const ClientesRoute = ClientesRouteImport.update({
   path: '/clientes',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ArmazemRoute = ArmazemRouteImport.update({
-  id: '/armazem',
-  path: '/armazem',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -67,7 +61,6 @@ const ClientesIdRoute = ClientesIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/armazem': typeof ArmazemRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/coletas': typeof ColetasRoute
   '/configuracoes': typeof ConfiguracoesRoute
@@ -78,7 +71,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/armazem': typeof ArmazemRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/coletas': typeof ColetasRoute
   '/configuracoes': typeof ConfiguracoesRoute
@@ -90,7 +82,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/armazem': typeof ArmazemRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/coletas': typeof ColetasRoute
   '/configuracoes': typeof ConfiguracoesRoute
@@ -103,7 +94,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/armazem'
     | '/clientes'
     | '/coletas'
     | '/configuracoes'
@@ -114,7 +104,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/armazem'
     | '/clientes'
     | '/coletas'
     | '/configuracoes'
@@ -125,7 +114,6 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/armazem'
     | '/clientes'
     | '/coletas'
     | '/configuracoes'
@@ -137,7 +125,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ArmazemRoute: typeof ArmazemRoute
   ClientesRoute: typeof ClientesRouteWithChildren
   ColetasRoute: typeof ColetasRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
@@ -190,13 +177,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/armazem': {
-      id: '/armazem'
-      path: '/armazem'
-      fullPath: '/armazem'
-      preLoaderRoute: typeof ArmazemRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -228,7 +208,6 @@ const ClientesRouteWithChildren = ClientesRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ArmazemRoute: ArmazemRoute,
   ClientesRoute: ClientesRouteWithChildren,
   ColetasRoute: ColetasRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
