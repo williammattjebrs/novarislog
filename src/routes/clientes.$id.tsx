@@ -67,6 +67,7 @@ function ClienteDetalhe() {
         <div className="flex items-center gap-1 border-b border-border">
           {([
             ["dados", "Dados & CNPJs"],
+            ["rotas", "Rotas do cliente"],
             ["tabelas", `Tabelas de frete (${clientTables.length})`],
             ["cotacoes", `Cotações (${clientQuotes.length})`],
           ] as const).map(([t, l]) => (
@@ -125,6 +126,13 @@ function ClienteDetalhe() {
               </ul>
             </div>
           </div>
+        )}
+
+        {tab === "rotas" && (
+          <>
+            <p className="text-sm text-muted-foreground">Rotas salvas para este cliente. Traga da tabela padrão e altere os valores à vontade — a tabela padrão não é afetada.</p>
+            <RouteRatesTable clienteId={client.id} />
+          </>
         )}
 
         {tab === "tabelas" && (
