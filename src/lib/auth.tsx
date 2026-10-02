@@ -53,9 +53,9 @@ export function useAuth() {
 
 // mapeamento perfil → módulos permitidos
 export const ROLE_ACCESS: Record<Role, string[]> = {
-  admin: ["/", "/clientes", "/coletas", "/monitoramento", "/caixa-xml", "/financeiro", "/configuracoes"],
+  admin: ["/", "/clientes", "/coletas", "/monitoramento", "/financeiro", "/configuracoes"],
   comercial: ["/", "/clientes"],
-  operacao: ["/", "/coletas", "/monitoramento", "/caixa-xml"],
+  operacao: ["/", "/coletas", "/monitoramento"],
   financeiro: ["/", "/financeiro", "/configuracoes"],
 };
 
