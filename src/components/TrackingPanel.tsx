@@ -29,9 +29,9 @@ export function TrackingPanel({
     const rastreio = { situacao, local, atualizadoEm: new Date().toISOString(), fonte: "manual" as const };
     const tl = [...order.timeline, entry(`Rastreio manual: ${situacao}${local ? ` — ${local}` : ""}`)];
     const next = { ...order, rastreio };
-    if (tpl.autoEnvio && email) tl.push(entry(`E-mail automático de rastreio preparado para ${email}`, "sistema"));
+    if (tpl.autoEnvio && email && tpl.estagiosAuto.includes(order.stage)) tl.push(entry(`E-mail automático de rastreio preparado para ${email}`, "sistema"));
     onUpdate({ rastreio, emailCliente: email, timeline: tl, atualizadoEm: new Date().toISOString() });
-    if (tpl.autoEnvio && email) abrirEmail(next);
+    if (tpl.autoEnvio && email && tpl.estagiosAuto.includes(order.stage)) abrirEmail(next);
   }
 
   function abrirEmail(o: Order = order) {

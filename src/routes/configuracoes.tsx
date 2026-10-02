@@ -138,7 +138,7 @@ function ConfigPage() {
             <div className="font-display text-lg text-danger">Zona perigosa</div>
           </div>
           <p className="text-sm text-muted-foreground">
-            Apaga todos os clientes, tabelas, ordens, CT-es, CT-es e financeiro. Útil para começar testes do zero.
+            Apaga todos os clientes, tabelas, ordens, CT-es e financeiro. Útil para começar testes do zero.
           </p>
           <button
             onClick={() => {
