@@ -118,6 +118,8 @@ function TvPage() {
     };
   }, [orders.list, cfg, k]);
 
+  if (!now) return <div className="min-h-screen bg-background" />;
+
   return (
     <div className="min-h-screen bg-background text-foreground p-6 flex flex-col gap-5">
       <header className="flex items-center justify-between">
