@@ -5,6 +5,13 @@ import { useOrders, useConfig } from "@/lib/mock-store";
 import { fmtBRL, stageLabel, type Order } from "@/lib/mock-data";
 import { calcOrderCost } from "@/lib/cost-calc";
 import logo from "@/assets/novaris-logo.png.asset.json";
+import { BrazilMap } from "@/components/BrazilMap";
+import {
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  PieChart, Pie, Cell, BarChart, Bar,
+} from "recharts";
+
+const tipStyle = { background: "var(--card)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--foreground)" };
 
 export const Route = createFileRoute("/tv")({
   head: () => ({
@@ -79,6 +86,40 @@ function TvPage() {
     };
   }, [orders.list, cfg]);
 
+  const ch = useMemo(() => {
+    const list: Order[] = orders.list;
+    const dias: { d: string; key: string; receita: number; custo: number }[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const dt = new Date(); dt.setDate(dt.getDate() - i);
+      dias.push({ d: dt.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }), key: dt.toDateString(), receita: 0, custo: 0 });
+    }
+    const ufMap = new Map<string, number>();
+    let middle = 0, last = 0, sem = 0;
+    list.forEach((o) => {
+      const day = dias.find((x) => x.key === new Date(o.criadoEm).toDateString());
+      if (day) { day.receita += o.cteValor ?? o.valorFrete ?? 0; day.custo += calcOrderCost(o.costs, cfg.frota, o.valorFrete).total; }
+      if (o.ufEntrega) ufMap.set(o.ufEntrega, (ufMap.get(o.ufEntrega) ?? 0) + 1);
+      if (o.transportType === "middle") middle++; else if (o.transportType === "last") last++; else sem++;
+    });
+    const atrasoEntregue = k.comPrevN - k.noPrazo;
+    return {
+      dias,
+      ufs: [...ufMap.entries()].map(([uf, n]) => ({ uf, n })).sort((a, b) => b.n - a.n).slice(0, 8),
+      otd: [
+        { n: "No prazo", v: k.noPrazo, c: "var(--success)" },
+        { n: "Entregue atrasado", v: atrasoEntregue, c: "var(--danger)" },
+        { n: "Em trânsito atrasado", v: k.atrasadas.length, c: "var(--warning)" },
+      ].filter((x) => x.v > 0).concat(k.comPrevN + k.atrasadas.length === 0 ? [{ n: "Sem dados", v: 1, c: "var(--border)" }] : []),
+      tipo: [
+        { n: "Middle mile", v: middle, c: "var(--primary)" },
+        { n: "Last mile", v: last, c: "var(--success)" },
+        { n: "Não definido", v: sem, c: "var(--muted-foreground)" },
+      ].filter((x) => x.v > 0).concat(list.length === 0 ? [{ n: "Sem dados", v: 1, c: "var(--border)" }] : []),
+    };
+  }, [orders.list, cfg, k]);
+
+  if (!now) return <div className="min-h-screen bg-background" />;
+
   return (
     <div className="min-h-screen bg-background text-foreground p-6 flex flex-col gap-5">
       <header className="flex items-center justify-between">
@@ -107,6 +148,79 @@ function TvPage() {
         <Mid l="Aguardando CT-e" v={k.aguardCte.length} tone="text-warning" />
         <Mid l="CT-e divergente" v={k.diverg.length} tone={k.diverg.length ? "text-danger" : "text-success"} />
         <Mid l="Sem tabela (tratar)" v={k.pend.length} tone={k.pend.length ? "text-warning" : "text-success"} />
+      </section>
+
+      <section className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div className="panel p-5 xl:col-span-2">
+          <Title>Faturamento x Custo — últimos 30 dias</Title>
+          <div className="h-64">
+            <ResponsiveContainer>
+              <AreaChart data={ch.dias}>
+                <defs>
+                  <linearGradient id="gR" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--primary)" stopOpacity={0.5} /><stop offset="100%" stopColor="var(--primary)" stopOpacity={0} /></linearGradient>
+                </defs>
+                <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+                <XAxis dataKey="d" stroke="var(--muted-foreground)" fontSize={11} />
+                <YAxis stroke="var(--muted-foreground)" fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                <Tooltip contentStyle={tipStyle} formatter={(v: number) => fmtBRL(v)} />
+                <Legend />
+                <Area type="monotone" dataKey="receita" name="Faturamento" stroke="var(--primary)" fill="url(#gR)" strokeWidth={2} />
+                <Area type="monotone" dataKey="custo" name="Custo" stroke="var(--danger)" fill="transparent" strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div className="panel p-5">
+          <Title>Pontualidade das entregas</Title>
+          <div className="h-64 relative">
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie data={ch.otd} dataKey="v" nameKey="n" innerRadius={60} outerRadius={90} paddingAngle={2}>
+                  {ch.otd.map((x) => <Cell key={x.n} fill={x.c} />)}
+                </Pie>
+                <Tooltip contentStyle={tipStyle} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 grid place-items-center pointer-events-none pb-8"><div className="num text-3xl">{k.comPrevN ? fmtPct(k.otd) : "—"}</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div className="panel overflow-hidden xl:col-span-2">
+          <div className="p-5 pb-3"><Title>Mapa de entregas</Title></div>
+          <BrazilMap orders={orders.list} />
+        </div>
+        <div className="flex flex-col gap-4">
+          <div className="panel p-5 flex-1">
+            <Title>Destinos por UF</Title>
+            <div className="h-44">
+              <ResponsiveContainer>
+                <BarChart data={ch.ufs} layout="vertical">
+                  <XAxis type="number" hide />
+                  <YAxis type="category" dataKey="uf" stroke="var(--muted-foreground)" fontSize={11} width={30} />
+                  <Tooltip contentStyle={tipStyle} />
+                  <Bar dataKey="n" name="Ordens" fill="var(--primary)" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          <div className="panel p-5 flex-1">
+            <Title>Tipo de operação</Title>
+            <div className="h-44">
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie data={ch.tipo} dataKey="v" nameKey="n" outerRadius={65}>
+                    {ch.tipo.map((x) => <Cell key={x.n} fill={x.c} />)}
+                  </Pie>
+                  <Tooltip contentStyle={tipStyle} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className="grid grid-cols-1 xl:grid-cols-3 gap-4 flex-1">
