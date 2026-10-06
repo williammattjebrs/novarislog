@@ -35,6 +35,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_modules: {
+        Row: {
+          criado_em: string
+          id: string
+          module: string
+          user_id: string
+        }
+        Insert: {
+          criado_em?: string
+          id?: string
+          module: string
+          user_id: string
+        }
+        Update: {
+          criado_em?: string
+          id?: string
+          module?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
