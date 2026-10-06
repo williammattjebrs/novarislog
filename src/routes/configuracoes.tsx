@@ -275,9 +275,15 @@ function InboxSection() {
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={f.ativo} onChange={(e) => set({ ativo: e.target.checked })} /> Ativar leitura automática
           </label>
-          <p className="text-[11px] text-muted-foreground">
-            Gmail e Microsoft 365 exigem uma <b>senha de app</b> (gerada na conta Google/Microsoft com verificação em 2 etapas) e o IMAP habilitado na caixa.
-          </p>
+          {data?.microsoftConectado ? (
+            <p className="text-[11px] text-success">
+              Conta Microsoft conectada: para servidores Microsoft 365 (outlook.office365.com) a leitura usa o login oficial da Microsoft e a senha não é necessária.
+            </p>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              Gmail exige uma <b>senha de app</b> e o IMAP habilitado na caixa.
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => run("save")} disabled={!!busy} className="text-sm px-3 py-1.5 rounded bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25">{busy === "save" ? "Salvando…" : "Salvar"}</button>
             <button type="button" onClick={() => run("test")} disabled={!!busy} className="text-sm px-3 py-1.5 rounded border border-border hover:bg-elevated">{busy === "test" ? "Testando…" : "Salvar e testar conexão"}</button>
