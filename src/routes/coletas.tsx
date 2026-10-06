@@ -316,7 +316,7 @@ function ColetasPage() {
 
         <ColetasTriage
           orders={orders.list}
-          cfg={cfg}
+          onImportEmail={importFromEmail}
           onSelect={setSelected}
           onEmitirSugerido={(o) => {
             setSelected(o.id);
