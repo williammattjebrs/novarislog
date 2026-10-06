@@ -47,6 +47,7 @@ async function loadConfig(): Promise<ConfigRow | null> {
 
 function publicConfig(c: ConfigRow | null) {
   return {
+    microsoftConectado: !!process.env.MICROSOFT_OUTLOOK_API_KEY,
     host: c?.host ?? "",
     port: c?.port ?? 993,
     secure: c?.secure ?? true,
@@ -132,11 +133,31 @@ async function openClient(c: ConfigRow) {
   return client;
 }
 
+async function usaMicrosoft(c: ConfigRow | null) {
+  const { microsoftDisponivel } = await import("./graph-mail.server");
+  return !!c && microsoftDisponivel(c.host);
+}
+
+async function traduz(e: unknown) {
+  const msg = e instanceof Error ? e.message : String(e);
+  const { traduzGraph } = await import("./graph-mail.server");
+  return traduzGraph(msg) ?? traduzImap(e);
+}
+
 export const testInbox = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.supabase, context.userId);
     const c = await loadConfig();
+    if (c && (await usaMicrosoft(c))) {
+      try {
+        const { graphTest } = await import("./graph-mail.server");
+        const r = await graphTest(c.pasta);
+        return { ok: true, mensagem: `Conectado pela conta Microsoft! Pasta "${r.nome}" com ${r.total} mensagem(ns).` };
+      } catch (e) {
+        return { ok: false, mensagem: await traduz(e) };
+      }
+    }
     if (!c?.host || !c.usuario || !c.senha) return { ok: false, mensagem: "Preencha servidor, usuário e senha e salve antes de testar." };
     try {
       const client = await openClient(c);
@@ -144,7 +165,7 @@ export const testInbox = createServerFn({ method: "POST" })
       await client.logout();
       return { ok: true, mensagem: `Conectado! Pasta "${c.pasta}" com ${total} mensagem(ns).` };
     } catch (e) {
-      return { ok: false, mensagem: traduzImap(e) };
+      return { ok: false, mensagem: await traduz(e) };
     }
   });
 
@@ -157,56 +178,81 @@ function extractChave(xml: string): { chave: string; tipo: "nfe" | "cte" } | nul
   return null;
 }
 
+type Anexo = { filename: string; xml: string; remetente: string; assunto: string; recebidoEm: string | null };
+
+async function coletarImap(c: ConfigRow, since: Date) {
+  const { default: PostalMime } = await import("postal-mime");
+  const client = await openClient(c);
+  const anexos: Anexo[] = [];
+  let mensagens = 0;
+  try {
+    await client.select(c.pasta);
+    const uids = (await client.searchSince(since, c.filtro_remetente || undefined)).slice(-500);
+    mensagens = uids.length;
+    const alvo = await client.uidsWithXml(uids);
+    for (const uid of alvo) {
+      const raw = await client.fetchRaw(uid);
+      if (!raw) continue;
+      const email = await PostalMime.parse(raw);
+      for (const a of email.attachments ?? []) {
+        if (!/\.xml$/i.test(a.filename ?? "") && !/xml/i.test(a.mimeType ?? "")) continue;
+        anexos.push({
+          filename: a.filename || "anexo.xml",
+          xml: typeof a.content === "string" ? a.content : new TextDecoder("utf-8").decode(a.content),
+          remetente: email.from?.address ?? "",
+          assunto: email.subject ?? "",
+          recebidoEm: email.date ? new Date(email.date).toISOString() : null,
+        });
+      }
+    }
+  } finally {
+    await client.logout();
+  }
+  return { mensagens, anexos };
+}
+
 export const syncInbox = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertColetas(context.supabase, context.userId);
     const c = await loadConfig();
     const db = await adminClient();
-    if (!c?.host || !c.usuario || !c.senha) {
+    const microsoft = await usaMicrosoft(c);
+    if (!c || (!microsoft && (!c.host || !c.usuario || !c.senha))) {
       return { ok: false, mensagem: "Caixa de e-mail não configurada.", novos: 0, duplicados: 0, mensagens: 0 };
     }
     let novos = 0, duplicados = 0, mensagens = 0, ignorados = 0;
     try {
-      const { default: PostalMime } = await import("postal-mime");
-      const client = await openClient(c);
-      try {
-        await client.select(c.pasta);
-        const since = new Date(Date.now() - c.dias_retroativos * 86400000);
-        const uids = (await client.searchSince(since, c.filtro_remetente || undefined)).slice(-500);
-        mensagens = uids.length;
-        const { data: existentes } = await db.from("email_xml_inbox" as never).select("chave");
-        const conhecidas = new Set(((existentes ?? []) as { chave: string }[]).map((x) => x.chave));
-        const alvo = await client.uidsWithXml(uids);
-        for (const uid of alvo) {
-          const raw = await client.fetchRaw(uid);
-          if (!raw) continue;
-          const email = await PostalMime.parse(raw);
-          const anexos = (email.attachments ?? []).filter(
-            (a) => /\.xml$/i.test(a.filename ?? "") || /xml/i.test(a.mimeType ?? ""),
-          );
-          for (const a of anexos) {
-            const xml = typeof a.content === "string" ? a.content : new TextDecoder("utf-8").decode(a.content);
-            const info = extractChave(xml);
-            if (!info) { ignorados++; continue; }
-            if (conhecidas.has(info.chave)) { duplicados++; continue; }
-            const { error } = await db.from("email_xml_inbox" as never).insert({
-              chave: info.chave, tipo: info.tipo, arquivo: a.filename || "anexo.xml",
-              remetente: email.from?.address ?? "", assunto: email.subject ?? "",
-              recebido_em: email.date ? new Date(email.date).toISOString() : null, xml,
-            } as never);
-            if (error) { if (/duplicate/i.test(error.message)) duplicados++; else throw new Error(error.message); }
-            else { novos++; conhecidas.add(info.chave); }
-          }
-        }
-      } finally {
-        await client.logout();
+      const since = new Date(Date.now() - c.dias_retroativos * 86400000);
+      let anexos: Anexo[];
+      if (microsoft) {
+        const { graphFetchXml } = await import("./graph-mail.server");
+        const r = await graphFetchXml(c.pasta, since, c.filtro_remetente || "");
+        mensagens = r.mensagens;
+        anexos = r.xmls;
+      } else {
+        const r = await coletarImap(c, since);
+        mensagens = r.mensagens;
+        anexos = r.anexos;
+      }
+      const { data: existentes } = await db.from("email_xml_inbox" as never).select("chave");
+      const conhecidas = new Set(((existentes ?? []) as { chave: string }[]).map((x) => x.chave));
+      for (const a of anexos) {
+        const info = extractChave(a.xml);
+        if (!info) { ignorados++; continue; }
+        if (conhecidas.has(info.chave)) { duplicados++; continue; }
+        const { error } = await db.from("email_xml_inbox" as never).insert({
+          chave: info.chave, tipo: info.tipo, arquivo: a.filename,
+          remetente: a.remetente, assunto: a.assunto, recebido_em: a.recebidoEm, xml: a.xml,
+        } as never);
+        if (error) { if (/duplicate/i.test(error.message)) duplicados++; else throw new Error(error.message); }
+        else { novos++; conhecidas.add(info.chave); }
       }
       const mensagem = `${mensagens} e-mail(s) lido(s) · ${novos} XML novo(s) · ${duplicados} já importado(s)${ignorados ? ` · ${ignorados} XML não reconhecido(s)` : ""}`;
       await db.from("email_inbox_config" as never).update({ ultima_sync: new Date().toISOString(), ultimo_status: mensagem } as never).eq("id", 1);
       return { ok: true, mensagem, novos, duplicados, mensagens };
     } catch (e) {
-      const mensagem = traduzImap(e);
+      const mensagem = await traduz(e);
       await db.from("email_inbox_config" as never).update({ ultima_sync: new Date().toISOString(), ultimo_status: `Erro: ${mensagem}` } as never).eq("id", 1);
       return { ok: false, mensagem, novos, duplicados, mensagens };
     }
