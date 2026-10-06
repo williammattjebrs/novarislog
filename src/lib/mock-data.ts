@@ -12,6 +12,13 @@ export interface ClientCNPJ {
   uf: string;
 }
 
+export interface ClientGroup {
+  id: string;
+  nome: string;
+  observacao?: string;
+  criadoEm: string;
+}
+
 export interface Client {
   id: string;
   nome: string;
@@ -22,6 +29,7 @@ export interface Client {
   status: "ativo" | "prospect" | "inadimplente" | "renovacao";
   isGrupo: boolean;
   cnpjs: ClientCNPJ[];
+  grupoId?: string;
   observacao?: string;
   criadoEm: string;
 }
@@ -261,6 +269,12 @@ export interface Expense {
   vencimento: string;
   status: "prevista" | "paga" | "vencida";
   recorrente: boolean;
+  grupo?: string;
+}
+
+export interface ExpenseGroup {
+  id: string;
+  nome: string;
 }
 
 // ---------- Custos de frota (parametrização global) ----------
