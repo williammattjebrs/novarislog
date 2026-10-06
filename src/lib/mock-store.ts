@@ -121,20 +121,25 @@ export const useExpenseGroups = () => useCollection<ExpenseGroup>("expenseGroups
 // ==================================================================
 // Config global
 // ==================================================================
+let cfgCacheRaw: string | null = null;
+let cfgCacheVal: AppConfig = DEFAULT_CONFIG;
+function configSnapshot(): AppConfig {
+  if (!isBrowser) return DEFAULT_CONFIG;
+  const raw = localStorage.getItem(PREFIX + "config");
+  if (raw === cfgCacheRaw) return cfgCacheVal;
+  cfgCacheRaw = raw;
+  try {
+    cfgCacheVal = raw ? ({ ...DEFAULT_CONFIG, ...JSON.parse(raw) } as AppConfig) : DEFAULT_CONFIG;
+  } catch {
+    cfgCacheVal = DEFAULT_CONFIG;
+  }
+  return cfgCacheVal;
+}
+
 export function useConfig(): [AppConfig, (next: AppConfig) => void] {
-  const getSnap = () => {
-    if (!isBrowser) return DEFAULT_CONFIG;
-    const raw = localStorage.getItem(PREFIX + "config");
-    if (!raw) return DEFAULT_CONFIG;
-    try {
-      return { ...DEFAULT_CONFIG, ...JSON.parse(raw) } as AppConfig;
-    } catch {
-      return DEFAULT_CONFIG;
-    }
-  };
   const cfg = useSyncExternalStore(
     (cb) => subscribe("config", cb),
-    getSnap,
+    configSnapshot,
     () => DEFAULT_CONFIG,
   );
   const set = (next: AppConfig) => write("config", next);
