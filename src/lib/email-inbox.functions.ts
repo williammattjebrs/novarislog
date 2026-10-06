@@ -196,7 +196,7 @@ export const syncInbox = createServerFn({ method: "POST" })
         const { data: existentes } = await db.from("email_xml_inbox" as never).select("chave");
         const conhecidas = new Set(((existentes ?? []) as { chave: string }[]).map((x) => x.chave));
 
-        const alvo: { uid: number; parts: { part: string; nome: string }[]; remetente: string; assunto: string; data?: Date }[] = [];
+        const alvo: { uid: number; parts: { part: string; nome: string }[]; remetente: string; assunto: string; data?: Date | string }[] = [];
         if (uids.length) {
           for await (const msg of client.fetch(uids.slice(-500), { uid: true, envelope: true, bodyStructure: true }, { uid: true })) {
             mensagens++;
@@ -214,7 +214,8 @@ export const syncInbox = createServerFn({ method: "POST" })
         for (const m of alvo) {
           for (const p of m.parts) {
             const { content } = await client.download(String(m.uid), p.part, { uid: true });
-            const xml = await streamToString(content);
+            if (!content) { ignorados++; continue; }
+            const xml = await streamToString(content as unknown as NodeJS.ReadableStream);
             const info = extractChave(xml);
             if (!info) { ignorados++; continue; }
             if (conhecidas.has(info.chave)) { duplicados++; continue; }
