@@ -26,7 +26,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth();
   const role: Role = user?.role ?? "operacao";
 
-  const items = NAV.filter((i) => user && canAccess(role, i.to));
+  const items = NAV.filter((i) => user && canAccess(role, i.to, user?.modulos));
 
   return (
     <div className="min-h-screen text-foreground flex">

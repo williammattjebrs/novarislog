@@ -29,9 +29,10 @@ async function adminClient() {
 export const getMyProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const [{ data: profile, error }, { data: roleRow }] = await Promise.all([
+    const [{ data: profile, error }, { data: roleRow }, { data: modRows }] = await Promise.all([
       context.supabase.from("profiles").select("id, nome, ativo").eq("id", context.userId).maybeSingle(),
       context.supabase.from("user_roles").select("role").eq("user_id", context.userId).limit(1),
+      context.supabase.from("user_modules").select("module").eq("user_id", context.userId),
     ]);
     if (error) throw error;
     const email = ((context.claims ?? {}) as { email?: string }).email ?? "";
@@ -41,7 +42,8 @@ export const getMyProfile = createServerFn({ method: "GET" })
       email.split("@")[0] ||
       "usuário";
     const role = (roleRow && roleRow.length > 0 ? roleRow[0].role : "operacao") as RoleData;
-    return { email, nome, role };
+    const modulos = (modRows ?? []).map((m) => m.module as string);
+    return { email, nome, role, modulos };
   });
 
 export const listUsers = createServerFn({ method: "GET" })
@@ -51,10 +53,17 @@ export const listUsers = createServerFn({ method: "GET" })
     const supabaseAdmin = await adminClient();
     const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
     if (error) throw new Error(error.message);
-    const [{ data: profiles }, { data: roles }] = await Promise.all([
+    const [{ data: profiles }, { data: roles }, { data: mods }] = await Promise.all([
       supabaseAdmin.from("profiles").select("id, nome, ativo"),
       supabaseAdmin.from("user_roles").select("user_id, role"),
+      supabaseAdmin.from("user_modules").select("user_id, module"),
     ]);
+    const modsByUser = new Map<string, string[]>();
+    for (const m of mods ?? []) {
+      const arr = modsByUser.get(m.user_id) ?? [];
+      arr.push(m.module);
+      modsByUser.set(m.user_id, arr);
+    }
     const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
     const roleByUser = new Map((roles ?? []).map((r) => [r.user_id, r.role as RoleData]));
     return (data.users ?? []).map((u) => {
@@ -65,6 +74,7 @@ export const listUsers = createServerFn({ method: "GET" })
         nome: (p?.nome as string) || (u.user_metadata?.nome as string) || "",
         ativo: (p?.ativo as boolean) ?? true,
         role: (roleByUser.get(u.id) ?? "operacao") as RoleData,
+        modulos: modsByUser.get(u.id) ?? [],
         confirmado: !!u.email_confirmed_at,
         criadoEm: u.created_at ?? "",
       };
@@ -127,5 +137,25 @@ export const deleteUser = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
     if (error) throw new Error(error.message);
     await supabaseAdmin.from("profiles").delete().eq("id", data.userId);
+    return { ok: true };
+  });
+
+const MODULES = ["/clientes", "/coletas", "/monitoramento", "/financeiro", "/configuracoes", "/usuarios"] as const;
+
+export const setUserModules = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({ userId: z.string().uuid(), modulos: z.array(z.enum(MODULES)) }).parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const supabaseAdmin = await adminClient();
+    await supabaseAdmin.from("user_modules").delete().eq("user_id", data.userId);
+    if (data.modulos.length) {
+      const { error } = await supabaseAdmin
+        .from("user_modules")
+        .insert(data.modulos.map((module) => ({ user_id: data.userId, module })));
+      if (error) throw new Error(error.message);
+    }
     return { ok: true };
   });

@@ -11,6 +11,7 @@ export interface AuthUser {
   email: string;
   nome: string;
   role: Role;
+  modulos: string[];
 }
 
 interface AuthCtx {
@@ -41,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function loadProfile() {
     try {
       const p = await getMyProfile();
-      setUser({ email: p.email, nome: p.nome, role: p.role as Role });
+      setUser({ email: p.email, nome: p.nome, role: p.role as Role, modulos: p.modulos ?? [] });
     } catch {
       setUser(null);
     }
@@ -124,7 +125,16 @@ export const ROLE_LABEL: Record<Role, string> = {
   financeiro: "Financeiro",
 };
 
-export function canAccess(role: Role, pathname: string): boolean {
-  const allowed = ROLE_ACCESS[role];
+export const MODULE_OPTIONS: { path: string; label: string }[] = [
+  { path: "/clientes", label: "Clientes & CRM" },
+  { path: "/coletas", label: "Coletas & Ordens" },
+  { path: "/monitoramento", label: "Monitoramento" },
+  { path: "/financeiro", label: "Financeiro" },
+  { path: "/configuracoes", label: "Configurações" },
+  { path: "/usuarios", label: "Usuários & acessos" },
+];
+
+export function canAccess(role: Role, pathname: string, extras: string[] = []): boolean {
+  const allowed = [...ROLE_ACCESS[role], ...extras];
   return allowed.some((p) => (p === "/" ? pathname === "/" : pathname.startsWith(p)));
 }

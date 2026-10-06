@@ -5,8 +5,8 @@ import { useState } from "react";
 import { UserCog, UserPlus, RefreshCw, Trash2, Mail } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
-import { listUsers, inviteUser, setUserRole, deleteUser, type RoleData } from "@/lib/users.functions";
-import { useAuth, ROLE_LABEL } from "@/lib/auth";
+import { listUsers, inviteUser, setUserRole, deleteUser, setUserModules, type RoleData } from "@/lib/users.functions";
+import { useAuth, ROLE_LABEL, ROLE_ACCESS, MODULE_OPTIONS } from "@/lib/auth";
 
 export const Route = createFileRoute("/usuarios")({
   head: () => ({
@@ -36,6 +36,19 @@ function UsuariosPage() {
   const invite = useServerFn(inviteUser);
   const changeRole = useServerFn(setUserRole);
   const remove = useServerFn(deleteUser);
+  const saveModules = useServerFn(setUserModules);
+
+  async function toggleModule(userId: string, atuais: string[], mod: string) {
+    setMsg(null);
+    setErro(null);
+    const next = atuais.includes(mod) ? atuais.filter((m) => m !== mod) : [...atuais, mod];
+    try {
+      await saveModules({ data: { userId, modulos: next as never } });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Falha ao liberar o módulo.");
+    }
+  }
 
   const { data, isLoading, refetch, isFetching } = useQuery({ queryKey: ["users"], queryFn: fetchUsers });
 
@@ -150,6 +163,7 @@ function UsuariosPage() {
             <tr className="text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border">
               <th className="text-left font-medium px-4 py-3">Usuário</th>
               <th className="text-left font-medium px-4 py-3">Perfil</th>
+              <th className="text-left font-medium px-4 py-3">Módulos extras</th>
               <th className="text-left font-medium px-4 py-3">E-mail</th>
               <th className="text-left font-medium px-4 py-3">Situação</th>
               <th className="text-right font-medium px-4 py-3">Ações</th>
@@ -158,14 +172,14 @@ function UsuariosPage() {
           <tbody>
             {isLoading && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground text-xs">
+                <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground text-xs">
                   Carregando usuários…
                 </td>
               </tr>
             )}
             {!isLoading && (data ?? []).length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground text-xs">
+                <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground text-xs">
                   Nenhum usuário cadastrado ainda. Envie o primeiro convite acima.
                 </td>
               </tr>
@@ -196,6 +210,25 @@ function UsuariosPage() {
                       </option>
                     ))}
                   </select>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-wrap gap-1 max-w-xs">
+                    {MODULE_OPTIONS.filter((m) => !ROLE_ACCESS[u.role].includes(m.path)).map((m) => {
+                      const on = u.modulos.includes(m.path);
+                      return (
+                        <button
+                          key={m.path}
+                          type="button"
+                          onClick={() => toggleModule(u.id, u.modulos, m.path)}
+                          className={`text-[10px] px-2 py-0.5 rounded border ${on ? "border-primary/50 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:bg-elevated"}`}
+                          title={on ? "Clique para remover" : "Clique para liberar"}
+                        >
+                          {on ? "✓ " : "+ "}{m.label}
+                        </button>
+                      );
+                    })}
+                    {u.role === "admin" && <span className="text-[11px] text-muted-foreground">acesso total</span>}
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   <span className="inline-flex items-center gap-1.5 text-xs">
@@ -229,7 +262,7 @@ function UsuariosPage() {
       <p className="text-[11px] text-muted-foreground">
         Perfis: <strong>Administrador</strong> acessa tudo, inclusive esta tela; <strong>Comercial</strong> acessa clientes;
         <strong> Operação</strong> acessa coletas e monitoramento; <strong>Financeiro</strong> acessa o financeiro e as
-        configurações. Todos veem os indicadores da TV.
+        configurações. Todos veem os indicadores da TV. Em <strong>Módulos extras</strong> você libera outros módulos para a pessoa sem mudar o perfil.
       </p>
     </div>
   );

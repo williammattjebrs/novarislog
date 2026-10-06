@@ -6,7 +6,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import type {
   Client, FreightTable, RouteRate, Quotation, CRMDeal, Order,
   WarehouseInbound, WarehouseOutbound, StockItem, Invoice, Expense,
-  AppConfig,
+  AppConfig, ClientGroup, ExpenseGroup,
 } from "./mock-data";
 import { DEFAULT_CONFIG } from "./mock-data";
 
@@ -25,6 +25,8 @@ type StoreKey =
   | "stock"
   | "invoices"
   | "expenses"
+  | "clientGroups"
+  | "expenseGroups"
   | "config";
 
 // Signature externa dos listeners por chave
@@ -107,6 +109,14 @@ export const useWarehouseOutbound = () => useCollection<WarehouseOutbound>("ware
 export const useStock = () => useCollection<StockItem & { id?: string }>("stock");
 export const useInvoices = () => useCollection<Invoice & { id?: string }>("invoices");
 export const useExpenses = () => useCollection<Expense>("expenses");
+export const useClientGroups = () => useCollection<ClientGroup>("clientGroups");
+export const DEFAULT_EXPENSE_GROUPS: ExpenseGroup[] = [
+  { id: "EG-OPER", nome: "Operação" },
+  { id: "EG-ADM", nome: "Administrativo" },
+  { id: "EG-MKT", nome: "Marketing" },
+  { id: "EG-TI", nome: "TI" },
+];
+export const useExpenseGroups = () => useCollection<ExpenseGroup>("expenseGroups", DEFAULT_EXPENSE_GROUPS);
 
 // ==================================================================
 // Config global
@@ -157,7 +167,7 @@ export function getConfigSync(): AppConfig {
 export function resetAllData() {
   if (!isBrowser) return;
   (["clients", "freightTables", "routeRates", "quotations", "crmDeals", "orders",
-    "warehouseInbound", "warehouseOutbound", "stock", "invoices", "expenses"] as StoreKey[]
+    "warehouseInbound", "warehouseOutbound", "stock", "invoices", "expenses", "clientGroups"] as StoreKey[]
   ).forEach((k) => {
     localStorage.removeItem(PREFIX + k);
     notify(k);

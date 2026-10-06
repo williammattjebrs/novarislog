@@ -4,9 +4,9 @@ import { RoleGate } from "@/components/RoleGate";
 import { useState, useMemo } from "react";
 import { RouteRatesTable } from "@/components/RouteRatesTable";
 import { FreightSimulator } from "@/components/FreightSimulator";
-import { Users, Plus, Search, Building2 } from "lucide-react";
-import { useClients, useCRMDeals, useFreightTables, useQuotations, newId } from "@/lib/mock-store";
-import { statusTone, toneClass, fmtBRL, type CRMStage, type Client } from "@/lib/mock-data";
+import { Users, Plus, Search, Building2, Trash2 } from "lucide-react";
+import { useClients, useClientGroups, useCRMDeals, useFreightTables, useQuotations, newId } from "@/lib/mock-store";
+import { statusTone, toneClass, fmtBRL, type CRMStage, type Client, type ClientCNPJ } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/clientes")({
   head: () => ({
@@ -35,8 +35,9 @@ function ClientesPage() {
   const tables = useFreightTables();
   const quotes = useQuotations();
   const deals = useCRMDeals();
+  const groups = useClientGroups();
 
-  const [tab, setTab] = useState<"clientes" | "rotas" | "simulador" | "crm">("clientes");
+  const [tab, setTab] = useState<"clientes" | "grupos" | "rotas" | "simulador" | "crm">("clientes");
   const [busca, setBusca] = useState("");
   const [showNew, setShowNew] = useState(false);
 
@@ -73,7 +74,7 @@ function ClientesPage() {
         </div>
 
         <div className="flex items-center gap-1 border-b border-border overflow-x-auto">
-          {(["clientes", "rotas", "simulador", "crm"] as const).map((t) => (
+          {(["clientes", "grupos", "rotas", "simulador", "crm"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -81,7 +82,7 @@ function ClientesPage() {
                 tab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t === "clientes" ? "Clientes" : t === "rotas" ? "Tabela padrão (rotas)" : t === "simulador" ? "Simulador de frete" : "CRM · Pipeline"}
+              {t === "clientes" ? "Clientes" : t === "grupos" ? "Conglomerados" : t === "rotas" ? "Tabela padrão (rotas)" : t === "simulador" ? "Simulador de frete" : "CRM · Pipeline"}
             </button>
           ))}
         </div>
@@ -94,6 +95,8 @@ function ClientesPage() {
         )}
 
         {tab === "simulador" && <FreightSimulator />}
+
+        {tab === "grupos" && <GruposTab />}
 
         {tab === "clientes" && (
           <>
@@ -112,6 +115,7 @@ function ClientesPage() {
                   <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
                     <th className="text-left font-normal px-4 py-2.5">Cliente</th>
                     <th className="text-left font-normal">CNPJ(s)</th>
+                    <th className="text-left font-normal">Conglomerado</th>
                     <th className="text-left font-normal">Segmento</th>
                     <th className="text-left font-normal">Contato</th>
                     <th className="text-left font-normal">Tabelas</th>
@@ -131,6 +135,7 @@ function ClientesPage() {
                         {c.cnpjs[0]?.cnpj ?? "—"}
                         {c.cnpjs.length > 1 && <span className="ml-1 text-primary">+{c.cnpjs.length - 1}</span>}
                       </td>
+                      <td className="text-xs">{groups.list.find((g) => g.id === c.grupoId)?.nome ?? "—"}</td>
                       <td className="text-xs">{c.segmento}</td>
                       <td className="text-xs">
                         <div>{c.contato}</div>
@@ -143,7 +148,7 @@ function ClientesPage() {
                     </tr>
                   ))}
                   {filtered.length === 0 && (
-                    <tr><td colSpan={6} className="py-8 text-center text-xs text-muted-foreground">
+                    <tr><td colSpan={7} className="py-8 text-center text-xs text-muted-foreground">
                       Nenhum cliente cadastrado. Clique em <b>Novo cliente</b> para começar.
                     </td></tr>
                   )}
@@ -238,56 +243,136 @@ function Kpi({ label, v, tone }: { label: string; v: string; tone: string }) {
 }
 
 function NewClientModal({ onClose, onSave }: { onClose: () => void; onSave: (c: Client) => void }) {
+  const groups = useClientGroups();
   const [nome, setNome] = useState("");
   const [segmento, setSegmento] = useState("");
   const [contato, setContato] = useState("");
   const [telefone, setTelefone] = useState("");
   const [email, setEmail] = useState("");
-  const [cnpj, setCnpj] = useState("");
-  const [razao, setRazao] = useState("");
-  const [cidade, setCidade] = useState("");
-  const [uf, setUf] = useState("SP");
-  const [isGrupo, setIsGrupo] = useState(false);
+  const [grupoId, setGrupoId] = useState("");
+  const [cnpjs, setCnpjs] = useState<ClientCNPJ[]>([{ cnpj: "", razaoSocial: "", cidade: "", uf: "SP" }]);
+
+  const upd = (i: number, patch: Partial<ClientCNPJ>) =>
+    setCnpjs((l) => l.map((c, j) => (j === i ? { ...c, ...patch } : c)));
 
   function submit() {
-    if (!nome.trim() || !cnpj.trim()) return;
+    const validos = cnpjs.filter((c) => c.cnpj.trim());
+    if (!nome.trim() || validos.length === 0) return;
     onSave({
       id: newId("CLI"),
       nome: nome.trim(),
       segmento: segmento || "—",
       contato, telefone, email,
       status: "ativo",
-      isGrupo,
-      cnpjs: [{ cnpj, razaoSocial: razao || nome, cidade, uf }],
+      isGrupo: validos.length > 1 || !!grupoId,
+      grupoId: grupoId || undefined,
+      cnpjs: validos.map((c) => ({ ...c, razaoSocial: c.razaoSocial || nome })),
       criadoEm: new Date().toISOString(),
     });
   }
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="panel w-full max-w-lg p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="panel w-full max-w-2xl p-5 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="font-display text-lg mb-3">Novo cliente</div>
         <div className="grid grid-cols-2 gap-3">
-          <F label="Razão social / Grupo" full><input value={nome} onChange={(e) => setNome(e.target.value)} className="input" /></F>
+          <F label="Nome do cliente" full><input value={nome} onChange={(e) => setNome(e.target.value)} className="input" /></F>
           <F label="Segmento"><input value={segmento} onChange={(e) => setSegmento(e.target.value)} className="input" /></F>
-          <F label="É grupo?">
-            <select value={String(isGrupo)} onChange={(e) => setIsGrupo(e.target.value === "true")} className="input">
-              <option value="false">Não (CNPJ único)</option>
-              <option value="true">Sim (conglomerado)</option>
+          <F label="Conglomerado">
+            <select value={grupoId} onChange={(e) => setGrupoId(e.target.value)} className="input">
+              <option value="">Nenhum</option>
+              {groups.list.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
             </select>
           </F>
-          <F label="CNPJ"><input value={cnpj} onChange={(e) => setCnpj(e.target.value)} className="input num" /></F>
-          <F label="Razão social CNPJ"><input value={razao} onChange={(e) => setRazao(e.target.value)} className="input" /></F>
-          <F label="Cidade"><input value={cidade} onChange={(e) => setCidade(e.target.value)} className="input" /></F>
-          <F label="UF"><input value={uf} onChange={(e) => setUf(e.target.value.toUpperCase())} maxLength={2} className="input" /></F>
           <F label="Contato"><input value={contato} onChange={(e) => setContato(e.target.value)} className="input" /></F>
           <F label="Telefone"><input value={telefone} onChange={(e) => setTelefone(e.target.value)} className="input" /></F>
           <F label="E-mail" full><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input" /></F>
         </div>
+        <div className="mt-4 text-[10px] uppercase tracking-wider text-muted-foreground mb-1">CNPJs do cliente</div>
+        <div className="space-y-2">
+          {cnpjs.map((c, i) => (
+            <div key={i} className="grid grid-cols-[1.2fr_1.5fr_1fr_60px_auto] gap-2">
+              <input value={c.cnpj} onChange={(e) => upd(i, { cnpj: e.target.value })} placeholder="CNPJ" className="input num" />
+              <input value={c.razaoSocial} onChange={(e) => upd(i, { razaoSocial: e.target.value })} placeholder="Razão social" className="input" />
+              <input value={c.cidade} onChange={(e) => upd(i, { cidade: e.target.value })} placeholder="Cidade" className="input" />
+              <input value={c.uf} onChange={(e) => upd(i, { uf: e.target.value.toUpperCase() })} maxLength={2} className="input" />
+              <button type="button" disabled={cnpjs.length === 1} onClick={() => setCnpjs((l) => l.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-danger disabled:opacity-30 px-1"><Trash2 className="h-4 w-4" /></button>
+            </div>
+          ))}
+        </div>
+        <button type="button" onClick={() => setCnpjs((l) => [...l, { cnpj: "", razaoSocial: "", cidade: "", uf: "SP" }])} className="mt-2 text-xs text-primary hover:underline">+ adicionar outro CNPJ</button>
         <div className="flex justify-end gap-2 mt-4">
           <button onClick={onClose} className="text-sm px-3 py-1.5 rounded border border-border hover:bg-elevated">Cancelar</button>
           <button onClick={submit} className="text-sm px-3 py-1.5 rounded bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25">Salvar</button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function GruposTab() {
+  const groups = useClientGroups();
+  const clients = useClients();
+  const [nome, setNome] = useState("");
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">Crie conglomerados (grupos econômicos) e vincule os clientes e seus CNPJs a eles.</p>
+      <div className="panel p-4 flex gap-2 max-w-lg">
+        <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do conglomerado" className="input" />
+        <button
+          onClick={() => {
+            if (!nome.trim()) return;
+            groups.add({ id: newId("GRP"), nome: nome.trim(), criadoEm: new Date().toISOString() });
+            setNome("");
+          }}
+          className="text-sm px-3 py-1.5 rounded bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25 whitespace-nowrap"
+        >Criar</button>
+      </div>
+      {groups.list.length === 0 && <div className="text-xs text-muted-foreground">Nenhum conglomerado criado ainda.</div>}
+      <div className="grid md:grid-cols-2 gap-3">
+        {groups.list.map((g) => {
+          const membros = clients.list.filter((c) => c.grupoId === g.id);
+          const livres = clients.list.filter((c) => c.grupoId !== g.id);
+          const totalCnpj = membros.reduce((s, c) => s + c.cnpjs.length, 0);
+          return (
+            <div key={g.id} className="panel p-4">
+              <div className="flex items-center justify-between">
+                <div className="font-medium flex items-center gap-2"><Building2 className="h-4 w-4 text-primary" />{g.nome}</div>
+                <button
+                  onClick={() => {
+                    if (!window.confirm("Excluir este conglomerado? Os clientes ficam sem vínculo.")) return;
+                    membros.forEach((c) => clients.update(c.id, { grupoId: undefined }));
+                    groups.remove(g.id);
+                  }}
+                  className="text-muted-foreground hover:text-danger"
+                ><Trash2 className="h-4 w-4" /></button>
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-1">{membros.length} cliente(s) · {totalCnpj} CNPJ(s)</div>
+              <div className="mt-3 space-y-1.5">
+                {membros.map((c) => (
+                  <div key={c.id} className="flex items-center justify-between text-xs border border-border rounded px-2 py-1.5">
+                    <div>
+                      <Link to="/clientes/$id" params={{ id: c.id }} className="text-primary hover:underline">{c.nome}</Link>
+                      <div className="num text-muted-foreground">{c.cnpjs.map((x) => x.cnpj).join(" · ")}</div>
+                    </div>
+                    <button onClick={() => clients.update(c.id, { grupoId: undefined })} className="text-muted-foreground hover:text-danger text-[11px]">desvincular</button>
+                  </div>
+                ))}
+              </div>
+              {livres.length > 0 && (
+                <select
+                  value=""
+                  onChange={(e) => e.target.value && clients.update(e.target.value, { grupoId: g.id, isGrupo: true })}
+                  className="input mt-3 text-xs"
+                >
+                  <option value="">+ vincular cliente…</option>
+                  {livres.map((c) => <option key={c.id} value={c.id}>{c.nome} ({c.cnpjs.length} CNPJ)</option>)}
+                </select>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

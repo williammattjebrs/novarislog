@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useState } from "react";
 import { Wallet, TrendingUp, TrendingDown, Plus, AlertTriangle, Search, Download, Printer, FileWarning } from "lucide-react";
-import { useInvoices, useExpenses, useOrders, useConfig, newId } from "@/lib/mock-store";
+import { useInvoices, useExpenses, useExpenseGroups, useOrders, useConfig, newId } from "@/lib/mock-store";
 import { exportCsv, printReport } from "@/lib/export-utils";
 import { calcOrderCost } from "@/lib/cost-calc";
 import { fmtBRL, statusTone, toneClass, type Expense, type ExpenseType, type ExpenseArea } from "@/lib/mock-data";
@@ -26,6 +26,8 @@ export const Route = createFileRoute("/financeiro")({
 function FinanceiroPage() {
   const invoices = useInvoices();
   const expenses = useExpenses();
+  const expGroups = useExpenseGroups();
+  const [novoGrupo, setNovoGrupo] = useState("");
   const orders = useOrders();
   const [cfg] = useConfig();
   const [tab, setTab] = useState<"receitas" | "despesas" | "rentabilidade" | "divergencias">("receitas");
@@ -69,8 +71,8 @@ function FinanceiroPage() {
       return ["Receitas", ["Nº", "Cliente", "Tipo", "Emissão", "Vencimento", "Valor (R$)", "Status"],
         receitasF.map((i) => [i.numero, i.clienteNome, i.tipo, i.emissao, i.vencimento, i.valor, i.status])];
     if (tab === "despesas")
-      return ["Despesas", ["Descrição", "Tipo", "Área", "Fornecedor", "Valor (R$)", "Vencimento", "Status"],
-        despesasF.map((e) => [e.descricao, e.tipo, e.area, e.fornecedor, e.valor, e.vencimento, e.status])];
+      return ["Despesas", ["Descrição", "Grupo", "Tipo", "Área", "Fornecedor", "Valor (R$)", "Vencimento", "Status"],
+        despesasF.map((e) => [e.descricao, e.grupo ?? "", e.tipo, e.area, e.fornecedor, e.valor, e.vencimento, e.status])];
     if (tab === "divergencias")
       return ["Divergências CT-e", ["Ordem", "Cliente", "Valor Ordem (R$)", "Valor CT-e (R$)", "Diferença (R$)", "Divergência (%)"],
         divergencias.map((o) => [o.id, o.clienteNome, o.valorFrete, o.cteValor ?? 0, (o.cteValor ?? 0) - o.valorFrete, o.divergenciaPercent ?? 0])];
@@ -180,11 +182,41 @@ function FinanceiroPage() {
               <MiniStat label="Frete terceiros" v={fmtBRL(porTipo.frete_terceiros)} />
               <MiniStat label="Administrativas" v={fmtBRL(porTipo.administrativa)} />
             </div>
+            <div className="panel p-4">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Grupos de despesa</div>
+              <div className="flex flex-wrap gap-2 items-center">
+                {expGroups.list.map((g) => {
+                  const tot = expenses.list.filter((e) => e.grupo === g.nome).reduce((s, e) => s + e.valor, 0);
+                  return (
+                    <span key={g.id} className="inline-flex items-center gap-2 text-xs border border-border rounded px-2 py-1">
+                      {g.nome} <span className="num text-muted-foreground">{fmtBRL(tot)}</span>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Excluir o grupo "${g.nome}"?`)) expGroups.set(expGroups.list.filter((x) => x.id !== g.id));
+                        }}
+                        className="text-muted-foreground hover:text-danger"
+                      >×</button>
+                    </span>
+                  );
+                })}
+                <input value={novoGrupo} onChange={(e) => setNovoGrupo(e.target.value)} placeholder="Novo grupo (ex.: Marketing)" className="input max-w-[220px] py-1 text-xs" />
+                <button
+                  onClick={() => {
+                    const n = novoGrupo.trim();
+                    if (!n || expGroups.list.some((g) => g.nome.toLowerCase() === n.toLowerCase())) return;
+                    expGroups.set([...expGroups.list, { id: newId("EG"), nome: n }]);
+                    setNovoGrupo("");
+                  }}
+                  className="text-xs px-2 py-1 rounded bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25"
+                >+ Criar grupo</button>
+              </div>
+            </div>
             <div className="panel overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
                     <th className="text-left font-normal px-4 py-2.5">Descrição</th>
+                    <th className="text-left font-normal">Grupo</th>
                     <th className="text-left font-normal">Tipo</th>
                     <th className="text-left font-normal">Área</th>
                     <th className="text-left font-normal">Fornecedor</th>
@@ -197,6 +229,7 @@ function FinanceiroPage() {
                   {despesasF.map((e) => (
                     <tr key={e.id} className="border-t border-border">
                       <td className="px-4 py-2.5 text-xs">{e.descricao}</td>
+                      <td className="text-xs">{e.grupo ?? "—"}</td>
                       <td className="text-xs">{e.tipo.replace("_", " ")}</td>
                       <td className="text-xs">{e.area}</td>
                       <td className="text-xs">{e.fornecedor}</td>
@@ -206,7 +239,7 @@ function FinanceiroPage() {
                     </tr>
                   ))}
                   {despesasF.length === 0 && (
-                    <tr><td colSpan={7} className="py-8 text-center text-xs text-muted-foreground">Nenhuma despesa cadastrada.</td></tr>
+                    <tr><td colSpan={8} className="py-8 text-center text-xs text-muted-foreground">Nenhuma despesa cadastrada.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -324,6 +357,8 @@ function MiniStat({ label, v }: { label: string; v: string }) {
 }
 
 function NewExpenseModal({ onClose, onSave }: { onClose: () => void; onSave: (e: Expense) => void }) {
+  const expGroups = useExpenseGroups();
+  const [grupo, setGrupo] = useState("");
   const [desc, setDesc] = useState("");
   const [tipo, setTipo] = useState<ExpenseType>("fixa");
   const [area, setArea] = useState<ExpenseArea>("operacao");
@@ -351,6 +386,10 @@ function NewExpenseModal({ onClose, onSave }: { onClose: () => void; onSave: (e:
               <option value="comercial">Comercial</option>
             </select>
           </div>
+          <select value={grupo} onChange={(e) => setGrupo(e.target.value)} className="input">
+            <option value="">Grupo de despesa…</option>
+            {expGroups.list.map((g) => <option key={g.id} value={g.nome}>{g.nome}</option>)}
+          </select>
           <input value={fornecedor} onChange={(e) => setFornecedor(e.target.value)} placeholder="Fornecedor" className="input" />
           <div className="grid grid-cols-2 gap-3">
             <input type="number" step="0.01" value={valor} onChange={(e) => setValor(Number(e.target.value))} placeholder="Valor" className="input num" />
@@ -363,7 +402,7 @@ function NewExpenseModal({ onClose, onSave }: { onClose: () => void; onSave: (e:
             onClick={() => onSave({
               id: newId("DES"), descricao: desc, tipo, area, fornecedor, valor,
               vencimento: new Date(vencimento).toLocaleDateString("pt-BR"),
-              status: "prevista", recorrente: tipo === "fixa",
+              status: "prevista", recorrente: tipo === "fixa", grupo: grupo || undefined,
             })}
             className="text-sm px-3 py-1.5 rounded bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25"
           >Salvar</button>
