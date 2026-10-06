@@ -14,6 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
+      email_inbox_config: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string
+          dias_retroativos: number
+          filtro_remetente: string
+          host: string
+          id: number
+          intervalo_min: number
+          pasta: string
+          port: number
+          secure: boolean
+          senha: string
+          ultima_sync: string | null
+          ultimo_status: string | null
+          usuario: string
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string
+          dias_retroativos?: number
+          filtro_remetente?: string
+          host?: string
+          id?: number
+          intervalo_min?: number
+          pasta?: string
+          port?: number
+          secure?: boolean
+          senha?: string
+          ultima_sync?: string | null
+          ultimo_status?: string | null
+          usuario?: string
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string
+          dias_retroativos?: number
+          filtro_remetente?: string
+          host?: string
+          id?: number
+          intervalo_min?: number
+          pasta?: string
+          port?: number
+          secure?: boolean
+          senha?: string
+          ultima_sync?: string | null
+          ultimo_status?: string | null
+          usuario?: string
+        }
+        Relationships: []
+      }
+      email_xml_inbox: {
+        Row: {
+          arquivo: string
+          assunto: string
+          chave: string
+          criado_em: string
+          id: string
+          importado_em: string | null
+          recebido_em: string | null
+          remetente: string
+          status: string
+          tipo: string
+          xml: string
+        }
+        Insert: {
+          arquivo?: string
+          assunto?: string
+          chave: string
+          criado_em?: string
+          id?: string
+          importado_em?: string | null
+          recebido_em?: string | null
+          remetente?: string
+          status?: string
+          tipo: string
+          xml: string
+        }
+        Update: {
+          arquivo?: string
+          assunto?: string
+          chave?: string
+          criado_em?: string
+          id?: string
+          importado_em?: string | null
+          recebido_em?: string | null
+          remetente?: string
+          status?: string
+          tipo?: string
+          xml?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           ativo: boolean
