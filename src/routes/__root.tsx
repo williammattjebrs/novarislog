@@ -42,6 +42,9 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">Algo deu errado</h1>
         <p className="mt-2 text-sm text-muted-foreground">Tente novamente ou volte para a torre.</p>
+        <pre className="mt-4 max-h-40 overflow-auto whitespace-pre-wrap rounded border border-border bg-panel p-3 text-left text-[11px] text-muted-foreground">
+          {error instanceof Error ? `${error.message}\n${(error.stack ?? "").split("\n").slice(1, 4).join("\n")}` : String(error)}
+        </pre>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button onClick={() => { router.invalidate(); reset(); }} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">Tentar novamente</button>
           <a href="/" className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-accent">Ir para a torre</a>
