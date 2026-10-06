@@ -8,3 +8,4 @@
   - [x] Login real (entrar, criar acesso, recuperar senha) + nova tela de login
   - [x] Área "Usuários & acessos" (convidar por e-mail, alterar perfil, excluir)
   - [ ] Testar fluxo completo (convite → confirmação de e-mail → primeiro login) — depende do e-mail real ser confirmado
+- [ ] Conexão Microsoft 365 (Outlook) por dentro do app em Configurações para captar XML
