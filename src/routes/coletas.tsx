@@ -72,16 +72,27 @@ function ColetasPage() {
   // Upload NF-e
   // ----------------------------------------------------
   async function importNFe(files: FileList) {
+    const texts: string[] = [];
+    for (const f of Array.from(files)) texts.push(await readFileText(f));
+    const r = await importNFeTexts(texts);
+    if (!r) return;
+    alert(`✓ ${r.ok} NF-e(s) importada(s)${r.dup ? ` · ${r.dup} já existia(m) e foi(ram) ignorada(s)` : ""}${r.fail > 0 ? ` · ${r.fail} com erro de leitura` : ""}${r.corrigidas.length ? `\n\nCidades corrigidas pelo IBGE:\n${r.corrigidas.join("\n")}` : ""}`);
+    if (nfeInput.current) nfeInput.current.value = "";
+  }
+
+  async function importNFeTexts(texts: string[]) {
     if (clients.list.length === 0) {
       alert("Cadastre ao menos um cliente antes de importar NF-e (a NF é vinculada por CNPJ do remetente).");
-      return;
+      return null;
     }
-    let ok = 0, fail = 0;
+    let ok = 0, fail = 0, dup = 0;
     const corrigidas: string[] = [];
-    for (const f of Array.from(files)) {
-      const text = await readFileText(f);
+    const chavesExistentes = new Set(orders.list.map((o) => o.chaveNFe).filter(Boolean));
+    for (const text of texts) {
       const p = parseNFe(text);
       if (!p) { fail++; continue; }
+      if (p.chave && chavesExistentes.has(p.chave)) { dup++; continue; }
+      chavesExistentes.add(p.chave);
       // Corrige nomes de cidades da NF para o cadastro oficial do IBGE
       for (const part of [p.emitente, p.destinatario]) {
         const fixed = await correctCity(part.cidade, part.uf);
@@ -182,19 +193,28 @@ function ColetasPage() {
       orders.add(order);
       ok++;
     }
-    alert(`✓ ${ok} NF-e(s) importada(s)${fail > 0 ? ` · ${fail} com erro de parsing` : ""}${corrigidas.length ? `\n\nCidades corrigidas pelo IBGE:\n${[...new Set(corrigidas)].join("\n")}` : ""}`);
-    if (nfeInput.current) nfeInput.current.value = "";
+    return { ok, fail, dup, corrigidas: [...new Set(corrigidas)] };
   }
 
   // ----------------------------------------------------
   // Upload CT-e
   // ----------------------------------------------------
   async function importCTe(files: FileList) {
-    let ok = 0;
-    for (const f of Array.from(files)) {
-      const text = await readFileText(f);
+    const texts: string[] = [];
+    for (const f of Array.from(files)) texts.push(await readFileText(f));
+    const r = importCTeTexts(texts);
+    alert(`✓ ${r.ok} CT-e(s) vinculado(s) a ordens${r.dup ? ` · ${r.dup} já vinculado(s)` : ""}`);
+    if (cteInput.current) cteInput.current.value = "";
+  }
+
+  function importCTeTexts(texts: string[]) {
+    let ok = 0, dup = 0;
+    const ctesExistentes = new Set(orders.list.map((o) => o.cteChave).filter(Boolean));
+    for (const text of texts) {
       const p = parseCTe(text);
       if (!p) continue;
+      if (p.chave && ctesExistentes.has(p.chave)) { dup++; continue; }
+      ctesExistentes.add(p.chave);
 
       // Casa por chave da NF-e referenciada
       const order = orders.list.find((o) =>
@@ -236,8 +256,16 @@ function ColetasPage() {
       });
       ok++;
     }
-    alert(`✓ ${ok} CT-e(s) vinculado(s) a ordens`);
-    if (cteInput.current) cteInput.current.value = "";
+    return { ok, dup };
+  }
+
+  async function importFromEmail(xmls: { chave: string; tipo: "nfe" | "cte"; xml: string }[]) {
+    const nfes = xmls.filter((x) => x.tipo === "nfe");
+    const ctes = xmls.filter((x) => x.tipo === "cte");
+    const rn = nfes.length ? await importNFeTexts(nfes.map((x) => x.xml)) : { ok: 0, fail: 0, dup: 0, corrigidas: [] };
+    if (!rn) return null; // sem clientes cadastrados — mantém os XML pendentes
+    const rc = ctes.length ? importCTeTexts(ctes.map((x) => x.xml)) : { ok: 0, dup: 0 };
+    return { nfe: rn.ok, cte: rc.ok, dup: rn.dup + rc.dup, fail: rn.fail, chaves: xmls.map((x) => x.chave) };
   }
 
   function ordensExportData(): [string, string[], (string | number)[][]] {
@@ -288,7 +316,7 @@ function ColetasPage() {
 
         <ColetasTriage
           orders={orders.list}
-          cfg={cfg}
+          onImportEmail={importFromEmail}
           onSelect={setSelected}
           onEmitirSugerido={(o) => {
             setSelected(o.id);

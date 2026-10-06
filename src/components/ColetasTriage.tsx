@@ -1,19 +1,70 @@
 import { Link } from "@tanstack/react-router";
-import { Mail, FileCheck2, AlertTriangle } from "lucide-react";
-import { fmtBRL, DEFAULT_EMAIL_INBOX, type Order, type AppConfig } from "@/lib/mock-data";
+import { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { Mail, FileCheck2, AlertTriangle, RefreshCw } from "lucide-react";
+import { fmtBRL, type Order } from "@/lib/mock-data";
+import { getInboxConfig, syncInbox, listPendingXml, markXmlImported } from "@/lib/email-inbox.functions";
 
-// Caixa de e-mail (preparada) + sugestão de CT-e + fila de tratamento do time.
+type EmailImportResult = { nfe: number; cte: number; dup: number; fail: number; chaves: string[] } | null;
+
+// Caixa de e-mail (IMAP) + sugestão de CT-e + fila de tratamento do time.
 export function ColetasTriage({
-  orders, cfg, onSelect, onEmitirSugerido,
+  orders, onSelect, onEmitirSugerido, onImportEmail,
 }: {
   orders: Order[];
-  cfg: AppConfig;
   onSelect: (id: string) => void;
   onEmitirSugerido: (o: Order) => void;
+  onImportEmail: (xmls: { chave: string; tipo: "nfe" | "cte"; xml: string }[]) => Promise<EmailImportResult>;
 }) {
-  const inbox = cfg.emailInbox ?? DEFAULT_EMAIL_INBOX;
+  const qc = useQueryClient();
+  const fetchCfg = useServerFn(getInboxConfig);
+  const sync = useServerFn(syncInbox);
+  const pending = useServerFn(listPendingXml);
+  const mark = useServerFn(markXmlImported);
+  const { data: inbox } = useQuery({ queryKey: ["inbox-config"], queryFn: () => fetchCfg(), retry: false });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const busyRef = useRef(false);
+
   const sugeridos = orders.filter((o) => o.valorFrete > 0 && !o.cteValor && !["cte_ok", "em_viagem", "entregue"].includes(o.stage));
   const tratamento = orders.filter((o) => !o.valorFrete || o.stage === "aguarda_vinculacao" || o.stage === "cte_divergente");
+
+  async function buscar(silencioso = false) {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      const r = await sync();
+      const lista = await pending();
+      let resumo = r.mensagem;
+      if (lista.length) {
+        const imp = await onImportEmail(lista);
+        if (imp) {
+          await mark({ data: { chaves: imp.chaves } });
+          resumo += ` → ${imp.nfe} NF-e e ${imp.cte} CT-e lançados${imp.dup ? ` · ${imp.dup} já existiam` : ""}`;
+        } else {
+          resumo += " → XMLs aguardando: cadastre um cliente para lançar.";
+        }
+      }
+      setMsg(resumo);
+      qc.invalidateQueries({ queryKey: ["inbox-config"] });
+    } catch (e) {
+      if (!silencioso) setMsg(e instanceof Error ? e.message : "Falha ao buscar XML do e-mail.");
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }
+
+  // Leitura automática enquanto a tela de Coletas estiver aberta.
+  useEffect(() => {
+    if (!inbox?.ativo || !inbox.host) return;
+    const ms = Math.max(5, inbox.intervaloMin) * 60000;
+    const t = setInterval(() => buscar(true), ms);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inbox?.ativo, inbox?.host, inbox?.intervaloMin]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
@@ -22,16 +73,31 @@ export function ColetasTriage({
           <Mail className="h-4 w-4 text-primary" />
           <div className="font-display">Captação por e-mail</div>
         </div>
-        {inbox.endereco ? (
+        {inbox?.host ? (
           <div className="text-xs space-y-1">
-            <div className="num">{inbox.endereco}</div>
-            <div className="text-muted-foreground">Filtro: {inbox.filtro} · a cada {inbox.intervaloMin} min</div>
+            <div className="num">{inbox.usuario} · {inbox.pasta}</div>
+            <div className="text-muted-foreground">Últimos {inbox.diasRetroativos} dia(s) · a cada {inbox.intervaloMin} min</div>
             <div className={inbox.ativo ? "text-success" : "text-warning"}>
-              {inbox.ativo ? "● Leitura automática ligada (aguardando autorização da conta)" : "○ Leitura automática desligada"}
+              {inbox.ativo ? "● Leitura automática ligada (com esta tela aberta)" : "○ Leitura automática desligada"}
             </div>
+            {inbox.ultimaSync && (
+              <div className="text-muted-foreground">Última leitura: {new Date(inbox.ultimaSync).toLocaleString("pt-BR")}</div>
+            )}
+            <button
+              onClick={() => buscar(false)}
+              disabled={busy}
+              className="mt-1 inline-flex items-center gap-1.5 px-2 py-1 rounded border border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3 w-3 ${busy ? "animate-spin" : ""}`} /> {busy ? "Buscando…" : "Buscar XML agora"}
+            </button>
+            {(msg || inbox.ultimoStatus) && (
+              <div className={`text-[11px] ${(msg ?? inbox.ultimoStatus ?? "").startsWith("Erro") ? "text-danger" : "text-muted-foreground"}`}>
+                {msg ?? inbox.ultimoStatus}
+              </div>
+            )}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">Nenhuma caixa configurada. Os XML recebidos no e-mail empresarial entrarão aqui automaticamente.</p>
+          <p className="text-xs text-muted-foreground">Nenhuma caixa configurada. Informe os dados IMAP em Configurações para buscar os XML automaticamente.</p>
         )}
         <Link to="/configuracoes" className="text-xs text-primary hover:underline mt-2 inline-block">configurar e-mail →</Link>
       </div>

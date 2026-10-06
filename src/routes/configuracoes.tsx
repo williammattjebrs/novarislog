@@ -3,8 +3,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useConfig, resetAllData } from "@/lib/mock-store";
-import { DEFAULT_CONFIG, DEFAULT_EMAIL_INBOX, DEFAULT_EMAIL_TEMPLATE, ORDER_STAGES } from "@/lib/mock-data";
+import { DEFAULT_CONFIG, DEFAULT_EMAIL_TEMPLATE, ORDER_STAGES } from "@/lib/mock-data";
 import { Mail } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getInboxConfig, saveInboxConfig, testInbox, syncInbox } from "@/lib/email-inbox.functions";
+import { useAuth } from "@/lib/auth";
 import { Settings, RotateCcw, Trash2, DatabaseBackup, Upload } from "lucide-react";
 import { downloadBackup, restoreBackup } from "@/lib/export-utils";
 
@@ -29,9 +34,7 @@ function ConfigPage() {
     setCfg({ ...cfg, frota: { ...cfg.frota, [k]: v } });
   }
 
-  const inbox = cfg.emailInbox ?? DEFAULT_EMAIL_INBOX;
   const tpl = cfg.emailTemplate ?? DEFAULT_EMAIL_TEMPLATE;
-  const setInbox = (p: Partial<typeof inbox>) => setCfg({ ...cfg, emailInbox: { ...inbox, ...p } });
   const setTpl = (p: Partial<typeof tpl>) => setCfg({ ...cfg, emailTemplate: { ...tpl, ...p } });
 
   function onRestoreFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -98,31 +101,7 @@ function ConfigPage() {
           ><RotateCcw className="h-3 w-3" /> restaurar padrões</button>
         </section>
 
-        <section className="panel p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-primary" />
-            <div className="font-display text-lg">Captação de XML por e-mail</div>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Caixa empresarial de onde os XML de NF-e/CT-e serão lidos automaticamente e confrontados com as tabelas de frete.
-            A leitura começa assim que a conta de e-mail for autorizada.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <F label="Provedor">
-              <select value={inbox.provedor} onChange={(e) => setInbox({ provedor: e.target.value as typeof inbox.provedor })} className="input">
-                <option value="gmail">Google Workspace / Gmail</option>
-                <option value="outlook">Microsoft 365 / Outlook</option>
-                <option value="imap">Outro (IMAP)</option>
-              </select>
-            </F>
-            <F label="E-mail empresarial"><input value={inbox.endereco} onChange={(e) => setInbox({ endereco: e.target.value })} placeholder="xml@novaris.com.br" className="input" /></F>
-            <F label="Filtro de busca"><input value={inbox.filtro} onChange={(e) => setInbox({ filtro: e.target.value })} className="input num" /></F>
-            <F label="Verificar a cada (min)"><input type="number" value={inbox.intervaloMin} onChange={(e) => setInbox({ intervaloMin: Number(e.target.value) })} className="input num" /></F>
-          </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={inbox.ativo} onChange={(e) => setInbox({ ativo: e.target.checked })} /> Ativar leitura automática
-          </label>
-        </section>
+        <InboxSection />
 
         <section className="panel p-5 space-y-3">
           <div className="font-display text-lg">Layout do e-mail de rastreio ao cliente</div>
@@ -196,5 +175,121 @@ function F({ label, children }: { label: string; children: React.ReactNode }) {
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{label}</div>
       {children}
     </label>
+  );
+}
+
+const PRESETS: Record<string, { host: string; port: number; secure: boolean }> = {
+  gmail: { host: "imap.gmail.com", port: 993, secure: true },
+  outlook: { host: "outlook.office365.com", port: 993, secure: true },
+  hostinger: { host: "imap.hostinger.com", port: 993, secure: true },
+  locaweb: { host: "imap.email-ssl.com.br", port: 993, secure: true },
+};
+
+function InboxSection() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const qc = useQueryClient();
+  const fetchCfg = useServerFn(getInboxConfig);
+  const save = useServerFn(saveInboxConfig);
+  const test = useServerFn(testInbox);
+  const sync = useServerFn(syncInbox);
+  const { data, isLoading, error } = useQuery({ queryKey: ["inbox-config"], queryFn: () => fetchCfg(), retry: false });
+
+  const [f, setF] = useState({
+    host: "", port: 993, secure: true, usuario: "", senha: "", pasta: "INBOX",
+    diasRetroativos: 7, filtroRemetente: "", ativo: false, intervaloMin: 15,
+  });
+  const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (data) setF((x) => ({ ...x, ...data, senha: "" }));
+  }, [data]);
+
+  const set = (p: Partial<typeof f>) => setF((x) => ({ ...x, ...p }));
+
+  async function run(kind: "save" | "test" | "sync") {
+    setBusy(kind);
+    setMsg(null);
+    try {
+      if (kind === "save" || kind === "test") {
+        await save({ data: { ...f, senha: f.senha || undefined } });
+        set({ senha: "" });
+      }
+      if (kind === "save") setMsg({ ok: true, t: "Configuração salva." });
+      if (kind === "test") {
+        const r = await test();
+        setMsg({ ok: r.ok, t: r.mensagem });
+      }
+      if (kind === "sync") {
+        const r = await sync();
+        setMsg({ ok: r.ok, t: r.ok ? `${r.mensagem}. Abra Coletas para lançar os XML novos.` : r.mensagem });
+      }
+      qc.invalidateQueries({ queryKey: ["inbox-config"] });
+    } catch (e) {
+      setMsg({ ok: false, t: e instanceof Error ? e.message : "Falha na operação." });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <section className="panel p-5 space-y-3">
+      <div className="flex items-center gap-2">
+        <Mail className="h-4 w-4 text-primary" />
+        <div className="font-display text-lg">Captação de XML por e-mail (IMAP)</div>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Informe os dados de acesso da caixa que recebe os XML de NF-e/CT-e. O sistema lê os anexos .xml do período escolhido e
+        ignora qualquer XML que já tenha sido importado (pela chave de acesso), então nada é duplicado.
+      </p>
+      {error && <div className="text-xs text-danger">{error instanceof Error ? error.message : "Sem acesso."}</div>}
+      {isLoading ? (
+        <div className="text-xs text-muted-foreground">Carregando…</div>
+      ) : (
+        <fieldset disabled={!isAdmin} className="space-y-3">
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="text-muted-foreground self-center">Preencher servidor:</span>
+            {Object.entries({ gmail: "Gmail / Workspace", outlook: "Microsoft 365", hostinger: "Hostinger", locaweb: "Locaweb" }).map(([k, l]) => (
+              <button key={k} type="button" onClick={() => set(PRESETS[k])} className="px-2 py-0.5 rounded border border-border hover:bg-elevated">{l}</button>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <F label="Servidor IMAP"><input value={f.host} onChange={(e) => set({ host: e.target.value })} placeholder="imap.seudominio.com.br" className="input" /></F>
+            <F label="Porta"><input type="number" value={f.port} onChange={(e) => set({ port: Number(e.target.value) })} className="input num" /></F>
+            <F label="Conexão">
+              <select value={String(f.secure)} onChange={(e) => set({ secure: e.target.value === "true" })} className="input">
+                <option value="true">Segura (SSL/TLS)</option>
+                <option value="false">Sem SSL / STARTTLS</option>
+              </select>
+            </F>
+            <F label="Usuário (e-mail)"><input value={f.usuario} onChange={(e) => set({ usuario: e.target.value })} placeholder="xml@novarislog.com.br" className="input" autoComplete="off" /></F>
+            <F label={data?.temSenha ? "Senha (deixe vazio para manter)" : "Senha"}>
+              <input type="password" value={f.senha} onChange={(e) => set({ senha: e.target.value })} placeholder={data?.temSenha ? "••••••••" : ""} className="input" autoComplete="new-password" />
+            </F>
+            <F label="Pasta"><input value={f.pasta} onChange={(e) => set({ pasta: e.target.value })} className="input" /></F>
+            <F label="Buscar XML dos últimos (dias)"><input type="number" min={1} max={365} value={f.diasRetroativos} onChange={(e) => set({ diasRetroativos: Number(e.target.value) })} className="input num" /></F>
+            <F label="Somente do remetente (opcional)"><input value={f.filtroRemetente} onChange={(e) => set({ filtroRemetente: e.target.value })} placeholder="nfe@cliente.com.br" className="input" /></F>
+            <F label="Verificar a cada (min)"><input type="number" min={5} value={f.intervaloMin} onChange={(e) => set({ intervaloMin: Number(e.target.value) })} className="input num" /></F>
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={f.ativo} onChange={(e) => set({ ativo: e.target.checked })} /> Ativar leitura automática
+          </label>
+          <p className="text-[11px] text-muted-foreground">
+            Gmail e Microsoft 365 exigem uma <b>senha de app</b> (gerada na conta Google/Microsoft com verificação em 2 etapas) e o IMAP habilitado na caixa.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => run("save")} disabled={!!busy} className="text-sm px-3 py-1.5 rounded bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25">{busy === "save" ? "Salvando…" : "Salvar"}</button>
+            <button type="button" onClick={() => run("test")} disabled={!!busy} className="text-sm px-3 py-1.5 rounded border border-border hover:bg-elevated">{busy === "test" ? "Testando…" : "Salvar e testar conexão"}</button>
+            <button type="button" onClick={() => run("sync")} disabled={!!busy || !data?.host} className="text-sm px-3 py-1.5 rounded border border-border hover:bg-elevated">{busy === "sync" ? "Buscando…" : "Buscar XML agora"}</button>
+          </div>
+        </fieldset>
+      )}
+      {!isAdmin && <div className="text-[11px] text-muted-foreground">Somente administradores alteram estes dados.</div>}
+      {msg && <div className={`text-xs ${msg.ok ? "text-success" : "text-danger"}`}>{msg.t}</div>}
+      {data?.ultimaSync && (
+        <div className="text-[11px] text-muted-foreground">Última leitura: {new Date(data.ultimaSync).toLocaleString("pt-BR")} — {data.ultimoStatus}</div>
+      )}
+    </section>
   );
 }
