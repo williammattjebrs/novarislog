@@ -81,10 +81,7 @@ function ColetasPage() {
   }
 
   async function importNFeTexts(texts: string[]) {
-    if (clients.list.length === 0) {
-      alert("Cadastre ao menos um cliente antes de importar NF-e (a NF é vinculada por CNPJ do remetente).");
-      return null;
-    }
+    // Sem cliente cadastrado para o CNPJ, a ordem entra como "(sem cliente)" na fila de tratamento.
     let ok = 0, fail = 0, dup = 0;
     const corrigidas: string[] = [];
     const chavesExistentes = new Set(orders.list.map((o) => o.chaveNFe).filter(Boolean));
