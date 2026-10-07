@@ -82,6 +82,7 @@ function Veiculos() {
     const placa = f.placa.toUpperCase().replace(/[^A-Z0-9]/g, "");
     if (!/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(placa)) return setErr("Placa inválida (ex.: ABC1D23 ou ABC1234).");
     if (v.list.some((x) => x.placa === placa)) return setErr("Placa já cadastrada.");
+    if (!Number(f.capacidadeKg)) return setErr("Informe a capacidade de carga (kg).");
     v.add({ id: newId("VEI"), placa, tipo: f.tipo, modelo: f.modelo.trim(), proprietario: f.proprietario, capacidadeKg: Number(f.capacidadeKg) || undefined, ativo: true, criadoEm: new Date().toISOString() });
     setF({ ...f, placa: "", modelo: "", capacidadeKg: "" }); setErr("");
   }
