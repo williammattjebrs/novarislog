@@ -21,3 +21,4 @@
 - [x] Cadastros de Motoristas e Veículos
 - [x] Ordem de Coleta com local/horário de coleta e entrega, base do monitoramento
 - [x] Espelho de coleta exportável (PDF/impressão) e envio ao motorista
+- [x] Fluxo automático NF-e → rota → OC; coletada aguarda CT-e; vínculo manual de CT-e
