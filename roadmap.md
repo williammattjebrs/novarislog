@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Manual de uso: treinamento por módulo com telas reais, busca e navegação no app
+- [x] Manual de uso: treinamento por módulo com telas reais, busca e navegação no app
 
 - [x] Exportação: PDF/Excel de listas (coletas, financeiro) + backup dos dados
 - [x] Ajustes menores: alertas de divergência de CT-e no painel da TV e no financeiro
