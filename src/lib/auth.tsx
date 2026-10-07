@@ -11,7 +11,7 @@ export interface AuthUser {
   email: string;
   nome: string;
   role: Role;
-  modulos: string[];
+  modulos: string[]; ativo: boolean;
 }
 
 interface AuthCtx {
@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function loadProfile() {
     try {
       const p = await getMyProfile();
-      setUser({ email: p.email, nome: p.nome, role: p.role as Role, modulos: p.modulos ?? [] });
+      setUser({ email: p.email, nome: p.nome, role: p.role as Role, modulos: p.modulos ?? [], ativo: p.ativo ?? true });
     } catch {
       setUser(null);
     }

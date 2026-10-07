@@ -28,7 +28,7 @@ export const Route = createFileRoute("/monitoramento")({
   }),
   component: () => (
     <RoleGate path="/monitoramento">
-      <MonitoramentoPage />
+      <MonitoramentoPage  />}
     </RoleGate>
   ),
 });
@@ -41,6 +41,7 @@ function MonitoramentoPage() {
   const orders = useOrders();
   const [cfg] = useConfig();
   const { user } = useAuth();
+  const canSeeCosts = user?.role === "admin" || user?.role === "financeiro";
   const [uf, setUf] = useState("");
   const [cliente, setCliente] = useState("");
   const [busca, setBusca] = useState("");
@@ -108,19 +109,19 @@ function MonitoramentoPage() {
         </div>
 
         <div className="panel p-3 flex flex-wrap items-center gap-2">
-          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+          <Filter className="h-3.5 w-3.5 text-muted-foreground"  />}
           <select value={cliente} onChange={(e) => setCliente(e.target.value)} className="input max-w-[200px]">
             <option value="">Todos os clientes</option>
             {clientes.map((c) => <option key={c}>{c}</option>)}
           </select>
-          <input value={uf} onChange={(e) => setUf(e.target.value.toUpperCase())} placeholder="UF destino" maxLength={2} className="input max-w-[100px] num" />
+          <input value={uf} onChange={(e) => setUf(e.target.value.toUpperCase())} placeholder="UF destino" maxLength={2} className="input max-w-[100px] num"  />}
           <div className="relative flex-1 min-w-[220px]">
-            <Search className="h-3.5 w-3.5 absolute left-2 top-2.5 text-muted-foreground" />
-            <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por ordem, cliente, NF, destino" className="input pl-7" />
+            <Search className="h-3.5 w-3.5 absolute left-2 top-2.5 text-muted-foreground"  />}
+            <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por ordem, cliente, NF, destino" className="input pl-7"  />}
           </div>
           <span className="text-xs text-muted-foreground">{filtered.length} entregas · {criticas.length} críticas</span>
           <button onClick={() => setBulkOpen(true)} className="ml-auto text-xs px-3 py-1.5 rounded bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25 inline-flex items-center gap-1">
-            <Mail className="h-3.5 w-3.5" /> Atualizar cliente
+            <Mail className="h-3.5 w-3.5"  />} Atualizar cliente
           </button>
         </div>
 
@@ -135,7 +136,7 @@ function MonitoramentoPage() {
                     <span className={`text-[11px] px-2 py-0.5 rounded border ${toneClass(statusTone(o.stage))}`}>{stageLabel(o.stage)}</span>
                   </div>
                   <button onClick={() => setFollowFor(o)} className="text-xs text-primary hover:underline inline-flex items-center gap-1">
-                    <MessageSquare className="h-3 w-3" /> disparar follow
+                    <MessageSquare className="h-3 w-3"  />} disparar follow
                   </button>
                 </div>
               ))}
@@ -169,7 +170,7 @@ function MonitoramentoPage() {
                       {o.cteValor ? (
                         <div className="flex flex-col items-end">
                           <span>{fmtBRL(o.cteValor)}</span>
-                          {o.divergenciaPercent != null && <DivergenceBadge percent={o.divergenciaPercent} tolerancia={cfg.toleranciaDivergenciaPercent} />}
+                          {o.divergenciaPercent != null && <DivergenceBadge percent={o.divergenciaPercent} tolerancia={cfg.toleranciaDivergenciaPercent}  />}}
                         </div>
                       ) : <span className="text-muted-foreground">—</span>}
                     </td>
@@ -181,7 +182,7 @@ function MonitoramentoPage() {
                         currentStatus={o.stage}
                         onChangeStatus={(next, entry) => orders.update(o.id, { stage: next as OrderStage, timeline: [...o.timeline, entry], atualizadoEm: new Date().toISOString() })}
                         onAddEntry={(entry) => orders.update(o.id, { timeline: [...o.timeline, entry], atualizadoEm: new Date().toISOString() })}
-                      />
+                       />}
                     </td>
                   </tr>
                 ))}
@@ -194,20 +195,21 @@ function MonitoramentoPage() {
 
           {sel && (
             <div className="space-y-4">
+            <div className="space-y-4">
               <div className="panel p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Ordem</div>
                     <div className="font-display num text-primary">{sel.id}</div>
                   </div>
-                  <button onClick={() => setSelected(null)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+                  <button onClick={() => setSelected(null)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4"  />}</button>
                 </div>
                 <div className="text-xs mb-3">
                   <div>{sel.clienteNome} · {sel.cidadeColeta}/{sel.ufColeta} → {sel.cidadeEntrega}/{sel.ufEntrega}</div>
                   <div className="text-muted-foreground mt-1">Motorista: {sel.motorista || "—"} · {sel.placa || ""}</div>
                 </div>
                 <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Linha do tempo</div>
-                <Timeline entries={sel.timeline} />
+                <Timeline entries={sel.timeline}  />}
               </div>
 
               <TrackingPanel
@@ -216,9 +218,9 @@ function MonitoramentoPage() {
                 cfg={cfg}
                 autor={user?.nome ?? "sistema"}
                 onUpdate={(patch) => orders.update(sel.id, patch)}
-              />
+               />}
 
-              <CostPanel
+               {canSeeCosts && <CostPanel
                 costs={sel.costs}
                 valorFrete={sel.valorFrete}
                 onSave={(next) => orders.update(sel.id, {
@@ -229,13 +231,13 @@ function MonitoramentoPage() {
                   }],
                   atualizadoEm: new Date().toISOString(),
                 })}
-              />
+               />}
             </div>
           )}
         </div>
 
         <div className="panel p-4 text-xs text-muted-foreground flex items-center gap-2">
-          <Truck className="h-3.5 w-3.5" />
+          <Truck className="h-3.5 w-3.5"  />}
           Integração de rastreamento (Cargon, Buonny, etc.) · <span className="text-accent">não conectada</span> — use o apontamento manual ao abrir cada entrega.
         </div>
       </div>
@@ -252,7 +254,7 @@ function MonitoramentoPage() {
               ? { ...o, emailCliente: o.emailCliente || email, timeline: [...o.timeline, entry], atualizadoEm: now }
               : o));
           }}
-        />
+         />}
       )}
 
       {followFor && (
@@ -264,7 +266,7 @@ function MonitoramentoPage() {
             }],
           });
           setFollowFor(null);
-        }} />
+        }}  />}
       )}
     </AppShell>
   );
@@ -289,7 +291,7 @@ function FollowModal({ order, onClose, onSent }: { order: Order; onClose: () => 
         </label>
         <label className="block">
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Mensagem</div>
-          <textarea value={msg} onChange={(e) => setMsg(e.target.value)} className="input min-h-[140px]" />
+          <textarea value={msg} onChange={(e) => setMsg(e.target.value)} className="input min-h-[140px]"  />}
         </label>
         <div className="flex justify-end gap-2 mt-4">
           <button onClick={onClose} className="text-sm px-3 py-1.5 rounded border border-border hover:bg-elevated">Cancelar</button>
