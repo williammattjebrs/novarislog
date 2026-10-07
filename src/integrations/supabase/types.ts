@@ -305,6 +305,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      tms_access_selftest: { Args: never; Returns: Json }
       tms_active: { Args: never; Returns: boolean }
       tms_claim_job: {
         Args: { p_interval: number; p_task: string }

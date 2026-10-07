@@ -71,6 +71,13 @@
       "when": 1791389109663,
       "tag": "0009_headless_atomic_nfe_import",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791389331585,
+      "tag": "0010_rollback_access_validation",
+      "breakpoints": true
     }
   ]
 }
