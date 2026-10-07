@@ -1,7 +1,7 @@
 // Envio de atualização de rastreio em lote: escolhe o cliente e as notas.
 import { useMemo, useState } from "react";
 import { Mail, X, Copy } from "lucide-react";
-import { type Order, type TimelineEntry } from "@/lib/mock-data";
+import { stageLabel, type Order, type TimelineEntry } from "@/lib/mock-data";
 
 import { Button } from "@/components/ui/button";
 import { TrackingEmailPreview } from "@/components/TrackingEmailPreview";
