@@ -434,7 +434,7 @@ function ColetasPage() {
                   </tr>
                 ))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={7} className="py-8 text-center text-xs text-muted-foreground">
+                  <tr><td colSpan={8} className="py-8 text-center text-xs text-muted-foreground">
                     Nenhuma ordem. Importe um XML de NF-e para começar.
                   </td></tr>
                 )}
