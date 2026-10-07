@@ -109,7 +109,8 @@ function MotoristaSelect({ value, onChange, disabled }: { value: string; onChang
     const existente = mot.list.find((x) => x.cpf.replace(/\D/g, "") === cpf);
     if (existente) { onChange(existente.id); setNovo(false); setErr(""); return; }
     const id = newId("MOT");
-    mot.add({ id, nome: f.nome.trim(), cpf: fmtCpf(cpf), telefone: f.telefone.trim(), cnh: "", ativo: true, criadoEm: new Date().toISOString() });
+    try { await mot.add({ id, nome: f.nome.trim(), cpf: fmtCpf(cpf), telefone: f.telefone.trim(), cnh: "", ativo: true, criadoEm: new Date().toISOString() }); }
+    catch(e){setErr(e instanceof Error?e.message:'Falha ao salvar motorista.');return;}
     onChange(id); setNovo(false); setF({ nome: "", cpf: "", telefone: "" }); setErr("");
   }
   if (novo) return (
@@ -150,15 +151,15 @@ function VeiculoSelect({ value, onChange, disabled }: { value: string; onChange:
   const [novo, setNovo] = useState(false);
   const [f, setF] = useState({ placa: "", tipo: "Truck", proprietario: "frota" as "frota" | "terceiro", capacidadeKg: "" });
   const [err, setErr] = useState("");
-  function salvar() {
+  async function salvar() {
     const placa = f.placa.toUpperCase().replace(/[^A-Z0-9]/g, "");
     if (!/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(placa)) return setErr("Placa inválida (ex.: ABC1D23 ou ABC1234).");
     const cap = Number(String(f.capacidadeKg).replace(/\./g, "").replace(",", "."));
     if (!cap || cap <= 0) return setErr("Informe a capacidade de carga (kg).");
     const existente = vei.list.find((x) => x.placa === placa);
-    if (existente) { if (!existente.capacidadeKg) vei.update(existente.id, { capacidadeKg: cap }); onChange(existente.id); setNovo(false); setErr(""); return; }
+    if (existente) { try{if (!existente.capacidadeKg) await vei.update(existente.id, { capacidadeKg: cap }); onChange(existente.id); setNovo(false); setErr("");}catch(e){setErr(e instanceof Error?e.message:'Falha ao atualizar veículo.');} return; }
     const id = newId("VEI");
-    vei.add({ id, placa, tipo: f.tipo, modelo: "", proprietario: f.proprietario, capacidadeKg: cap, ativo: true, criadoEm: new Date().toISOString() });
+    try{await vei.add({ id, placa, tipo: f.tipo, modelo: "", proprietario: f.proprietario, capacidadeKg: cap, ativo: true, criadoEm: new Date().toISOString() });}catch(e){setErr(e instanceof Error?e.message:'Falha ao salvar veículo.');return;}
     onChange(id); setNovo(false); setF({ placa: "", tipo: "Truck", proprietario: "frota", capacidadeKg: "" }); setErr("");
   }
   if (novo) return (

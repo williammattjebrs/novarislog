@@ -444,7 +444,7 @@ function ColetasPage() {
 function OrderDetail({ order, onClose, onUpdate }: {
   order: Order;
   onClose: () => void;
-  onUpdate: (patch: Partial<Order>) => void;
+  onUpdate: (patch: Partial<Order>) => Promise<void> | void;
 }) {
   const [cfg] = useConfig();
   const tables = useFreightTables();
@@ -455,15 +455,12 @@ function OrderDetail({ order, onClose, onUpdate }: {
 
   const ocDaNota = ocs.list.find((oc) => oc.orderIds.includes(order.id) && oc.status !== "cancelada");
 
-  function gerarOC() {
+  async function gerarOC() {
     const r = vincularOrderEmRota(order, rotas.list, ocs.list, user?.nome ?? "usuário");
-    void commitLists({rotas:r.rotas,ordensColeta:r.ocs},"Gerar OC por solicitação do operador");
-    onUpdate({
-      timeline: [...order.timeline, {
+    try{await commitLists({rotas:r.rotas,ordensColeta:r.ocs,orders:(getList<Order>('orders')??[]).map(o=>o.id===order.id?{...o,timeline: [...order.timeline, {
         quando: new Date().toISOString(), autor: user?.nome ?? "usuário", tipo: "sistema",
         texto: `Ordem de coleta ${r.oc.numero} gerada manualmente a partir da tela de Coletas`,
-      }],
-    });
+      }]}:o)},"Gerar OC por solicitação do operador");}catch(e){alert(e instanceof Error?e.message:'Falha ao gerar OC.');}
   }
 
   // Sugestões de match manual quando aguarda vinculação
