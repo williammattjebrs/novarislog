@@ -24,7 +24,9 @@ interface AuthCtx {
   loading: boolean;
 }
 
-const Ctx = createContext<AuthCtx | undefined>(undefined);
+// Contexto estável entre recargas do módulo (evita "useAuth fora do AuthProvider" após atualização a quente).
+const g = globalThis as unknown as { __novarisAuthCtx?: React.Context<AuthCtx | undefined> };
+const Ctx = (g.__novarisAuthCtx ??= createContext<AuthCtx | undefined>(undefined));
 
 function traduzErro(msg: string): string {
   if (msg.includes("Invalid login credentials")) return "E-mail ou senha inválidos.";
