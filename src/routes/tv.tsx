@@ -293,7 +293,7 @@ function TvPage() {
 }
 
 function Big({ l, v, s, tone = "text-foreground" }: { l: string; v: string; s: string; tone?: string }) {
-  return <div className="panel p-5"><div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{l}</div><div className={`num text-4xl xl:text-5xl mt-2 ${tone}`}>{v}</div><div className="text-xs text-muted-foreground mt-2">{s}</div></div>;
+  return <div className="panel p-4 min-w-0"><div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{l}</div><div className={`num text-2xl mt-2 break-words ${tone}`}>{v}</div><div className="text-xs text-muted-foreground mt-2">{s}</div></div>;
 }
 function Mid({ l, v, tone }: { l: string; v: number; tone: string }) {
   return <div className="panel p-4 text-center"><div className={`num text-4xl ${tone}`}>{v}</div><div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-1">{l}</div></div>;

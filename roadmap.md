@@ -36,4 +36,6 @@
 - [x] Fluxo automático NF-e → rota → OC; coletada aguarda CT-e; vínculo manual de CT-e
 
 ## Pendente
+- [ ] Rateio manual sem base/peso e regularização fiscal de CT-e histórico — não implementados nesta revisão; exigem fluxo autorizado e confirmação operacional
+- [ ] Teste de importação simultânea em dois dispositivos e confirmação de restauração pela tela em ambiente isolado — validações transacionais já passaram, testes completos não executados
 - [x] Multi-NF e multi-CT-e: rota/OC já agrupam várias NFs; CT-e vincula por todas as chaves de NF referenciadas; mesmo veículo/motorista reutilizável em várias OCs
