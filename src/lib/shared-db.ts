@@ -50,8 +50,10 @@ export function clearSharedSession() {
 }
 async function commit(changes: Change[], reason: string) {
   if (!ready) throw new Error('Aguarde o carregamento dos dados antes de alterar registros.');
+  const generation=sessionGeneration;
   status({ status: 'salvando', message: 'Confirmando gravação' });
   const { data, error } = await supabase.rpc('tms_records_commit', { changes: changes as any, reason });
+  if(generation!==sessionGeneration)throw new Error('Sessão encerrada durante a gravação. Consulte o registro ao entrar novamente.');
   if (error) {
     pending.push({ changes, reason });
     status({ status: error.message.includes('CONFLICT') ? 'conflito' : 'falha', message: error.message.includes('CONFLICT') ? 'Outro operador alterou o registro. Revise os dados antes de tentar novamente.' : 'Gravação falhou. Alterações preservadas nesta sessão.' });
