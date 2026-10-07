@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_records: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          collection: string
+          criado_em: string
+          data: Json
+          id: string
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          collection: string
+          criado_em?: string
+          data: Json
+          id: string
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          collection?: string
+          criado_em?: string
+          data?: Json
+          id?: string
+        }
+        Relationships: []
+      }
       email_inbox_config: {
         Row: {
           ativo: boolean
