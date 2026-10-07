@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Mail, FileCheck2, AlertTriangle, RefreshCw } from "lucide-react";
 import { fmtBRL, type Order } from "@/lib/mock-data";
-import { sharedReady } from "@/lib/shared-db";
+import { refreshShared } from "@/lib/shared-db";
 import { getInboxConfig, syncInbox, listPendingXml, markXmlImported } from "@/lib/email-inbox.functions";
 
 type EmailImportResult = { nfe: number; cte: number; dup: number; fail: number; chaves: string[]; cteAguardando?: number } | null;
@@ -36,7 +36,7 @@ export function ColetasTriage({
     busyRef.current = true;
     setBusy(true);
     try {
-      await sharedReady;
+      await refreshShared();
       const r = await sync();
       const lista = await pending();
       let resumo = r.mensagem;
@@ -59,12 +59,7 @@ export function ColetasTriage({
     }
   }
 
-  // Leitura automática enquanto a tela de Coletas estiver aberta.
-  useEffect(() => {
-    if (!inbox?.ativo || !inbox.host) return;
-    const ms = Math.max(5, inbox.intervaloMin) * 60000;
-    const t = setInterval(() => buscar(true), ms);
-    return () => clearInterval(t);
+  return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inbox?.ativo, inbox?.host, inbox?.intervaloMin]);
 
@@ -80,7 +75,7 @@ export function ColetasTriage({
             <div className="num">{inbox.usuario} · {inbox.pasta}</div>
             <div className="text-muted-foreground">Últimos {inbox.diasRetroativos} dia(s) · a cada {inbox.intervaloMin} min</div>
             <div className={inbox.ativo ? "text-success" : "text-warning"}>
-              {inbox.ativo ? "● Leitura automática ligada (com esta tela aberta)" : "○ Leitura automática desligada"}
+              {inbox.ativo ? "● Captação configurada · automação de produção pendente" : "○ Leitura automática desligada"}
             </div>
             {inbox.ultimaSync && (
               <div className="text-muted-foreground">Última leitura: {new Date(inbox.ultimaSync).toLocaleString("pt-BR")}</div>

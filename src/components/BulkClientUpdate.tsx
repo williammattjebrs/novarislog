@@ -36,8 +36,8 @@ export function BulkClientUpdate({ orders, autor, onClose, onSent }: {
     if (!emails.length || emails.length > 30 || emails.some((e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))) throw new Error("Informe de 1 a 30 e-mails válidos, separados por ponto e vírgula.");
     return emails;
   }
-  function saveGroup() {
-    try { const old = readTrackingGroup(cliente); saveTrackingGroup(cliente, { emails: recipients(), automatic, intervalMin, lastSent: old.lastSent }); setFeedback("Grupo salvo. O envio automático funciona enquanto Monitoramento estiver aberto neste navegador."); }
+  async function saveGroup() {
+    try { const old = readTrackingGroup(cliente); await saveTrackingGroup(cliente, { emails: recipients(), automatic, intervalMin, lastSent: old.lastSent }); setFeedback("Grupo salvo. Envio periódico aguarda ativação de produção."); }
     catch (error) { setFeedback(error instanceof Error ? error.message : "Falha ao salvar grupo."); }
   }
   function trocarCliente(c: string) { setCliente(c); setMarcadas(null); setEmail(""); }
@@ -54,7 +54,7 @@ export function BulkClientUpdate({ orders, autor, onClose, onSent }: {
     try {
       const emails = recipients();
       await send({ data: { cliente, destinatarios: emails, ordens: trackingPayload(escolhidas) } });
-      saveTrackingGroup(cliente, { emails, automatic, intervalMin, lastSent: new Date().toISOString() });
+      await saveTrackingGroup(cliente, { emails, automatic, intervalMin, lastSent: new Date().toISOString() });
       onSent(escolhidas.map((o) => o.id), { quando: new Date().toISOString(), autor, tipo: "sistema", texto: `Atualização em tabela aceita pela Microsoft para envio a ${emails.join("; ")} (${escolhidas.length} notas)` }, emails[0] ?? "");
       setFeedback("Atualização aceita pela Microsoft para envio ao grupo. Confira a caixa de enviados para acompanhar.");
     } catch (error) { setFeedback(error instanceof Error ? error.message : "Falha no envio."); }

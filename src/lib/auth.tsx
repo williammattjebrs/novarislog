@@ -2,6 +2,8 @@
 // Perfis: admin, comercial, operacao, financeiro.
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyProfile } from "@/lib/users.functions";
 import { clearSharedSession, startSharedSync } from "./shared-db";
@@ -40,6 +42,8 @@ function traduzErro(msg: string): string {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient=useQueryClient();
+  const navigate=useNavigate();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -98,9 +102,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    await queryClient.cancelQueries();
+    queryClient.clear();
     clearSharedSession();
     await supabase.auth.signOut();
     setUser(null);
+    await navigate({to:"/login", search:{redirect:"/"},replace:true});
   };
 
   const reload = async () => {

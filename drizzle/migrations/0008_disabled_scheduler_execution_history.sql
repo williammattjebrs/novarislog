@@ -1,0 +1,8 @@
+CREATE TABLE public.tms_job_runs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), job_key text NOT NULL UNIQUE, task text NOT NULL, status text NOT NULL DEFAULT 'running', started_at timestamptz NOT NULL DEFAULT now(), finished_at timestamptz, next_run_at timestamptz, attempt integer NOT NULL DEFAULT 1, error text, result jsonb);
+GRANT SELECT ON public.tms_job_runs TO authenticated;
+GRANT ALL ON public.tms_job_runs TO service_role;
+ALTER TABLE public.tms_job_runs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admin job history" ON public.tms_job_runs FOR SELECT TO authenticated USING(public.tms_module('/configuracoes'));
+CREATE OR REPLACE FUNCTION public.tms_claim_job(p_task text,p_interval integer) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ DECLARE rid uuid; key_text text; BEGIN IF p_interval<5 OR p_interval>1440 OR length(p_task)>350 THEN RAISE EXCEPTION 'Invalid task'; END IF; PERFORM pg_advisory_xact_lock(hashtextextended('job:'||p_task,0)); IF EXISTS(SELECT 1 FROM public.tms_job_runs WHERE task=p_task AND (next_run_at>now() OR status IN('running','uncertain'))) THEN RETURN NULL; END IF; key_text:=p_task||':'||floor(extract(epoch from now())/(p_interval*60))::text; INSERT INTO public.tms_job_runs(job_key,task,next_run_at) VALUES(key_text,p_task,now()+make_interval(mins=>p_interval)) ON CONFLICT DO NOTHING RETURNING id INTO rid; RETURN rid; END $$;
+REVOKE ALL ON FUNCTION public.tms_claim_job(text,integer) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.tms_claim_job(text,integer) TO service_role;

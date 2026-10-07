@@ -103,6 +103,7 @@ export type Database = {
           criado_em: string
           id: string
           importado_em: string | null
+          motivo_pendencia: string | null
           recebido_em: string | null
           remetente: string
           status: string
@@ -116,6 +117,7 @@ export type Database = {
           criado_em?: string
           id?: string
           importado_em?: string | null
+          motivo_pendencia?: string | null
           recebido_em?: string | null
           remetente?: string
           status?: string
@@ -129,6 +131,7 @@ export type Database = {
           criado_em?: string
           id?: string
           importado_em?: string | null
+          motivo_pendencia?: string | null
           recebido_em?: string | null
           remetente?: string
           status?: string
@@ -212,6 +215,45 @@ export type Database = {
         }
         Relationships: []
       }
+      tms_job_runs: {
+        Row: {
+          attempt: number
+          error: string | null
+          finished_at: string | null
+          id: string
+          job_key: string
+          next_run_at: string | null
+          result: Json | null
+          started_at: string
+          status: string
+          task: string
+        }
+        Insert: {
+          attempt?: number
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          job_key: string
+          next_run_at?: string | null
+          result?: Json | null
+          started_at?: string
+          status?: string
+          task: string
+        }
+        Update: {
+          attempt?: number
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          job_key?: string
+          next_run_at?: string | null
+          result?: Json | null
+          started_at?: string
+          status?: string
+          task?: string
+        }
+        Relationships: []
+      }
       user_modules: {
         Row: {
           criado_em: string
@@ -264,13 +306,20 @@ export type Database = {
         Returns: boolean
       }
       tms_active: { Args: never; Returns: boolean }
+      tms_claim_job: {
+        Args: { p_interval: number; p_task: string }
+        Returns: string
+      }
       tms_collection: { Args: { c: string; op?: string }; Returns: boolean }
+      tms_import_cte: { Args: { xml_text: string }; Returns: Json }
+      tms_import_nfe_worker: { Args: { payload: Json }; Returns: Json }
       tms_module: { Args: { module_name: string }; Returns: boolean }
       tms_records_commit: {
         Args: { changes: Json; reason?: string }
         Returns: Json
       }
       tms_records_read: { Args: never; Returns: Json }
+      tms_reliability_selftest: { Args: never; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "comercial" | "operacao" | "financeiro"

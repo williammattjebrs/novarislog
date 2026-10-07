@@ -2,7 +2,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { FileUp, FileCheck2, Package, Truck, AlertTriangle, ArrowRight, Link2, Search, Download, Printer } from "lucide-react";
 import { useOrders, useClients, useFreightTables, useRouteRates, useQuotations, useInvoices, useConfig, useRotas, useOrdensColeta, newId } from "@/lib/mock-store";
 import {
@@ -22,11 +22,16 @@ import { NovaTabelaPanel } from "@/components/NovaTabelaPanel";
 import { correctCity, sameCityName } from "@/components/CityPicker";
 import { useAutoRotas, vincularOrderEmRota } from "@/lib/use-auto-rotas";
 
+import { RegularizationPreview } from "@/components/RegularizationPreview";
+import { financialAccess } from "@/lib/permissions";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { refreshShared } from "@/lib/shared-db";
 import { commitLists, getList, sharedReady } from "@/lib/shared-db";
 import { allocateCte, compareCte, financialState, identifyClient } from "@/lib/reliability";
 
 export const Route = createFileRoute("/coletas")({
-  validateSearch: (search: Record<string, unknown>) => ({ registro: typeof search.registro === "string" ? search.registro : undefined }),
+  validateSearch: (search: Record<string, unknown>): {registro?:string} => ({ registro: typeof search.registro === "string" ? search.registro : undefined }),
   head: () => ({
     meta: [
       { title: "Coletas & Ordens | Novaris" },
@@ -55,10 +60,12 @@ function ColetasPage() {
   const [cfg] = useConfig();
   const { user } = useAuth();
   const autor = user?.nome ?? "sistema";
+  const canSeeFinance=financialAccess(user);
 
   const [filtro, setFiltro] = useState<OrderStage | "todos">("todos");
   const { registro } = Route.useSearch();
   const [selected, setSelected] = useState<string | null>(registro ?? null);
+  useEffect(()=>{if(registro)setSelected(registro);},[registro]);
   const nfeInput = useRef<HTMLInputElement>(null);
   const cteInput = useRef<HTMLInputElement>(null);
 
@@ -224,33 +231,18 @@ function ColetasPage() {
 
   async function importCTeTexts(texts: string[]) {
     await sharedReady;
-    let ok = 0, dup = 0, semOrdem = 0;
-    const vinculadas: string[] = [];
-    for (const text of texts) {
-      const p = parseCTe(text);
-      if (!p?.chave) { semOrdem++; continue; }
-      const docs = getList<any>("cteDocuments") ?? [];
-      if (docs.some(d => d.chave === p.chave)) { dup++; vinculadas.push(p.chave); continue; }
-      const list = getList<Order>("orders") ?? [];
-      const refs = [...new Set([...(p.chavesNFe ?? []), p.chaveNFeReferenciada].filter(Boolean) as string[])];
-      const linked = list.filter(o => refs.includes(o.chaveNFe));
-      if (!refs.length || linked.length !== refs.length) { semOrdem++; continue; }
-      const allocation = allocateCte(p.valorTotal, linked);
-      const validBase = linked.every(o => o.valorFrete > 0 && !!o.origemValor);
-      const conference = compareCte(validBase ? linked.reduce((sum, o) => sum + o.valorFrete, 0) : 0, p.valorTotal, cfg.toleranciaDivergenciaPercent);
-      const now = new Date().toISOString();
-      const doc = { id: `CTE-${p.chave}`, chave: p.chave, numero: p.numero, valorFiscal: p.valorTotal, xmlOriginal: text, nfChaves: refs, orderIds: linked.map(o => o.id), rateio: allocation, conferencia: conference, criadoEm: now };
-      const next = list.map(o => {
-        if (!linked.some(x => x.id === o.id)) return o;
-        const value = allocation.allocations.find(x => x.orderId === o.id)?.value;
-        return { ...o, cteChave: o.cteChave || p.chave, cteNumero: o.cteNumero || p.numero, cteChaves: [...new Set([...(o.cteChaves ?? []), ...(o.cteChave ? [o.cteChave] : []), p.chave])], cteValor: value === undefined ? o.cteValor : (o.cteValor ?? 0) + value, conferencia: conference, divergenciaPercent: conference.percent, stage: ['em_viagem','entregue','ocorrencia'].includes(o.stage) ? o.stage : conference.status === 'divergente' ? 'cte_divergente' as const : conference.status === 'conferido' ? 'cte_ok' as const : o.stage, atualizadoEm: now, timeline: [...o.timeline, { quando: now, autor, tipo: 'sistema' as const, texto: `CT-e ${p.numero} vinculado a ${linked.length} NF(s); conferência ${conference.status}; rateio ${allocation.method}` }] };
-      });
-      // One fiscal document, all links and one receivable share a single database transaction.
-      const title = { id: `REC-CTE-${p.chave}`, cteChave: p.chave, numero: `CTe ${p.numero}`, clienteNome: linked[0].clienteNome, emissao: now.slice(0,10), competencia: now.slice(0,10), vencimento: new Date(Date.now() + 30 * 86400000).toISOString().slice(0,10), valor: p.valorTotal, status: 'aberta' as const, tipo: 'CTe' as const };
-      await commitLists({ orders: next, cteDocuments: [doc, ...docs], invoices: [title, ...(getList<any>('invoices') ?? [])] }, 'Importação CT-e: documento, vínculos, rateio e receita única');
-      ok++; vinculadas.push(p.chave);
+    let ok=0,dup=0,semOrdem=0;
+    const vinculadas:string[]=[];
+    for(const text of texts) {
+      const {data,error}=await supabase.rpc("tms_import_cte",{xml_text:text});
+      if(error) throw new Error(error.message);
+      const result=data as {status:string;chave?:string;motivo?:string};
+      if(result.status==="importado") {ok++;if(result.chave)vinculadas.push(result.chave);}
+      else if(result.status==="duplicado") {dup++;if(result.chave)vinculadas.push(result.chave);}
+      else semOrdem++;
     }
-    return { ok, dup, semOrdem, vinculadas };
+    await refreshShared();
+    return {ok,dup,semOrdem,vinculadas};
   }
 
   async function importFromEmail(xmls: { chave: string; tipo: "nfe" | "cte"; xml: string }[]) {
@@ -365,6 +357,7 @@ function ColetasPage() {
           </button>
         </div>
 
+        <RegularizationPreview />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Lista */}
           <div className={`panel overflow-x-auto ${sel ? "lg:col-span-2" : "lg:col-span-3"}`}>
@@ -391,11 +384,11 @@ function ColetasPage() {
                     </td>
                     <td className="text-xs">{o.cidadeColeta}/{o.ufColeta} → {o.cidadeEntrega}/{o.ufEntrega}</td>
                     <td className="text-right num text-xs">
-                      <div>{fmtBRL(o.valorFrete)}</div>
+                      <div>{canSeeFinance ? o.valorFrete > 0 ? fmtBRL(o.valorFrete) : "Pendente" : o.origemValor ? "Valorizado" : "Pendente"}</div>
                       <div className="text-[9px] text-muted-foreground">{o.origemValor || "—"}</div>
                     </td>
                     <td className="text-right num text-xs">
-                      {o.cteValor ? (
+                      {canSeeFinance && o.cteValor ? (
                         <div>
                           <div>{fmtBRL(o.cteValor)}</div>
                           {o.divergenciaPercent != null && (
@@ -405,9 +398,9 @@ function ColetasPage() {
                       ) : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="text-right num text-xs">
-                      {o.costs?.execMode
+                      {canSeeFinance && o.costs?.execMode
                         ? <span className="text-accent">{fmtBRL(calcOrderCost(o.costs, cfg.frota, o.cteValor ?? o.valorFrete).total)}</span>
-                        : <button onClick={(e) => { e.stopPropagation(); setSelected(o.id); }} className="text-primary hover:underline">+ custo</button>}
+                        : <span className="text-muted-foreground">{canSeeFinance ? "Pendente" : "Restrito"}</span>}
                     </td>
                     <td>
                       <span className={`text-[11px] px-2 py-0.5 rounded border ${toneClass(statusTone(o.stage))}`}>
@@ -419,7 +412,7 @@ function ColetasPage() {
                         statusOptions={ORDER_STAGES.map((s) => ({ id: s.id, label: s.label }))}
                         currentStatus={o.stage}
                         onChangeStatus={(next, entry) => {
-                          orders.update(o.id, { stage: next as OrderStage, timeline: [...o.timeline, entry], atualizadoEm: new Date().toISOString() });
+                          orders.update(o.id, { stage: next as OrderStage, entregueEm: next === "entregue" ? new Date().toISOString() : o.entregueEm, timeline: [...o.timeline, entry], atualizadoEm: new Date().toISOString() });
                         }}
                         onAddEntry={(entry) => orders.update(o.id, { timeline: [...o.timeline, entry], atualizadoEm: new Date().toISOString() })}
                       />
@@ -464,8 +457,7 @@ function OrderDetail({ order, onClose, onUpdate }: {
 
   function gerarOC() {
     const r = vincularOrderEmRota(order, rotas.list, ocs.list, user?.nome ?? "usuário");
-    rotas.set(r.rotas);
-    ocs.set(r.ocs);
+    void commitLists({rotas:r.rotas,ordensColeta:r.ocs},"Gerar OC por solicitação do operador");
     onUpdate({
       timeline: [...order.timeline, {
         quando: new Date().toISOString(), autor: user?.nome ?? "usuário", tipo: "sistema",
@@ -492,12 +484,13 @@ function OrderDetail({ order, onClose, onUpdate }: {
         <Info label="Cliente" v={order.clienteNome} />
         <Info label="Peso" v={`${order.peso} kg · ${order.volumes} vol.`} />
         <Info label="NF-e" v={`${order.numeroNFe}`} />
-        <Info label="Valor NF" v={fmtBRL(order.valorNF)} />
+        {financialAccess(user) && <Info label="Valor NF" v={fmtBRL(order.valorNF)} />}
         <Info label="Coleta" v={`${order.cidadeColeta}/${order.ufColeta}`} />
         <Info label="Entrega" v={`${order.cidadeEntrega}/${order.ufEntrega}`} />
       </div>
 
-      {order.stage === "aguarda_vinculacao" && (
+      {order.cteChave && <p className={financialState(order)==="pendente" ? "text-warning text-sm" : "text-muted-foreground text-sm"}>CT-e recebido · {financialState(order)==="pendente" ? "Aguarda conferência de valor" : financialState(order)==="divergente" ? "Divergência de valor pendente" : "Valor conferido"}</p>}
+      {order.stage === "aguarda_vinculacao" && financialAccess(user) && (
         <div className="rounded-md border border-accent/40 bg-accent/10 p-3">
           <div className="flex items-center gap-2 text-accent text-sm font-medium">
             <AlertTriangle className="h-4 w-4" /> Aguarda vinculação de valor
@@ -586,7 +579,7 @@ function OrderDetail({ order, onClose, onUpdate }: {
 
       {order.cteValor == null && <ManualCte order={order} tolerancia={cfg.toleranciaDivergenciaPercent} onUpdate={onUpdate} />}
 
-      <QuickCost key={order.id} order={order} onUpdate={onUpdate} />
+      {financialAccess(user) && <QuickCost key={order.id} order={order} onUpdate={onUpdate} />}
 
 
       {(order.stage === "cte_ok" || order.stage === "cte_divergente") && !order.transportType && (

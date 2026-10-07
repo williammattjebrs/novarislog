@@ -22,6 +22,55 @@
       "when": 1791386557508,
       "tag": "0002_validate_fiscal_transactions_and_receipts",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791388619900,
+      "tag": "0003_protect_operational_values_and_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791388662683,
+      "tag": "0004_atomic_cte_import_with_server_allocation",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791388793349,
+      "tag": "0005_transactional_reliability_selftest",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791388821139,
+      "tag": "0006_admin_only_rollback_validation",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791389034154,
+      "tag": "0007_active_access_fiscal_boundaries",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791389053286,
+      "tag": "0008_disabled_scheduler_execution_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791389109663,
+      "tag": "0009_headless_atomic_nfe_import",
+      "breakpoints": true
     }
   ]
 }

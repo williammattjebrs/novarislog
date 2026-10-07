@@ -22,6 +22,7 @@ import { Route as RotasRouteImport } from './routes/rotas'
 import { Route as TvRouteImport } from './routes/tv'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
+import { Route as ApiPublicAutomationRouteImport } from './routes/api/public/automation'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 
@@ -90,6 +91,11 @@ const ClientesIdRoute = ClientesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ClientesRoute,
 } as any)
+const ApiPublicAutomationRoute = ApiPublicAutomationRouteImport.update({
+  id: '/api/public/automation',
+  path: '/api/public/automation',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
   id: '/lovable/email/auth/preview',
   path: '/lovable/email/auth/preview',
@@ -115,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/api/public/automation': typeof ApiPublicAutomationRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
 }
@@ -132,6 +139,7 @@ export interface FileRoutesByTo {
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/api/public/automation': typeof ApiPublicAutomationRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
 }
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/api/public/automation': typeof ApiPublicAutomationRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
 }
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/tv'
     | '/usuarios'
     | '/clientes/$id'
+    | '/api/public/automation'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/tv'
     | '/usuarios'
     | '/clientes/$id'
+    | '/api/public/automation'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
   id:
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '/tv'
     | '/usuarios'
     | '/clientes/$id'
+    | '/api/public/automation'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
   fileRoutesById: FileRoutesById
@@ -220,6 +232,7 @@ export interface RootRouteChildren {
   RotasRoute: typeof RotasRoute
   TvRoute: typeof TvRoute
   UsuariosRoute: typeof UsuariosRoute
+  ApiPublicAutomationRoute: typeof ApiPublicAutomationRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
 }
@@ -317,6 +330,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientesIdRouteImport
       parentRoute: typeof ClientesRoute
     }
+    '/api/public/automation': {
+      id: '/api/public/automation'
+      path: '/api/public/automation'
+      fullPath: '/api/public/automation'
+      preLoaderRoute: typeof ApiPublicAutomationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/auth/preview': {
       id: '/lovable/email/auth/preview'
       path: '/lovable/email/auth/preview'
@@ -359,6 +379,7 @@ const rootRouteChildren: RootRouteChildren = {
   RotasRoute: RotasRoute,
   TvRoute: TvRoute,
   UsuariosRoute: UsuariosRoute,
+  ApiPublicAutomationRoute: ApiPublicAutomationRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
 }

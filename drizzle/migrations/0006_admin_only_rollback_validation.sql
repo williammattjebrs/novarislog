@@ -1,0 +1,2 @@
+DO $$ DECLARE definition text; BEGIN SELECT pg_get_functiondef('public.tms_reliability_selftest()'::regprocedure) INTO definition; definition:=replace(definition,'BEGIN SELECT p.id INTO uid', 'BEGIN IF NOT public.tms_module(''/usuarios'') THEN RAISE EXCEPTION ''Apenas administradores ativos podem validar''; END IF; SELECT p.id INTO uid'); EXECUTE definition; END $$;
+GRANT EXECUTE ON FUNCTION public.tms_reliability_selftest() TO authenticated;

@@ -9,7 +9,7 @@ import { useClients, useClientGroups, useCRMDeals, useFreightTables, useQuotatio
 import { statusTone, toneClass, fmtBRL, type CRMStage, type Client, type ClientCNPJ } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/clientes")({
-  validateSearch: (s: Record<string, unknown>) => ({ registro: typeof s.registro === "string" ? s.registro : undefined }),
+  validateSearch: (s: Record<string, unknown>): {registro?:string} => ({ registro: typeof s.registro === "string" ? s.registro : undefined }),
   head: () => ({
     meta: [
       { title: "Clientes & CRM | Novaris" },

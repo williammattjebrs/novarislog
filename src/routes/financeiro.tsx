@@ -10,6 +10,9 @@ import { calcOrderCost } from "@/lib/cost-calc";
 import { Conciliacao, DreBalancete } from "@/components/FinanceReports";
 import { fmtBRL, statusTone, toneClass, type Expense, type ExpenseType, type ExpenseArea } from "@/lib/mock-data";
 
+import { financeSummary, costKnown } from "@/lib/finance-summary";
+import { financialState } from "@/lib/reliability";
+
 export const Route = createFileRoute("/financeiro")({
   head: () => ({
     meta: [
@@ -38,13 +41,9 @@ function FinanceiroPage() {
   const [tab, setTab] = useState<"receitas" | "despesas" | "conciliacao" | "dre" | "rentabilidade" | "divergencias">("receitas");
   const [showNew, setShowNew] = useState(false);
 
-  const totalReceita = invoices.list.reduce((s, i) => s + i.valor, 0);
-  const totalDespesa = expenses.list.reduce((s, e) => s + e.valor, 0);
-  const emAtraso = invoices.list.filter((i) => i.status === "vencida").reduce((s, i) => s + i.valor, 0);
-  const receber = invoices.list.filter((i) => i.status === "aberta" || i.status === "emitida").reduce((s, i) => s + i.valor, 0);
-
-  const divergencias = orders.list.filter((o) => o.stage === "cte_divergente");
-
+  const summary=financeSummary(new Date().toISOString().slice(0,7),invoices.list,expenses.list,orders.list,cfg.frota);
+  const totalReceita=summary.faturada, totalDespesa=summary.custo, emAtraso=summary.vencida, receber=summary.aberta;
+  const divergencias=orders.list.filter(o=>financialState(o)==="divergente" || (o.cteChave && financialState(o)==="pendente"));
   const porTipo = expenses.list.reduce<Record<ExpenseType, number>>(
     (acc, e) => { acc[e.tipo] = (acc[e.tipo] ?? 0) + e.valor; return acc; },
     { fixa: 0, variavel: 0, frete_terceiros: 0, administrativa: 0 },
@@ -53,7 +52,7 @@ function FinanceiroPage() {
   // Rentabilidade por ordem
   const orderMargin = orders.list.map((o) => {
     const custo = calcOrderCost(o.costs, cfg.frota, o.valorFrete).total;
-    return { id: o.id, cliente: o.clienteNome, receita: o.cteValor ?? o.valorFrete, custo, margem: (o.cteValor ?? o.valorFrete) - custo };
+    return { pendente:!costKnown(o), id: o.id, cliente: o.clienteNome, receita: o.cteValor ?? o.valorFrete, custo, margem: (o.cteValor ?? o.valorFrete) - custo };
   });
   const porCliente = orderMargin.reduce<Record<string, { rec: number; custo: number }>>((acc, o) => {
     acc[o.cliente] = acc[o.cliente] ?? { rec: 0, custo: 0 };
@@ -96,6 +95,7 @@ function FinanceiroPage() {
   return (
     <AppShell>
       <div className="p-4 md:p-6 space-y-5">
+        {summary.custosPendentes>0 && <p role="status" className="text-warning text-sm">Resultado provisório: {summary.custosPendentes} ordens sem custo informado.</p>}
         <div className="flex items-end justify-between flex-wrap gap-3">
           <div>
             <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Módulo 5</div>
@@ -294,8 +294,8 @@ function FinanceiroPage() {
                   <div key={o.id} className="grid grid-cols-4 gap-2 border-b border-border pb-1.5">
                     <span className="num text-primary truncate">{o.id.slice(0, 10)}</span>
                     <span className="num text-right">{fmtBRL(o.receita)}</span>
-                    <span className="num text-right text-accent">{fmtBRL(o.custo)}</span>
-                    <span className={`num text-right ${o.margem >= 0 ? "text-success" : "text-danger"}`}>{fmtBRL(o.margem)}</span>
+                    <span className="num text-right text-accent">{o.pendente ? "Pendente" : fmtBRL(o.custo)}</span>
+                    <span className={`num text-right ${o.margem >= 0 ? "text-success" : "text-danger"}`}>{o.pendente ? "Pendente" : fmtBRL(o.margem)}</span>
                   </div>
                 ))}
                 {orderMargin.length === 0 && <div className="text-muted-foreground text-center py-6">Sem dados.</div>}

@@ -17,7 +17,7 @@ import { useAuth } from "@/lib/auth";
 import { financialAccess } from "@/lib/permissions";
 
 export const Route = createFileRoute("/monitoramento")({
-  validateSearch: (search: Record<string, unknown>) => ({ registro: typeof search.registro === "string" ? search.registro : undefined }),
+  validateSearch: (search: Record<string, unknown>): {registro?:string} => ({ registro: typeof search.registro === "string" ? search.registro : undefined }),
   head: () => ({
     meta: [
       { title: "Monitoramento | Novaris" },
@@ -49,41 +49,9 @@ function MonitoramentoPage() {
   const [busca, setBusca] = useState("");
   const { registro } = Route.useSearch();
   const [selected, setSelected] = useState<string | null>(registro ?? null);
+  useEffect(()=>{if(registro)setSelected(registro);},[registro]);
   const [followFor, setFollowFor] = useState<Order | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
-
-  const sendTracking = useServerFn(sendTrackingUpdate);
-  const currentOrders = useRef(orders.list);
-  currentOrders.current = orders.list;
-  const autoBusy = useRef(false);
-  const [autoStatus, setAutoStatus] = useState("");
-  useEffect(() => {
-    const timer = window.setInterval(async () => {
-      if (autoBusy.current) return;
-      autoBusy.current = true;
-      try {
-        const names = Array.from(new Set(currentOrders.current.map((o) => o.clienteNome)));
-        for (const name of names) {
-          const group = readTrackingGroup(name);
-          if (!group.automatic || !group.emails.length || (group.lastSent && Date.now() - Date.parse(group.lastSent) < group.intervalMin * 60000)) continue;
-          const list = currentOrders.current.filter((o) => o.clienteNome === name && o.stage !== "entregue");
-          if (!list.length) continue;
-          // A cross-tab Web Lock prevents duplicate sends from two open monitoring tabs.
-          if (!navigator.locks) { setAutoStatus("Envio automático indisponível neste navegador; use o envio manual."); break; }
-          await navigator.locks.request(`novaris-tracking:${name}`, { ifAvailable: true }, async (lock) => {
-            if (!lock) return;
-            const latest = readTrackingGroup(name);
-            if (latest.lastSent && Date.now() - Date.parse(latest.lastSent) < latest.intervalMin * 60000) return;
-            await sendTracking({ data: { cliente: name, destinatarios: latest.emails, ordens: trackingPayload(list) } });
-            saveTrackingGroup(name, { ...latest, lastSent: new Date().toISOString() });
-            setAutoStatus(`Atualização automática de ${name} aceita pela Microsoft.`);
-          });
-        }
-      } catch (error) { setAutoStatus(error instanceof Error ? error.message : "Falha no envio automático."); }
-      finally { autoBusy.current = false; }
-    }, 60000);
-    return () => window.clearInterval(timer);
-  }, [sendTracking]);
 
   const clientes = useMemo(() => Array.from(new Set(orders.list.map((o) => o.clienteNome))), [orders.list]);
 
@@ -168,9 +136,9 @@ function MonitoramentoPage() {
                     <td className="px-4 py-3 num text-primary text-xs">{o.id.slice(0, 12)}</td>
                     <td className="text-xs">{o.clienteNome}</td>
                     <td className="text-xs">{o.cidadeEntrega}/{o.ufEntrega}{o.rastreio && <div className="text-[10px] text-muted-foreground">{o.rastreio.situacao}</div>}</td>
-                    <td className="text-right num text-xs">{fmtBRL(o.valorFrete)}</td>
+                    <td className="text-right num text-xs">{canSeeCosts ? o.valorFrete ? fmtBRL(o.valorFrete) : "Pendente" : "Restrito"}</td>
                     <td className="text-right num text-xs">
-                      {o.cteValor ? (
+                      {canSeeCosts && o.cteValor ? (
                         <div className="flex flex-col items-end">
                           <span>{fmtBRL(o.cteValor)}</span>
                           {o.divergenciaPercent != null && <DivergenceBadge percent={o.divergenciaPercent} tolerancia={cfg.toleranciaDivergenciaPercent}  />}
@@ -183,7 +151,7 @@ function MonitoramentoPage() {
                       <RecordActions
                         statusOptions={ORDER_STAGES.map((s) => ({ id: s.id, label: s.label }))}
                         currentStatus={o.stage}
-                        onChangeStatus={(next, entry) => orders.update(o.id, { stage: next as OrderStage, timeline: [...o.timeline, entry], atualizadoEm: new Date().toISOString() })}
+                        onChangeStatus={(next, entry) => orders.update(o.id, { stage: next as OrderStage, entregueEm: next === "entregue" ? new Date().toISOString() : o.entregueEm, timeline: [...o.timeline, entry], atualizadoEm: new Date().toISOString() })}
                         onAddEntry={(entry) => orders.update(o.id, { timeline: [...o.timeline, entry], atualizadoEm: new Date().toISOString() })}
                        />
                     </td>
@@ -244,7 +212,6 @@ function MonitoramentoPage() {
         </div>
       </div>
 
-      {autoStatus && <p role="status" className="px-6 py-3 text-sm text-info">{autoStatus}</p>}
       {bulkOpen && (
         <BulkClientUpdate
           orders={orders.list}

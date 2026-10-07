@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { addPayment, paidAmount, reversePayment, type Movement } from "@/lib/reliability";
 import { Button } from "@/components/ui/button";
 import { calcOrderCost } from "@/lib/cost-calc";
+import { costKnown } from '@/lib/finance-summary';
 
 type Inv = Invoice & { id?: string };
 const today = () => new Date().toISOString().slice(0, 10);
@@ -154,9 +155,9 @@ export function DreBalancete({ invoices, expenses, orders, cfg }: {
 
   // ---------- DRE (competência) ----------
   const receitaBruta = invoices.filter((i) => monthKey(i.competencia ?? i.emissao) === mes).reduce((s, i) => s + i.valor, 0);
-  const ordensMes = orders.filter((o) => monthKey(o.criadoEm) === mes && o.costs?.execMode && !expenses.some(e => e.orderId === o.id));
-  const custoTerceiros = ordensMes.filter((o) => o.costs.execMode === "terceiro").reduce((s, o) => s + calcOrderCost(o.costs, cfg.frota, o.cteValor ?? o.valorFrete).total, 0);
-  const custoFrota = ordensMes.filter((o) => o.costs.execMode === "frota").reduce((s, o) => s + calcOrderCost(o.costs, cfg.frota, o.cteValor ?? o.valorFrete).total, 0);
+  const ordensMes = orders.filter((o) => monthKey(o.criadoEm) === mes && costKnown(o) && !expenses.some(e => e.orderId === o.id));
+  const custoTerceiros = ordensMes.filter((o) => o.costs.execMode === "terceiro").reduce((s, o) => s + calcOrderCost(o.costs, cfg.frota, o.valorFrete).total, 0);
+  const custoFrota = ordensMes.filter((o) => o.costs.execMode === "frota").reduce((s, o) => s + calcOrderCost(o.costs, cfg.frota, o.valorFrete).total, 0);
   const despMes = expenses.filter((e) => monthKey(e.competencia ?? e.vencimento) === mes);
   const despFreteTerc = despMes.filter((e) => e.tipo === "frete_terceiros").reduce((s, e) => s + e.valor, 0);
   const custoServicos = custoTerceiros + custoFrota + despFreteTerc;

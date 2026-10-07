@@ -1,7 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { calcFreight, calcOrderCost } from './cost-calc';
+import { calcFreight, calcOrderCost, findQuotation } from './cost-calc';
 
 describe('cost-calc', () => {
+  it('keeps weight outside a range pending instead of selecting the last row', () => {
+    const table:any={modalidade:'fracionada',rows:[{faixaMin:0,faixaMax:100,valorKg:2,minimo:10}],adValorem:0,gris:0,pedagio:0};
+    expect(calcFreight(table,{peso:101,valorNF:100}).error).toBeTruthy();
+    expect(calcFreight(table,{peso:101,valorNF:100}).total).toBe(0);
+  });
+  it('rejects a quotation for another city',()=>{
+    const q:any={status:'aprovada',clienteId:'c',origemUf:'PR',destinoUf:'RJ',origemCidade:'Curitiba',destinoCidade:'Niterói'};
+    expect(findQuotation([q],{clienteId:'c',ufColeta:'PR',ufEntrega:'RJ',cidadeColeta:'Curitiba',cidadeEntrega:'Rio de Janeiro'})).toBeNull();
+  });
   it('should calculate freight for lotacao', () => {
     const table: any = { modalidade: 'lotacao', valorLotacao: 500, pedagio: 50 };
     const res = calcFreight(table, { peso: 1000, valorNF: 10000 });
