@@ -17,6 +17,7 @@ import { RecordActions } from "@/components/RecordActions";
 import { DivergenceBadge } from "@/components/DivergenceBadge";
 import { useAuth } from "@/lib/auth";
 import { ColetasTriage } from "@/components/ColetasTriage";
+import { NovaTabelaPanel } from "@/components/NovaTabelaPanel";
 import { correctCity, sameCityName } from "@/components/CityPicker";
 
 export const Route = createFileRoute("/coletas")({
