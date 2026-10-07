@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Users, PackageSearch, Radar, Wallet, Settings, UserCog,
-  Radio, Bell, Search, LogOut, BookOpen,
+  Radio, Bell, Search, LogOut, BookOpen, Route as RouteIcon, Truck,
 } from "lucide-react";
 import logo from "@/assets/novaris-logo.png.asset.json";
 import simbolo from "@/assets/novaris-simbolo.png.asset.json";
@@ -15,6 +15,8 @@ const NAV: NavItem[] = [
   { to: "/", label: "Torre de controle", icon: LayoutDashboard, exact: true },
   { to: "/clientes", label: "Clientes & CRM", icon: Users },
   { to: "/coletas", label: "Coletas & Ordens", icon: PackageSearch },
+  { to: "/rotas", label: "Rotas & OC", icon: RouteIcon },
+  { to: "/motoristas", label: "Motoristas & Veículos", icon: Truck },
   { to: "/monitoramento", label: "Monitoramento", icon: Radar },
   { to: "/financeiro", label: "Financeiro", icon: Wallet },
   { to: "/tv", label: "Indicadores (TV)", icon: Radio },

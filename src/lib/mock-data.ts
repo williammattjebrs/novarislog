@@ -207,6 +207,37 @@ export interface Order {
   atualizadoEm: string;
 }
 
+// ---------- Rotas, Ordens de Coleta, Motoristas, Veículos ----------
+export interface Motorista { id: string; nome: string; cpf: string; telefone: string; cnh?: string; observacao?: string; ativo: boolean; criadoEm: string; }
+export interface Veiculo { id: string; placa: string; tipo: string; modelo?: string; proprietario: "frota" | "terceiro"; capacidadeKg?: number; ativo: boolean; criadoEm: string; }
+export type RotaStatus = "aberta" | "programada" | "encerrada";
+/** Rota = agrupamento de NF-e com mesmo remetente e destinatário. */
+export interface Rota {
+  id: string; clienteId: string; clienteNome: string;
+  remetente: string; remetenteCnpj?: string; cidadeColeta: string; ufColeta: string;
+  destinatario: string; destinatarioCnpj?: string; cidadeEntrega: string; ufEntrega: string;
+  orderIds: string[]; motoristaId?: string; veiculoId?: string;
+  status: RotaStatus; criadoEm: string; atualizadoEm: string;
+}
+export type OCStatus = "emitida" | "enviada_motorista" | "em_coleta" | "coletada" | "em_viagem" | "entregue" | "cancelada";
+export const OC_STATUS: { id: OCStatus; label: string; stage?: OrderStage }[] = [
+  { id: "emitida", label: "Emitida", stage: "coleta_agendada" },
+  { id: "enviada_motorista", label: "Enviada ao motorista", stage: "coleta_agendada" },
+  { id: "em_coleta", label: "Em coleta", stage: "em_coleta" },
+  { id: "coletada", label: "Coletada", stage: "coletado" },
+  { id: "em_viagem", label: "Em viagem", stage: "em_viagem" },
+  { id: "entregue", label: "Entregue", stage: "entregue" },
+  { id: "cancelada", label: "Cancelada" },
+];
+/** Ordem de Coleta = documento operacional gerado a partir da rota, enviado ao motorista. */
+export interface OrdemColeta {
+  id: string; numero: string; rotaId: string; clienteNome: string;
+  orderIds: string[]; motoristaId: string; veiculoId: string;
+  localColeta: string; cidadeColeta: string; ufColeta: string; dataHoraColeta: string;
+  localEntrega: string; cidadeEntrega: string; ufEntrega: string; dataHoraEntrega: string;
+  observacao?: string; status: OCStatus; criadoPor: string; criadoEm: string; atualizadoEm: string;
+}
+
 // ---------- Armazém ----------
 export interface WarehouseInbound {
   id: string;

@@ -7,7 +7,7 @@ const isBrowser = typeof window !== "undefined";
 type Row = { collection: string; id: string; data: any; criado_em: string };
 
 export const SHARED_KEYS = new Set(["clients", "freightTables", "routeRates", "quotations", "crmDeals", "orders",
-  "stock", "invoices", "expenses", "clientGroups", "expenseGroups", "config", "trackingGroups"]);
+  "stock", "invoices", "expenses", "clientGroups", "expenseGroups", "config", "trackingGroups", "rotas", "ordensColeta", "motoristas", "veiculos"]);
 
 const listeners: Record<string, Set<() => void>> = {};
 export function notify(key: string) { listeners[key]?.forEach((l) => l()); }
