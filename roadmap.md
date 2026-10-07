@@ -16,3 +16,8 @@
   - [x] Área "Usuários & acessos" (convidar por e-mail, alterar perfil, excluir)
   - [ ] Testar fluxo completo (convite → confirmação de e-mail → primeiro login) — depende do e-mail real ser confirmado
 - [ ] Conexão Microsoft 365 (Outlook) por dentro do app em Configurações para captar XML
+
+- [ ] Estrutura Rota ≠ Ordem de Coleta: rota por remetente+destinatário com várias NFs, motorista e veículo
+- [ ] Cadastros de Motoristas e Veículos
+- [ ] Ordem de Coleta com local/horário de coleta e entrega, base do monitoramento
+- [ ] Espelho de coleta exportável (PDF/impressão) e envio ao motorista
