@@ -10,4 +10,5 @@
 <!-- LOVABLE:END -->
 
 - Keep in-app training content in a browser-safe module and render it through a dedicated manual route available to all signed-in roles; this keeps guidance separate from operational workflows.
-- Generate tracking email drafts through a shared UTF-8 multipart EML formatter rather than mailto bodies; mailto cannot preserve HTML tables or control email character encoding.
+- Send tracking updates through authenticated server functions using the existing workspace Outlook connection and a shared escaped HTML formatter; mailto cannot preserve tables or control character encoding.
+- Keep interval-based tracking sends active only while Monitoramento is open until operational orders are persisted in Cloud; a background scheduler cannot read browser-local orders.
