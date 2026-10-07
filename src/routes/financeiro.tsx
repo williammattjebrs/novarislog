@@ -7,6 +7,7 @@ import { Wallet, TrendingUp, TrendingDown, Plus, AlertTriangle, Search, Download
 import { useInvoices, useExpenses, useExpenseGroups, useOrders, useConfig, newId } from "@/lib/mock-store";
 import { exportCsv, printReport } from "@/lib/export-utils";
 import { calcOrderCost } from "@/lib/cost-calc";
+import { Conciliacao, DreBalancete } from "@/components/FinanceReports";
 import { fmtBRL, statusTone, toneClass, type Expense, type ExpenseType, type ExpenseArea } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/financeiro")({
@@ -30,7 +31,7 @@ function FinanceiroPage() {
   const [novoGrupo, setNovoGrupo] = useState("");
   const orders = useOrders();
   const [cfg] = useConfig();
-  const [tab, setTab] = useState<"receitas" | "despesas" | "rentabilidade" | "divergencias">("receitas");
+  const [tab, setTab] = useState<"receitas" | "despesas" | "conciliacao" | "dre" | "rentabilidade" | "divergencias">("receitas");
   const [showNew, setShowNew] = useState(false);
 
   const totalReceita = invoices.list.reduce((s, i) => s + i.valor, 0);
@@ -114,6 +115,8 @@ function FinanceiroPage() {
           {([
             ["receitas", "Receitas"],
             ["despesas", "Despesas"],
+            ["conciliacao", "Conciliação"],
+            ["dre", "Balancete & DRE"],
             ["rentabilidade", "Rentabilidade"],
             ["divergencias", `Divergências CT-e (${divergencias.length})`],
           ] as const).map(([t, l]) => (
@@ -245,6 +248,14 @@ function FinanceiroPage() {
               </table>
             </div>
           </>
+        )}
+
+        {tab === "conciliacao" && (
+          <Conciliacao invoices={invoices.list} setInvoices={invoices.set} expenses={expenses.list} updateExpense={expenses.update} />
+        )}
+
+        {tab === "dre" && (
+          <DreBalancete invoices={invoices.list} expenses={expenses.list} orders={orders.list} cfg={cfg} />
         )}
 
         {tab === "rentabilidade" && (
