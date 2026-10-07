@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useState, useRef, useMemo } from "react";
 import { FileUp, FileCheck2, Package, Truck, AlertTriangle, ArrowRight, Link2, Search, Download, Printer } from "lucide-react";
-import { useOrders, useClients, useFreightTables, useRouteRates, useQuotations, useInvoices, useConfig, newId } from "@/lib/mock-store";
+import { useOrders, useClients, useFreightTables, useRouteRates, useQuotations, useInvoices, useConfig, useRotas, useOrdensColeta, newId } from "@/lib/mock-store";
 import {
   ORDER_STAGES, statusTone, toneClass, stageLabel, fmtBRL,
   type Order, type OrderStage,
