@@ -344,7 +344,7 @@ export function renderTemplate(tpl: string, o: Order, stageName: string): string
     cliente: o.clienteNome, nf: o.numeroNFe, ordem: o.id,
     origem: `${o.cidadeColeta}/${o.ufColeta}`, destino: `${o.cidadeEntrega}/${o.ufEntrega}`,
     status: stageName, situacao: o.rastreio?.situacao ?? "—", local: o.rastreio?.local ?? "—",
-    previsao: o.previsaoEntrega ? new Date(o.previsaoEntrega).toLocaleDateString("pt-BR") : "a confirmar",
+    previsao: o.previsaoEntrega ? new Date(o.previsaoEntrega).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" }) : "a confirmar",
     destinatario: o.destinatario,
   };
   return tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? "");

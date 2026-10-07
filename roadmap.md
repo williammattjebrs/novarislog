@@ -1,5 +1,10 @@
 # Roadmap
 
+- [x] Grupos de e-mail por cliente e envio pelo sistema, manual ou com frequência configurável enquanto Monitoramento está aberto
+- [ ] Envio automático com aplicativo fechado — depende de mover as ordens e grupos locais para dados compartilhados no Cloud
+
+- [x] Atualização de rastreio: tabela por nota, previsão com data/hora e e-mail UTF-8 sem acentos corrompidos
+
 - [x] Manual de uso: treinamento por módulo com telas reais, busca e navegação no app
 
 - [x] Exportação: PDF/Excel de listas (coletas, financeiro) + backup dos dados
