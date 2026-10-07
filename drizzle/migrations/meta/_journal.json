@@ -15,6 +15,13 @@
       "when": 1791386265253,
       "tag": "0001_reliability_access_versioned_records",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791386557508,
+      "tag": "0002_validate_fiscal_transactions_and_receipts",
+      "breakpoints": true
     }
   ]
 }
