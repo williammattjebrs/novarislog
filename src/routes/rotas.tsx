@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth";
 import { abrirEspelho, baixarEspelho, whatsappMotorista, fmtDH } from "@/lib/espelho-coleta";
 
 export const Route = createFileRoute("/rotas")({
+  validateSearch: (s: Record<string, unknown>) => ({ registro: typeof s.registro === "string" ? s.registro : undefined }),
   head: () => ({ meta: [
     { title: "Rotas & Ordens de Coleta | Novaris TMS" },
     { name: "description", content: "Rotas geradas a partir das NF-e, vínculo de motorista e veículo e programação das ordens de coleta com espelho." },
@@ -30,7 +31,10 @@ const toLocal = (iso?: string) => (iso ? new Date(new Date(iso).getTime() - new 
 function Page() {
   useAutoRotas();
   const [tab, setTab] = useState<"r" | "oc">("r");
+  const { registro } = Route.useSearch();
+  const ocs = useOrdensColeta();
   const [editId, setEditId] = useState<string | null>(null);
+  const linkedId = registro ? ocs.list.find(o => o.rotaId === registro || o.id === registro)?.id : undefined;
   return (
     <div className="p-6 space-y-4">
       <div>
@@ -42,7 +46,7 @@ function Page() {
         <Button variant={tab === "oc" ? "default" : "outline"} onClick={() => setTab("oc")}><ClipboardList className="h-4 w-4" /> Ordens de coleta</Button>
       </div>
       {tab === "r" ? <Rotas onEdit={setEditId} /> : <Ordens onEdit={setEditId} />}
-      {editId && <EditOC ocId={editId} onClose={() => setEditId(null)} />}
+      {(editId || linkedId) && <EditOC ocId={editId ?? linkedId ?? ""} onClose={() => setEditId(null)} />}
     </div>
   );
 }

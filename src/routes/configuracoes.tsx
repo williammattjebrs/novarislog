@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useConfig, resetAllData } from "@/lib/mock-store";
 import { DEFAULT_CONFIG, DEFAULT_EMAIL_TEMPLATE, ORDER_STAGES } from "@/lib/mock-data";
+import { Button } from "@/components/ui/button";
 import { Mail } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -11,7 +12,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getInboxConfig, saveInboxConfig, testInbox, syncInbox } from "@/lib/email-inbox.functions";
 import { useAuth } from "@/lib/auth";
 import { Settings, RotateCcw, Trash2, DatabaseBackup, Upload } from "lucide-react";
-import { downloadBackup, restoreBackup } from "@/lib/export-utils";
+import { downloadBackup, restoreBackup, validateBackup, type BackupPreview } from "@/lib/export-utils";
 
 export const Route = createFileRoute("/configuracoes")({
   head: () => ({
@@ -41,22 +42,20 @@ function ConfigPage() {
   const tpl = cfg.emailTemplate ?? DEFAULT_EMAIL_TEMPLATE;
   const setTpl = (p: Partial<typeof tpl>) => setCfg({ ...cfg, emailTemplate: { ...tpl, ...p } });
 
-  function onRestoreFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    f.text()
-      .then((text) => {
-        const n = restoreBackup(text);
-        alert(`Backup restaurado (${n} coleção/ões). A página vai recarregar.`);
-        window.location.reload();
-      })
-      .catch(() => alert("Arquivo de backup inválido."));
-    e.target.value = "";
+  const [restore, setRestore] = useState<BackupPreview|null>(null);
+  const [restoreError,setRestoreError] = useState("");
+  const [restoring,setRestoring] = useState(false);
+  async function onRestoreFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f=e.target.files?.[0]; e.target.value=""; if(!f)return;
+    try { setRestore(validateBackup(await f.text())); setRestoreError(""); }
+    catch(e) { setRestoreError(e instanceof Error ? e.message : "Backup inválido."); }
   }
 
   return (
     <AppShell>
       <div className="p-4 md:p-6 space-y-6 max-w-4xl">
+        {restoreError && <p role="alert" className="text-danger">{restoreError}</p>}
+        {restore && <section className="border border-border p-4 space-y-3"><h2 className="font-semibold">Prévia da restauração</h2><p className="text-sm">Cópia de {new Date(restore.exportadoEm).toLocaleString("pt-BR")} · nenhum registro será excluído</p>{restore.impact.map(x=><p key={x.collection} className="text-xs">{x.collection}: {x.additions} novos · {x.updates} existentes serão atualizados</p>)}<Button variant="outline" onClick={()=>setRestore(null)}>Cancelar</Button><Button disabled={restoring} onClick={async()=>{setRestoring(true);try{const n=await restoreBackup(restore);setRestore(null);alert(`Restauração confirmada: ${n} coleções.`);}catch(e){setRestoreError(e instanceof Error?e.message:"Falha na restauração");}finally{setRestoring(false);}}}>Confirmar restauração</Button></section>}
         <div>
           <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Sistema</div>
           <h1 className="mt-1 text-2xl md:text-3xl font-semibold">Configurações</h1>
@@ -150,24 +149,7 @@ function ConfigPage() {
           </div>
         </section>
 
-        <section className="panel p-5 space-y-3 border-danger/40">
-          <div className="flex items-center gap-2">
-            <Trash2 className="h-4 w-4 text-danger" />
-            <div className="font-display text-lg text-danger">Zona perigosa</div>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Apaga todos os clientes, tabelas, ordens, CT-es e financeiro. Útil para começar testes do zero.
-          </p>
-          <button
-            onClick={() => {
-              if (confirm("Apagar TODOS os dados? Isso não pode ser desfeito.")) {
-                resetAllData();
-                alert("Dados apagados.");
-              }
-            }}
-            className="text-sm px-3 py-1.5 rounded border border-danger/40 bg-danger/10 text-danger hover:bg-danger/20"
-          >Apagar todos os dados</button>
-        </section>
+
       </div>
     </AppShell>
   );
