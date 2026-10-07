@@ -41,6 +41,7 @@ export const Route = createFileRoute("/coletas")({
 });
 
 function ColetasPage() {
+  useAutoRotas();
   const orders = useOrders();
   const clients = useClients();
   const tables = useFreightTables();
