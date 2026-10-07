@@ -10,7 +10,7 @@ import type {
 } from "./mock-data";
 import { DEFAULT_CONFIG } from "./mock-data";
 import { getDoc, getList, notify, setDoc, setList, startSharedSync, subscribe, sharedReady } from "./shared-db";
-if (typeof window !== "undefined") startSharedSync();
+
 
 const PREFIX = "novaris:";
 const isBrowser = typeof window !== "undefined";
@@ -43,9 +43,9 @@ function read<T>(key: StoreKey, fallback: T): T {
 }
 
 function write<T>(key: StoreKey, val: T) {
-  if (!isBrowser) return;
-  if (key === "config") setDoc("config", val);
-  else setList(key, val as any[]);
+  if (!isBrowser) return Promise.resolve();
+  if (key === "config") return setDoc("config", val);
+  return setList(key, val as any[]);
 }
 void PREFIX;
 
