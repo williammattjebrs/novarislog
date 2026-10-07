@@ -11,7 +11,8 @@ import {
 } from "@/lib/mock-data";
 import { parseNFe, parseCTe, readFileText } from "@/lib/xml-parser";
 import { exportCsv, printReport } from "@/lib/export-utils";
-import { findFreightTable, findQuotation, calcFreight } from "@/lib/cost-calc";
+import { findFreightTable, findQuotation, calcFreight, calcOrderCost } from "@/lib/cost-calc";
+import { QuickCost } from "@/components/QuickCost";
 import { lookupCoords } from "@/lib/geo";
 import { RecordActions } from "@/components/RecordActions";
 import { DivergenceBadge } from "@/components/DivergenceBadge";
@@ -382,6 +383,7 @@ function ColetasPage() {
                   <th className="text-left font-normal">Rota</th>
                   <th className="text-right font-normal">Ordem</th>
                   <th className="text-right font-normal">CT-e</th>
+                  <th className="text-right font-normal">Custo</th>
                   <th className="text-left font-normal">Estágio</th>
                   <th className="text-right font-normal pr-4">Ações</th>
                 </tr>
@@ -408,6 +410,11 @@ function ColetasPage() {
                           )}
                         </div>
                       ) : <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className="text-right num text-xs">
+                      {o.costs?.execMode
+                        ? <span className="text-accent">{fmtBRL(calcOrderCost(o.costs, cfg.frota, o.cteValor ?? o.valorFrete).total)}</span>
+                        : <button onClick={(e) => { e.stopPropagation(); setSelected(o.id); }} className="text-primary hover:underline">+ custo</button>}
                     </td>
                     <td>
                       <span className={`text-[11px] px-2 py-0.5 rounded border ${toneClass(statusTone(o.stage))}`}>
@@ -549,6 +556,9 @@ function OrderDetail({ order, onClose, onUpdate }: {
           </div>
         </div>
       )}
+
+      <QuickCost key={order.id} order={order} onUpdate={onUpdate} />
+
 
       {(order.stage === "cte_ok" || order.stage === "cte_divergente") && !order.transportType && (
         <div>
