@@ -92,7 +92,7 @@ function Veiculos() {
         <select className={inp} value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })}>{TIPOS_CAMINHAO.map((t) => <option key={t}>{t}</option>)}</select>
         <input className={inp} placeholder="Modelo" value={f.modelo} onChange={(e) => setF({ ...f, modelo: e.target.value })} />
         <select className={inp} value={f.proprietario} onChange={(e) => setF({ ...f, proprietario: e.target.value as "frota" | "terceiro" })}><option value="frota">Frota própria</option><option value="terceiro">Terceiro</option></select>
-        <input className={inp} placeholder="Capacidade (kg)" value={f.capacidadeKg} onChange={(e) => setF({ ...f, capacidadeKg: e.target.value })} />
+        <input className={inp} inputMode="numeric" placeholder="Capacidade de carga (kg)" value={f.capacidadeKg} onChange={(e) => setF({ ...f, capacidadeKg: e.target.value.replace(/\D/g, "") })} />
         <Button onClick={salvar}>Adicionar</Button>
       </div>
       {err && <div className="text-xs text-danger">{err}</div>}
@@ -102,7 +102,7 @@ function Veiculos() {
           {v.list.map((x) => (
             <tr key={x.id} className="border-t border-border">
               <td className="py-1.5 num">{x.placa}</td><td>{x.tipo}</td><td>{x.modelo || "—"}</td><td>{x.proprietario === "frota" ? "Frota" : "Terceiro"}</td>
-              <td className="num">{x.capacidadeKg ? `${x.capacidadeKg.toLocaleString("pt-BR")} kg` : "—"}</td>
+              <td className="num"><input className={`${inp} w-28`} inputMode="numeric" placeholder="kg" defaultValue={x.capacidadeKg ?? ""} key={x.capacidadeKg ?? "none"} onBlur={(e) => { const n = Number(e.target.value.replace(/\D/g, "")) || undefined; if (n !== x.capacidadeKg) v.update(x.id, { capacidadeKg: n }); }} /></td>
               <td><input type="checkbox" checked={x.ativo} onChange={(e) => v.update(x.id, { ativo: e.target.checked })} /></td>
               <td className="text-right"><button onClick={() => confirm(`Excluir ${x.placa}?`) && v.remove(x.id)} className="text-danger"><Trash2 className="h-4 w-4" /></button></td>
             </tr>
