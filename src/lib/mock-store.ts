@@ -103,18 +103,14 @@ export const useExpenseGroups = () => useCollection<ExpenseGroup>("expenseGroups
 // ==================================================================
 // Config global
 // ==================================================================
-let cfgCacheRaw: string | null = null;
+let cfgCacheRaw: unknown = undefined;
 let cfgCacheVal: AppConfig = DEFAULT_CONFIG;
 function configSnapshot(): AppConfig {
   if (!isBrowser) return DEFAULT_CONFIG;
-  const raw = localStorage.getItem(PREFIX + "config");
+  const raw = getDoc<AppConfig>("config");
   if (raw === cfgCacheRaw) return cfgCacheVal;
   cfgCacheRaw = raw;
-  try {
-    cfgCacheVal = raw ? ({ ...DEFAULT_CONFIG, ...JSON.parse(raw) } as AppConfig) : DEFAULT_CONFIG;
-  } catch {
-    cfgCacheVal = DEFAULT_CONFIG;
-  }
+  cfgCacheVal = raw ? ({ ...DEFAULT_CONFIG, ...raw } as AppConfig) : DEFAULT_CONFIG;
   return cfgCacheVal;
 }
 
@@ -141,24 +137,14 @@ export function getClients(): Client[] {
   return read<Client[]>("clients", []);
 }
 export function getConfigSync(): AppConfig {
-  if (!isBrowser) return DEFAULT_CONFIG;
-  try {
-    const raw = localStorage.getItem(PREFIX + "config");
-    if (!raw) return DEFAULT_CONFIG;
-    return { ...DEFAULT_CONFIG, ...JSON.parse(raw) } as AppConfig;
-  } catch {
-    return DEFAULT_CONFIG;
-  }
+  return configSnapshot();
 }
 
 export function resetAllData() {
   if (!isBrowser) return;
   (["clients", "freightTables", "routeRates", "quotations", "crmDeals", "orders",
     "warehouseInbound", "warehouseOutbound", "stock", "invoices", "expenses", "clientGroups"] as StoreKey[]
-  ).forEach((k) => {
-    localStorage.removeItem(PREFIX + k);
-    notify(k);
-  });
+  ).forEach((k) => { write(k, []); notify(k); });
 }
 
 // util: gera ID curto

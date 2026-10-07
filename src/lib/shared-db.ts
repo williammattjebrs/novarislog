@@ -6,6 +6,9 @@ const PREFIX = "novaris:";
 const isBrowser = typeof window !== "undefined";
 type Row = { collection: string; id: string; data: any; criado_em: string };
 
+export const SHARED_KEYS = new Set(["clients", "freightTables", "routeRates", "quotations", "crmDeals", "orders",
+  "stock", "invoices", "expenses", "clientGroups", "expenseGroups", "config", "trackingGroups"]);
+
 const listeners: Record<string, Set<() => void>> = {};
 export function notify(key: string) { listeners[key]?.forEach((l) => l()); }
 export function subscribe(key: string, cb: () => void) {
@@ -23,7 +26,7 @@ function persistLocal(key: string) {
 export function getList<T>(key: string): T[] | undefined {
   if (!isBrowser) return undefined;
   if (!cache[key]) {
-    try { const raw = localStorage.getItem(PREFIX + key); if (raw) cache[key] = JSON.parse(raw); } catch { /* ignore */ }
+    try { const raw = localStorage.getItem(PREFIX + key); const v = raw ? JSON.parse(raw) : null; if (Array.isArray(v)) cache[key] = v; } catch { /* ignore */ }
   }
   return cache[key];
 }
@@ -79,7 +82,7 @@ async function loadAll() {
   const localKeys = Object.keys(localStorage).filter((k) => k.startsWith(PREFIX));
   for (const lk of localKeys) {
     const key = lk.slice(PREFIX.length);
-    if (grouped[key]) continue;
+    if (grouped[key] || !(SHARED_KEYS.has(key) || key.startsWith("tracking-group:"))) continue;
     try {
       const val = JSON.parse(localStorage.getItem(lk) ?? "null");
       if (key === "config" && val && !Array.isArray(val)) { cache[key] = []; setDoc(key, val); continue; }
