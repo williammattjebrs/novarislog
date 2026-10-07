@@ -24,4 +24,4 @@
 - [x] Fluxo automático NF-e → rota → OC; coletada aguarda CT-e; vínculo manual de CT-e
 
 ## Pendente
-- [ ] Confirmar/testar fluxo multi-NF e multi-CT-e por veículo (1 CT-e com várias notas; 1 veículo com vários CT-es)
+- [x] Multi-NF e multi-CT-e: rota/OC já agrupam várias NFs; CT-e vincula por todas as chaves de NF referenciadas; mesmo veículo/motorista reutilizável em várias OCs
