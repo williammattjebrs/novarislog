@@ -1,5 +1,17 @@
 # Roadmap
 
+## Revisão de confiabilidade — anexo 07/10/2026
+- [ ] Permissões efetivas, usuários inativos e proteção de valores financeiros
+- [ ] Persistência confirmada, recuperação, conflitos e isolamento de sessão
+- [ ] Importação fiscal deduplicada, CT-e multi-NF e conferência independente
+- [ ] Prévia e confirmação de regularização dos registros históricos
+- [ ] Baixas parciais, estornos e indicadores financeiros coerentes
+- [ ] Navegação móvel, busca global e central de pendências
+- [ ] Backup persistido e restauração validada com prévia
+- [ ] Agendamento no servidor desativado e histórico de execuções
+- [ ] Testes de regressão, permissões e fluxos; investigação do domínio
+- [ ] Manual e relatório de entrega com limitações e recuperação
+
 - [x] Grupos de e-mail por cliente e envio pelo sistema, manual ou com frequência configurável enquanto Monitoramento está aberto
 - [ ] Envio automático com aplicativo fechado — depende de mover as ordens e grupos locais para dados compartilhados no Cloud
 
