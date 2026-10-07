@@ -11,6 +11,10 @@
 
 - Keep in-app training content in a browser-safe module and render it through a dedicated manual route available to all signed-in roles; this keeps guidance separate from operational workflows.
 - Send tracking updates through authenticated server functions using the existing workspace Outlook connection and a shared escaped HTML formatter; mailto cannot preserve tables or control character encoding.
-- Keep interval-based tracking sends active only while Monitoramento is open until operational orders are persisted in Cloud; a background scheduler cannot read browser-local orders.
-- Persist all operational collections (clients, tables, orders, finance, config, tracking groups) in the shared app_records table via src/lib/shared-db.ts with local cache and realtime; every signed-in user must see the same data.
-- Group NF-e orders into Rotas (same sender+recipient) and auto-create one OrdemColeta per open rota (useAutoRotas) as shared collections; the NF order stays the tracking unit and OC status propagates to its NFs. Email import waits for sharedReady so dedupe never runs against an empty cache.
+- Use the secret-protected server scheduler with durable job claims; browser timers are removed to prevent double execution, and production scheduling stays disabled until explicitly activated.
+- Persist authorized operational collections through versioned tms_records_read/tms_records_commit RPCs and src/lib/shared-db.ts; confirmation precedes cache changes, polling refreshes authorized snapshots, and old browser cache is never migrated automatically.
+- Import new NF-e with route and OC in one commitLists transaction, and CT-e via tms_import_cte with server-side fiscal checks, proportional allocation and unique revenue; historical regularization requires an explicit preview confirmation.
+
+- Keep original fiscal document content immutable and financial payment histories append-only; server triggers reject invalid partial payments and reversals.
+- Backups read authorized persisted records, and versioned restoration requires a preview and confirmed transactional merge without deletion.
+- Parse headless NF-e through an injected XML parser and commit document, route and OC via the service-only transactional import; this supports scheduling without browser globals.

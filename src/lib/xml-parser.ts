@@ -29,9 +29,9 @@ function num(el: Element | null | undefined, tag: string): number {
   return parseFloat(text(el, tag) || "0") || 0;
 }
 
-export function parseNFe(xml: string): ParsedNFe | null {
+export function parseNFe(xml: string, parser?: { parseFromString: (xml: string, type: string) => any }): ParsedNFe | null {
   try {
-    const doc = new DOMParser().parseFromString(xml, "text/xml");
+    const doc = (parser ?? new DOMParser()).parseFromString(xml, "text/xml");
     if (doc.getElementsByTagName("parsererror").length) return null;
 
     const infNFe = doc.getElementsByTagName("infNFe")[0];

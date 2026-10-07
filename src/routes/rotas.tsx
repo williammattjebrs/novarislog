@@ -10,10 +10,11 @@ import { OC_STATUS, TIPOS_CAMINHAO, type OrdemColeta, type OCStatus, type Order 
 const fmtCpf = (v: string) => v.replace(/\D/g, "").slice(0, 11).replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, (_, a, b, c, d) => `${a}.${b}.${c}${d ? "-" + d : ""}`);
 import { useAutoRotas } from "@/lib/use-auto-rotas";
 import { useAuth } from "@/lib/auth";
+import { commitLists } from "@/lib/shared-db";
 import { abrirEspelho, baixarEspelho, whatsappMotorista, fmtDH } from "@/lib/espelho-coleta";
 
 export const Route = createFileRoute("/rotas")({
-  validateSearch: (s: Record<string, unknown>) => ({ registro: typeof s.registro === "string" ? s.registro : undefined }),
+  validateSearch: (s: Record<string, unknown>): {registro?:string} => ({ registro: typeof s.registro === "string" ? s.registro : undefined }),
   head: () => ({ meta: [
     { title: "Rotas & Ordens de Coleta | Novaris TMS" },
     { name: "description", content: "Rotas geradas a partir das NF-e, vínculo de motorista e veículo e programação das ordens de coleta com espelho." },
@@ -102,13 +103,14 @@ function MotoristaSelect({ value, onChange, disabled }: { value: string; onChang
   const [novo, setNovo] = useState(false);
   const [f, setF] = useState({ nome: "", cpf: "", telefone: "" });
   const [err, setErr] = useState("");
-  function salvar() {
+  async function salvar() {
     const cpf = f.cpf.replace(/\D/g, "");
     if (!f.nome.trim() || cpf.length !== 11 || f.telefone.replace(/\D/g, "").length < 10) return setErr("Nome, CPF (11 dígitos) e telefone com DDD são obrigatórios.");
     const existente = mot.list.find((x) => x.cpf.replace(/\D/g, "") === cpf);
     if (existente) { onChange(existente.id); setNovo(false); setErr(""); return; }
     const id = newId("MOT");
-    mot.add({ id, nome: f.nome.trim(), cpf: fmtCpf(cpf), telefone: f.telefone.trim(), cnh: "", ativo: true, criadoEm: new Date().toISOString() });
+    try { await mot.add({ id, nome: f.nome.trim(), cpf: fmtCpf(cpf), telefone: f.telefone.trim(), cnh: "", ativo: true, criadoEm: new Date().toISOString() }); }
+    catch(e){setErr(e instanceof Error?e.message:'Falha ao salvar motorista.');return;}
     onChange(id); setNovo(false); setF({ nome: "", cpf: "", telefone: "" }); setErr("");
   }
   if (novo) return (
@@ -149,15 +151,15 @@ function VeiculoSelect({ value, onChange, disabled }: { value: string; onChange:
   const [novo, setNovo] = useState(false);
   const [f, setF] = useState({ placa: "", tipo: "Truck", proprietario: "frota" as "frota" | "terceiro", capacidadeKg: "" });
   const [err, setErr] = useState("");
-  function salvar() {
+  async function salvar() {
     const placa = f.placa.toUpperCase().replace(/[^A-Z0-9]/g, "");
     if (!/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(placa)) return setErr("Placa inválida (ex.: ABC1D23 ou ABC1234).");
     const cap = Number(String(f.capacidadeKg).replace(/\./g, "").replace(",", "."));
     if (!cap || cap <= 0) return setErr("Informe a capacidade de carga (kg).");
     const existente = vei.list.find((x) => x.placa === placa);
-    if (existente) { if (!existente.capacidadeKg) vei.update(existente.id, { capacidadeKg: cap }); onChange(existente.id); setNovo(false); setErr(""); return; }
+    if (existente) { try{if (!existente.capacidadeKg) await vei.update(existente.id, { capacidadeKg: cap }); onChange(existente.id); setNovo(false); setErr("");}catch(e){setErr(e instanceof Error?e.message:'Falha ao atualizar veículo.');} return; }
     const id = newId("VEI");
-    vei.add({ id, placa, tipo: f.tipo, modelo: "", proprietario: f.proprietario, capacidadeKg: cap, ativo: true, criadoEm: new Date().toISOString() });
+    try{await vei.add({ id, placa, tipo: f.tipo, modelo: "", proprietario: f.proprietario, capacidadeKg: cap, ativo: true, criadoEm: new Date().toISOString() });}catch(e){setErr(e instanceof Error?e.message:'Falha ao salvar veículo.');return;}
     onChange(id); setNovo(false); setF({ placa: "", tipo: "Truck", proprietario: "frota", capacidadeKg: "" }); setErr("");
   }
   if (novo) return (
@@ -198,7 +200,7 @@ function EditOC({ ocId, onClose }: { ocId: string; onClose: () => void }) {
   });
   const [err, setErr] = useState("");
   if (!oc || !rota) return null;
-  function salvar() {
+  async function salvar() {
     if (!oc || !rota) return;
     if (!sel.length || !f.localColeta.trim() || !f.localEntrega.trim()) return setErr("Selecione as NFs e informe os locais de coleta e entrega.");
     const now = new Date().toISOString();
@@ -209,19 +211,20 @@ function EditOC({ ocId, onClose }: { ocId: string; onClose: () => void }) {
       dataHoraColeta: f.dataHoraColeta ? new Date(f.dataHoraColeta).toISOString() : "",
       dataHoraEntrega: f.dataHoraEntrega ? new Date(f.dataHoraEntrega).toISOString() : "", atualizadoEm: now,
     };
-    ocs.update(oc.id, patch);
     const m = mot.list.find((x) => x.id === f.motoristaId); const v = vei.list.find((x) => x.id === f.veiculoId);
-    orders.set(orders.list.map((o) => sel.includes(o.id) ? {
+    const nextOrders = orders.list.map((o) => sel.includes(o.id) ? {
       ...o, motorista: m ? `${m.nome} (${m.telefone})` : o.motorista, placa: v?.placa ?? o.placa,
       previsaoEntrega: patch.dataHoraEntrega || o.previsaoEntrega, atualizadoEm: now,
       ...(status === "emitida" && oc.status === "aguardando_programacao" ? {
         stage: ["valorizada", "aguarda_vinculacao"].includes(o.stage) ? "coleta_agendada" as const : o.stage,
         timeline: [...o.timeline, { quando: now, autor: user?.email ?? "sistema", tipo: "status" as const, texto: `${oc.numero} programada · coleta ${fmtDH(patch.dataHoraColeta)} · ${m?.nome ?? ""} ${v?.placa ?? ""}` }],
       } : {}),
-    } : o));
+    } : o);
     // Programada: a rota fecha para novas NFs; as não selecionadas voltam a ser agrupadas numa nova rota.
-    rotas.update(rota.id, { orderIds: sel, motoristaId: f.motoristaId || undefined, veiculoId: f.veiculoId || undefined, status: status === "aguardando_programacao" ? "aberta" : "programada", atualizadoEm: now });
-    onClose();
+    try {
+      await commitLists({ orders: nextOrders, ordensColeta: ocs.list.map(o => o.id === oc.id ? {...o,...patch} : o), rotas: rotas.list.map(r => r.id === rota.id ? {...r,orderIds:sel,motoristaId:f.motoristaId || undefined,veiculoId:f.veiculoId || undefined,status:status === "aguardando_programacao" ? "aberta" : "programada",atualizadoEm:now} : r) }, `Programação confirmada da ${oc.numero}`);
+      onClose();
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Falha ao programar OC.'); }
   }
   return (
     <div className="fixed inset-0 z-50 bg-background/80 grid place-items-center p-4">
@@ -264,16 +267,14 @@ function Ordens({ onEdit }: { onEdit: (id: string) => void }) {
   const ocs = useOrdensColeta(); const orders = useOrders(); const mot = useMotoristas(); const vei = useVeiculos(); const rotas = useRotas();
   const { user } = useAuth();
   const byId = useMemo(() => new Map(orders.list.map((o) => [o.id, o])), [orders.list]);
-  function setStatus(oc: OrdemColeta, status: OCStatus) {
+  async function setStatus(oc: OrdemColeta, status: OCStatus) {
     const now = new Date().toISOString();
-    ocs.update(oc.id, { status, atualizadoEm: now });
     const st = OC_STATUS.find((s) => s.id === status);
     // NFs com CT-e já vinculado não voltam para "aguardando CT-e"
-    if (st?.stage) orders.set(orders.list.map((o) => oc.orderIds.includes(o.id) && !(st.stage === "aguardando_cte" && o.cteChave) ? { ...o, stage: st.stage!, atualizadoEm: now,
-      timeline: [...o.timeline, { quando: now, autor: user?.email ?? "sistema", tipo: "status", texto: `${oc.numero}: ${st.label}` }] } : o));
-    if (status === "entregue") rotas.update(oc.rotaId, { status: "encerrada" });
-    else if (status === "cancelada") rotas.update(oc.rotaId, { status: "encerrada", orderIds: [] });
-    else if (status !== "aguardando_programacao") rotas.update(oc.rotaId, { status: "programada" });
+    const nextOrders = orders.list.map(o => oc.orderIds.includes(o.id) && st?.stage && !(st.stage === "aguardando_cte" && o.cteChave) ? {...o,stage:st.stage,entregueEm:status === 'entregue' ? now : o.entregueEm,atualizadoEm:now,timeline:[...o.timeline,{quando:now,autor:user?.email ?? 'sistema',tipo:'status' as const,texto:`${oc.numero}: ${st.label}`}]} : o);
+    try {
+      await commitLists({orders:nextOrders,ordensColeta:ocs.list.map(o=>o.id===oc.id?{...o,status,atualizadoEm:now}:o),rotas:rotas.list.map(r=>r.id===oc.rotaId?{...r,status:status==='entregue'||status==='cancelada'?'encerrada':status!=='aguardando_programacao'?'programada':r.status,atualizadoEm:now}:r)},`Status ${status} da ${oc.numero}`);
+    } catch (e) { window.alert(e instanceof Error ? e.message : 'Falha ao gravar status.'); }
   }
   return (
     <div className="panel overflow-auto">

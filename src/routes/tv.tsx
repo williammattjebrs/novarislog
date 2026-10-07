@@ -1,9 +1,10 @@
 // Painel de indicadores para TV — tela cheia, sem menu, atualização automática.
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useOrders, useConfig } from "@/lib/mock-store";
+import { useOrders, useConfig, useInvoices, useExpenses } from "@/lib/mock-store";
 import { useAuth } from "@/lib/auth";
 import { RoleGate } from "@/components/RoleGate";
+import { financeSummary } from "@/lib/finance-summary";
 import { financialAccess } from "@/lib/permissions";
 import { fmtBRL, stageLabel, type Order } from "@/lib/mock-data";
 import { calcOrderCost } from "@/lib/cost-calc";
@@ -37,6 +38,7 @@ const fmtK = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 0
 
 function TvPage() {
   const orders = useOrders();
+  const invoices=useInvoices(), expenses=useExpenses();
   const { user } = useAuth();
   const canSeeFinance = financialAccess(user);
   const [cfg] = useConfig();
@@ -55,13 +57,13 @@ function TvPage() {
     const doMes = list.filter((o) => new Date(o.criadoEm) >= mesIni);
     const receitaOf = (o: Order) => o.cteValor ?? o.valorFrete ?? 0;
     const custoOf = (o: Order) => calcOrderCost(o.costs, cfg.frota, o.valorFrete).total;
-    const receita = doMes.reduce((s, o) => s + receitaOf(o), 0);
-    const custo = doMes.reduce((s, o) => s + custoOf(o), 0);
+    const summary=financeSummary(new Date().toISOString().slice(0,7),invoices.list,expenses.list,list,cfg.frota);
+    const receita=summary.faturada, custo=summary.custo;
     const resultado = receita - custo;
 
     const entregues = list.filter((o) => o.stage === "entregue");
-    const comPrev = entregues.filter((o) => o.previsaoEntrega);
-    const noPrazo = comPrev.filter((o) => new Date(o.atualizadoEm) <= new Date(o.previsaoEntrega! + (o.previsaoEntrega!.length <= 10 ? "T23:59:59" : ""))).length;
+    const comPrev = entregues.filter((o) => o.previsaoEntrega && o.entregueEm);
+    const noPrazo = comPrev.filter((o) => !!o.entregueEm && !!o.previsaoEntrega && new Date(o.entregueEm) <= new Date(o.previsaoEntrega + (o.previsaoEntrega.length <= 10 ? "T23:59:59" : ""))).length;
     const transito = list.filter((o) => TRANSITO.includes(o.stage));
     const atrasadas = transito.filter((o) => o.previsaoEntrega && new Date(o.previsaoEntrega) < new Date());
     const ocorr = list.filter((o) => o.stage === "ocorrencia");
@@ -84,12 +86,12 @@ function TvPage() {
     list.forEach((o) => porEtapa.set(o.stage, (porEtapa.get(o.stage) ?? 0) + 1));
 
     return {
-      receita, custo, resultado, margem: pct(resultado, receita), ticket: doMes.length ? receita / doMes.length : 0,
+      custosPendentes:summary.custosPendentes, receita, custo, resultado, margem: pct(resultado, receita), ticket: doMes.length ? receita / doMes.length : 0,
       otd: pct(noPrazo, comPrev.length), noPrazo, comPrevN: comPrev.length, entregues: entregues.length,
       transito, atrasadas, ocorr, pend, diverg, aguardCte, total: list.length, mesN: doMes.length, peso,
       custoKg: peso ? custo / peso : 0, frota, terc, topClientes, porEtapa,
     };
-  }, [orders.list, cfg]);
+  }, [orders.list, cfg, invoices.list, expenses.list]);
 
   const ch = useMemo(() => {
     const list: Order[] = orders.list;
@@ -130,7 +132,7 @@ function TvPage() {
       <header className="flex items-center justify-between">
         <img src={logo.url} alt="Novaris" className="h-12 w-auto" />
         <div className="text-center">
-          <div className="font-display text-3xl">Indicadores de Transporte</div>
+          <h1 className="font-display text-3xl">Indicadores de Transporte</h1>
           <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Mês corrente · atualização automática</div>
         </div>
         <div className="text-right num">
@@ -139,6 +141,7 @@ function TvPage() {
         </div>
       </header>
 
+      {canSeeFinance && k.custosPendentes>0 && <p className="text-warning text-sm">Resultado provisório · {k.custosPendentes} ordens sem custo</p>}
       <section className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {canSeeFinance ? <Big l="Faturamento (mês)" v={fmtBRL(k.receita)} s={`${k.mesN} ordens · ticket ${fmtBRL(k.ticket)}`} /> : <Big l="Operação (mês)" v={`${k.mesN} ordens`} s={`Ticket médio oculto`} />}
         {canSeeFinance ? <Big l="Custo operacional" v={fmtBRL(k.custo)} s={`R$ ${k.custoKg.toFixed(2)}/kg · ${fmtK(k.peso)} kg`} /> : <Big l="Peso movimentado" v={`${fmtK(k.peso)} kg`} s="Custos ocultos" />}
@@ -290,7 +293,7 @@ function TvPage() {
 }
 
 function Big({ l, v, s, tone = "text-foreground" }: { l: string; v: string; s: string; tone?: string }) {
-  return <div className="panel p-5"><div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{l}</div><div className={`num text-4xl xl:text-5xl mt-2 ${tone}`}>{v}</div><div className="text-xs text-muted-foreground mt-2">{s}</div></div>;
+  return <div className="panel p-4 min-w-0"><div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{l}</div><div className={`num text-2xl mt-2 break-words ${tone}`}>{v}</div><div className="text-xs text-muted-foreground mt-2">{s}</div></div>;
 }
 function Mid({ l, v, tone }: { l: string; v: number; tone: string }) {
   return <div className="panel p-4 text-center"><div className={`num text-4xl ${tone}`}>{v}</div><div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-1">{l}</div></div>;

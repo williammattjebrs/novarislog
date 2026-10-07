@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 
 import { financialAccess } from "@/lib/permissions";
+import { financeSummary } from "@/lib/finance-summary";
+import { useConfig } from "@/lib/mock-store";
 import { monthKey } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/")({
@@ -37,12 +39,14 @@ function Dashboard() {
   const orders = useOrders();
   const invoices = useInvoices();
   const expenses = useExpenses();
+  const [cfg]=useConfig();
+  const summary=financeSummary(month,invoices.list,expenses.list,orders.list,cfg.frota);
 
   const ativos = orders.list.filter((o) => !["entregue"].includes(o.stage));
   const entregues = orders.list.filter((o) => o.stage === "entregue");
   const ocorrencias = orders.list.filter((o) => o.stage === "ocorrencia" || o.stage === "cte_divergente");
   const receitaMes = invoices.list.filter(i => monthKey(i.competencia ?? i.emissao) === month).reduce((s, i) => s + i.valor, 0);
-  const despesaMes = expenses.list.filter(e => monthKey(e.competencia ?? e.vencimento) === month).reduce((s, e) => s + e.valor, 0);
+  const despesaMes = summary.custo;
 
   const kpis = [
     { l: "Entregas ativas", v: String(ativos.length), icon: PackageCheck, tone: "text-primary" },
@@ -67,7 +71,7 @@ function Dashboard() {
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Radio className="h-3.5 w-3.5 text-success" />
-              <span>feed tempo real</span>
+              <span>Dados compartilhados · atualização periódica</span>
             </div>
           </div>
 
@@ -176,8 +180,8 @@ function Dashboard() {
               </table>
             </div>
             {canSeeFinance && <div className="mt-4 text-xs text-muted-foreground flex gap-4">
-              <span>Despesa prevista: <span className="num text-foreground">{fmtBRL(despesaMes)}</span></span>
-              <span>Margem prevista: <span className={`num ${receitaMes - despesaMes >= 0 ? "text-success" : "text-danger"}`}>{fmtBRL(receitaMes - despesaMes)}</span></span>
+              <span>Custos e despesas (mês): <span className="num text-foreground">{fmtBRL(despesaMes)}</span></span>
+              <span>Resultado gerencial: <span className={`num ${receitaMes - despesaMes >= 0 ? "text-success" : "text-danger"}`}>{fmtBRL(receitaMes - despesaMes)}</span></span>
             </div>}
           </div>
         </div>

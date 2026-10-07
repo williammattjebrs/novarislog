@@ -217,6 +217,11 @@ export const syncInbox = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertColetas(context.supabase, context.userId);
+    return performInboxSync();
+  });
+
+// Internal worker helper; imported only inside a verified server boundary.
+export async function performInboxSync() {
     const c = await loadConfig();
     const db = await adminClient();
     const microsoft = await usaMicrosoft(c);
@@ -258,7 +263,7 @@ export const syncInbox = createServerFn({ method: "POST" })
       await db.from("email_inbox_config" as never).update({ ultima_sync: new Date().toISOString(), ultimo_status: `Erro: ${mensagem}` } as never).eq("id", 1);
       return { ok: false, mensagem, novos, duplicados, mensagens };
     }
-  });
+}
 
 export const listPendingXml = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -267,7 +272,7 @@ export const listPendingXml = createServerFn({ method: "GET" })
     const db = await adminClient();
     const { data, error } = await db
       .from("email_xml_inbox" as never)
-      .select("chave, tipo, xml, arquivo")
+      .select("chave, tipo, xml, arquivo, motivo_pendencia")
       .eq("status", "novo")
       .order("recebido_em", { ascending: true })
       .limit(200);
@@ -282,6 +287,13 @@ export const markXmlImported = createServerFn({ method: "POST" })
     await assertColetas(context.supabase, context.userId);
     if (!data.chaves.length) return { ok: true };
     const db = await adminClient();
+    for (const chave of data.chaves) {
+      const [{data:nfs},{data:ctes}] = await Promise.all([
+        db.from('app_records').select('id').eq('collection','orders').eq('data->>chaveNFe',chave).limit(1),
+        db.from('app_records').select('id').eq('collection','cteDocuments').eq('data->>chave',chave).limit(1),
+      ]);
+      if (!nfs?.length && !ctes?.length) throw new Error('XML ainda não possui gravação operacional confirmada.');
+    }
     const { error } = await db
       .from("email_xml_inbox" as never)
       .update({ status: "importado", importado_em: new Date().toISOString() } as never)

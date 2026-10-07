@@ -14,6 +14,7 @@ export type SyncState = { status: 'carregando'|'salvando'|'salvo'|'falha'|'confl
 let state: SyncState = { status: 'carregando', message: 'Carregando dados autorizados', pending: 0 };
 const pending: { changes: Change[]; reason: string }[] = [];
 let queue: Promise<unknown> = Promise.resolve();
+let sessionGeneration = 0;
 export function syncSnapshot() { return state; }
 export function syncServerSnapshot() { return serverState; }
 const serverState: SyncState = { status: 'carregando', message: 'Carregando dados autorizados', pending: 0 };
@@ -22,10 +23,9 @@ export function getList<T>(key: string): T[] | undefined { return cache[key]; }
 export function getDoc<T>(key: string): T | undefined { return getList<any>(key)?.[0]?.value; }
 export function setDoc(key: string, value: any) { return setList(key, [{ id: '__doc', value }]); }
 export async function loadAll() {
+  const generation = sessionGeneration;
   const { data, error } = await supabase.rpc('tms_records_read');
-  if (!forceVersion && error.message.includes("CONFLICT")) {
-    // Implementation note: Logic to allow partial retry or user-intervention prompt
-  }
+  if (generation !== sessionGeneration) return;
   if (error) { ready = false; status({ status: 'falha', message: 'Falha ao carregar. Tente sincronizar novamente.' }); throw new Error(error.message); }
   const grouped: Record<string, any[]> = {};
   for (const row of data as unknown as Row[]) { (grouped[row.collection] ??= []).push(row.data); versions[row.collection + ':' + row.id] = row.version; }
@@ -40,6 +40,8 @@ export function startSharedSync(): Promise<void> {
   return startPromise;
 }
 export function clearSharedSession() {
+  sessionGeneration++;
+  queue = Promise.resolve();
   if (timer) clearInterval(timer); timer = undefined; startPromise = undefined; ready = false; pending.length = 0;
   for (const key of Object.keys(cache)) { delete cache[key]; notify(key); }
   for (const key of Object.keys(versions)) delete versions[key];
@@ -48,11 +50,10 @@ export function clearSharedSession() {
 }
 async function commit(changes: Change[], reason: string) {
   if (!ready) throw new Error('Aguarde o carregamento dos dados antes de alterar registros.');
+  const generation=sessionGeneration;
   status({ status: 'salvando', message: 'Confirmando gravação' });
   const { data, error } = await supabase.rpc('tms_records_commit', { changes: changes as any, reason });
-  if (!forceVersion && error.message.includes("CONFLICT")) {
-    // Implementation note: Logic to allow partial retry or user-intervention prompt
-  }
+  if(generation!==sessionGeneration)throw new Error('Sessão encerrada durante a gravação. Consulte o registro ao entrar novamente.');
   if (error) {
     pending.push({ changes, reason });
     status({ status: error.message.includes('CONFLICT') ? 'conflito' : 'falha', message: error.message.includes('CONFLICT') ? 'Outro operador alterou o registro. Revise os dados antes de tentar novamente.' : 'Gravação falhou. Alterações preservadas nesta sessão.' });
@@ -72,7 +73,11 @@ export function commitLists(lists: Record<string, any[]>, reason = 'Edição ope
     for (const x of prev) if (!ids.has(String(x.id))) changes.push({ collection: key, id: String(x.id), remove: true, version: versions[key + ':' + x.id] ?? 0 });
   }
   if (!changes.length) return Promise.resolve();
-  const result = queue.then(() => commit(changes, reason));
+  const generation = sessionGeneration;
+  const result = queue.then(() => {
+    if (generation !== sessionGeneration) throw new Error('Sessão alterada. Nenhuma gravação foi realizada.');
+    return commit(changes, reason);
+  });
   queue = result.catch(() => {});
   // Existing fire-and-forget callers get visible global failure, while awaited callers receive rejection.
   void result.catch(() => {});
@@ -80,9 +85,17 @@ export function commitLists(lists: Record<string, any[]>, reason = 'Edição ope
 }
 export function setList(key: string, next: any[]) { return commitLists({ [key]: next }); }
 export async function retryPending() {
-  const work = [...pending]; pending.length = 0;
+  const work = [...pending];
   await loadAll();
-  for (const item of work) await commit(item.changes, item.reason);
+  for (const item of work) {
+    if (item.changes.some(change => (versions[change.collection + ':' + change.id] ?? 0) !== change.version)) {
+      status({status:'conflito',message:'Os registros mudaram. Revise a versão atual; a tentativa antiga não será sobrescrita.'});
+      throw new Error(state.message);
+    }
+    const index = pending.indexOf(item);
+    if (index >= 0) pending.splice(index, 1);
+    await commit(item.changes, item.reason);
+  }
 }
 export async function refreshShared() { await loadAll(); }
 export function persistenceReady() { return ready; }

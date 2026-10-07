@@ -29,7 +29,8 @@ export function financialState(o: Order, tolerance = 2) {
 export function isoDate(value: string) {
   const br = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);
   const date = br ? `${br[3]}-${br[2]}-${br[1]}` : value.slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || new Date(date + "T12:00:00Z").toISOString().slice(0, 10) !== date) throw new Error("Data inválida.");
+  const parsed = new Date(date + "T12:00:00Z");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) throw new Error("Data inválida.");
   return date;
 }
 export type Movement = { id: string; type: "baixa" | "estorno"; value: number; date: string; author: string; reason: string; reverses?: string; account?: string };

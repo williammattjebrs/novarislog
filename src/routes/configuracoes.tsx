@@ -13,6 +13,7 @@ import { getInboxConfig, saveInboxConfig, testInbox, syncInbox } from "@/lib/ema
 import { useAuth } from "@/lib/auth";
 import { Settings, RotateCcw, Trash2, DatabaseBackup, Upload } from "lucide-react";
 import { downloadBackup, restoreBackup, validateBackup, type BackupPreview } from "@/lib/export-utils";
+import { SchedulerStatus } from '@/components/SchedulerStatus';
 
 export const Route = createFileRoute("/configuracoes")({
   head: () => ({
@@ -105,6 +106,7 @@ function ConfigPage() {
         </section>
 
         <InboxSection />
+        <SchedulerStatus />
 
         <section className="panel p-5 space-y-3">
           <div className="font-display text-lg">Layout do e-mail de rastreio ao cliente</div>

@@ -1,19 +1,19 @@
 # Roadmap
 
 ## Revisão de confiabilidade — anexo 07/10/2026
-- [ ] Permissões efetivas, usuários inativos e proteção de valores financeiros
-- [ ] Persistência confirmada, recuperação, conflitos e isolamento de sessão
-- [ ] Importação fiscal deduplicada, CT-e multi-NF e conferência independente
-- [ ] Prévia e confirmação de regularização dos registros históricos
-- [ ] Baixas parciais, estornos e indicadores financeiros coerentes
-- [ ] Navegação móvel, busca global e central de pendências
-- [ ] Backup persistido e restauração validada com prévia
-- [ ] Agendamento no servidor desativado e histórico de execuções
-- [ ] Testes de regressão, permissões e fluxos; investigação do domínio
-- [ ] Manual e relatório de entrega com limitações e recuperação
+- [x] Permissões efetivas, usuários inativos e proteção de valores financeiros; matriz comercial/operação/financeiro validada em transação revertida
+- [x] Persistência confirmada, recuperação de falha de rede, conflitos por versão e isolamento de sessão
+- [x] Importação fiscal deduplicada, CT-e multi-NF, receita única, rateio exato e conferência independente
+- [x] Prévia e confirmação de regularização dos registros históricos; nenhuma correção em lote executada
+- [x] Baixas parciais, estornos e totais financeiros mensais; testes de centavos e dupla contagem
+- [x] Navegação móvel, busca global e central de pendências; verificadas na sessão administrativa
+- [x] Backup persistido versão 2 e restauração com prévia; merge/readback validado em transação revertida
+- [x] Processador no servidor desativado, proteção por segredo e histórico de execuções; simulação sem importar/enviar validada
+- [x] 17 testes de regressão, validações SQL revertidas e investigação TLS do domínio
+- [x] Manual atualizado e relatório em REVISAO-CONFIABILIDADE.md
 
-- [x] Grupos de e-mail por cliente e envio pelo sistema, manual ou com frequência configurável enquanto Monitoramento está aberto
-- [ ] Envio automático com aplicativo fechado — depende de mover as ordens e grupos locais para dados compartilhados no Cloud
+- [x] Grupos de e-mail compartilhados por cliente e envio manual pelo sistema
+- [ ] Ativação de produção do envio/captação com aplicativo fechado — aguarda autorização, segredo, responsável ativo, agendamento externo e publicação; sem envios reais nesta revisão
 
 - [x] Atualização de rastreio: tabela por nota, previsão com data/hora e e-mail UTF-8 sem acentos corrompidos
 
@@ -27,7 +27,7 @@
   - [x] Login real (entrar, criar acesso, recuperar senha) + nova tela de login
   - [x] Área "Usuários & acessos" (convidar por e-mail, alterar perfil, excluir)
   - [ ] Testar fluxo completo (convite → confirmação de e-mail → primeiro login) — depende do e-mail real ser confirmado
-- [ ] Conexão Microsoft 365 (Outlook) por dentro do app em Configurações para captar XML
+- [x] Conexão Microsoft 365 existente preservada; sem busca real durante a revisão
 
 - [x] Estrutura Rota ≠ Ordem de Coleta: rota por remetente+destinatário com várias NFs, motorista e veículo
 - [x] Cadastros de Motoristas e Veículos
@@ -36,4 +36,6 @@
 - [x] Fluxo automático NF-e → rota → OC; coletada aguarda CT-e; vínculo manual de CT-e
 
 ## Pendente
+- [ ] Rateio manual sem base/peso e regularização fiscal de CT-e histórico — não implementados nesta revisão; exigem fluxo autorizado e confirmação operacional
+- [ ] Teste de importação simultânea em dois dispositivos e confirmação de restauração pela tela em ambiente isolado — validações transacionais já passaram, testes completos não executados
 - [x] Multi-NF e multi-CT-e: rota/OC já agrupam várias NFs; CT-e vincula por todas as chaves de NF referenciadas; mesmo veículo/motorista reutilizável em várias OCs
