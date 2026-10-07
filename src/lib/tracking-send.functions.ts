@@ -10,6 +10,8 @@ export const sendTrackingUpdate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => z.object({ cliente: z.string().min(1).max(300), destinatarios: z.array(z.string().trim().email().max(254)).min(1).max(30), ordens: z.array(rowSchema).min(1).max(200) }).parse(data))
   .handler(async ({ data, context }) => {
+    const { data: active } = await context.supabase.rpc("tms_active");
+    if (!active) throw new Error("Usuário inativo ou sem acesso.");
     const [{ data: roles }, { data: modules }] = await Promise.all([
       context.supabase.from("user_roles").select("role").eq("user_id", context.userId),
       context.supabase.from("user_modules").select("module").eq("user_id", context.userId),

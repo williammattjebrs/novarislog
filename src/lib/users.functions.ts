@@ -5,19 +5,22 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { MODULE_PATHS } from "./permissions";
 
 export type RoleData = "admin" | "comercial" | "operacao" | "financeiro";
 
 const ROLES = ["admin", "comercial", "operacao", "financeiro"] as const;
 
 async function assertAdmin(supabase: SupabaseClient, userId: string) {
+  const { data: active } = await supabase.rpc("tms_active");
+  if (!active) throw new Error("Usuário inativo ou sem acesso.");
   const { data, error } = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
     .eq("role", "admin")
     .maybeSingle();
-  if (error || !data) throw new Response("Forbidden", { status: 403 });
+  if (error || !data) throw new Error("Apenas administradores podem gerenciar acessos.");
 }
 
 async function adminClient() {
@@ -35,6 +38,7 @@ export const getMyProfile = createServerFn({ method: "GET" })
       context.supabase.from("user_modules").select("module").eq("user_id", context.userId),
     ]);
     if (error) throw error;
+    if (!profile?.ativo) throw new Error("Seu acesso está inativo. Contate o administrador.");
     const email = ((context.claims ?? {}) as { email?: string }).email ?? "";
     const nome =
       profile?.nome ||
@@ -43,7 +47,7 @@ export const getMyProfile = createServerFn({ method: "GET" })
       "usuário";
     const role = (roleRow && roleRow.length > 0 ? roleRow[0].role : "operacao") as RoleData;
     const modulos = (modRows ?? []).map((m) => m.module as string);
-    return { email, nome, role, modulos };
+    return { email, nome, role, modulos, ativo: profile.ativo };
   });
 
 export const listUsers = createServerFn({ method: "GET" })
@@ -140,7 +144,7 @@ export const deleteUser = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-const MODULES = ["/clientes", "/coletas", "/monitoramento", "/financeiro", "/configuracoes", "/usuarios"] as const;
+const MODULES = MODULE_PATHS;
 
 export const setUserModules = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

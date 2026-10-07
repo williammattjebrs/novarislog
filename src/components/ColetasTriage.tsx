@@ -36,7 +36,7 @@ export function ColetasTriage({
     busyRef.current = true;
     setBusy(true);
     try {
-      await Promise.race([sharedReady, new Promise((r) => setTimeout(r, 15000))]);
+      await sharedReady;
       const r = await sync();
       const lista = await pending();
       let resumo = r.mensagem;
