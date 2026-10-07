@@ -6,7 +6,7 @@ import { Mail, FileCheck2, AlertTriangle, RefreshCw } from "lucide-react";
 import { fmtBRL, type Order } from "@/lib/mock-data";
 import { getInboxConfig, syncInbox, listPendingXml, markXmlImported } from "@/lib/email-inbox.functions";
 
-type EmailImportResult = { nfe: number; cte: number; dup: number; fail: number; chaves: string[] } | null;
+type EmailImportResult = { nfe: number; cte: number; dup: number; fail: number; chaves: string[]; cteAguardando?: number } | null;
 
 // Caixa de e-mail (IMAP) + sugestão de CT-e + fila de tratamento do time.
 export function ColetasTriage({
@@ -42,7 +42,7 @@ export function ColetasTriage({
         const imp = await onImportEmail(lista);
         if (imp) {
           await mark({ data: { chaves: imp.chaves } });
-          resumo += ` → ${imp.nfe} NF-e e ${imp.cte} CT-e lançados${imp.dup ? ` · ${imp.dup} já existiam` : ""}`;
+          resumo += ` → ${imp.nfe} NF-e e ${imp.cte} CT-e lançados${imp.dup ? ` · ${imp.dup} já existiam` : ""}${imp.cteAguardando ? ` · ${imp.cteAguardando} CT-e aguardando a NF-e correspondente` : ""}`;
         } else {
           resumo += " → XMLs aguardando: cadastre um cliente para lançar.";
         }

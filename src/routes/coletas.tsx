@@ -264,8 +264,11 @@ function ColetasPage() {
     const ctes = xmls.filter((x) => x.tipo === "cte");
     const rn = nfes.length ? await importNFeTexts(nfes.map((x) => x.xml)) : { ok: 0, fail: 0, dup: 0, corrigidas: [] };
     if (!rn) return null; // sem clientes cadastrados — mantém os XML pendentes
-    const rc = ctes.length ? importCTeTexts(ctes.map((x) => x.xml)) : { ok: 0, dup: 0 };
-    return { nfe: rn.ok, cte: rc.ok, dup: rn.dup + rc.dup, fail: rn.fail, chaves: xmls.map((x) => x.chave) };
+    const rc = ctes.length ? importCTeTexts(ctes.map((x) => x.xml)) : { ok: 0, dup: 0, semOrdem: 0, vinculadas: [] as string[] };
+    // CT-e sem NF-e correspondente continua pendente e é tentado de novo na próxima busca
+    const ctesOk = new Set(rc.vinculadas);
+    const chaves = [...nfes.map((x) => x.chave), ...ctes.filter((x) => ctesOk.has(x.chave)).map((x) => x.chave)];
+    return { nfe: rn.ok, cte: rc.ok, dup: rn.dup + rc.dup, fail: rn.fail, chaves, cteAguardando: rc.semOrdem };
   }
 
   function ordensExportData(): [string, string[], (string | number)[][]] {
