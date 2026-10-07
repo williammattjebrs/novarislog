@@ -3,7 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useState, useMemo } from "react";
-import { Filter, MessageSquare, X, Truck, Search } from "lucide-react";
+import { Filter, MessageSquare, X, Truck, Search, Mail } from "lucide-react";
+import { BulkClientUpdate } from "@/components/BulkClientUpdate";
 import { useOrders, useConfig } from "@/lib/mock-store";
 import { fmtBRL, stageLabel, statusTone, toneClass, type Order } from "@/lib/mock-data";
 import { Timeline } from "@/components/Timeline";
@@ -37,6 +38,7 @@ function MonitoramentoPage() {
   const [busca, setBusca] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [followFor, setFollowFor] = useState<Order | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const clientes = useMemo(() => Array.from(new Set(orders.list.map((o) => o.clienteNome))), [orders.list]);
 
@@ -76,6 +78,9 @@ function MonitoramentoPage() {
             <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por ordem, cliente, NF, destino" className="input pl-7" />
           </div>
           <span className="text-xs text-muted-foreground">{filtered.length} entregas · {criticas.length} críticas</span>
+          <button onClick={() => setBulkOpen(true)} className="ml-auto text-xs px-3 py-1.5 rounded bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25 inline-flex items-center gap-1">
+            <Mail className="h-3.5 w-3.5" /> Atualizar cliente
+          </button>
         </div>
 
         {criticas.length > 0 && (
@@ -193,6 +198,21 @@ function MonitoramentoPage() {
           Integração de rastreamento (Cargon, Buonny, etc.) · <span className="text-accent">não conectada</span> — use o apontamento manual ao abrir cada entrega.
         </div>
       </div>
+
+      {bulkOpen && (
+        <BulkClientUpdate
+          orders={orders.list}
+          autor={user?.nome ?? "sistema"}
+          onClose={() => setBulkOpen(false)}
+          onSent={(ids, entry, email) => {
+            const now = new Date().toISOString();
+            orders.set(orders.list.map((o) => ids.includes(o.id)
+              ? { ...o, emailCliente: o.emailCliente || email, timeline: [...o.timeline, entry], atualizadoEm: now }
+              : o));
+            setBulkOpen(false);
+          }}
+        />
+      )}
 
       {followFor && (
         <FollowModal order={followFor} onClose={() => setFollowFor(null)} onSent={(canal) => {

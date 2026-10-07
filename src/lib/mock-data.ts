@@ -254,6 +254,10 @@ export interface Invoice {
   valor: number;
   status: "paga" | "aberta" | "vencida" | "emitida";
   tipo: "CTe" | "NF-e" | "Fatura";
+  // conciliação
+  recebidoEm?: string;      // ISO yyyy-mm-dd
+  valorRecebido?: number;
+  conta?: string;
 }
 
 export type ExpenseType = "fixa" | "variavel" | "frete_terceiros" | "administrativa";
@@ -270,6 +274,18 @@ export interface Expense {
   status: "prevista" | "paga" | "vencida";
   recorrente: boolean;
   grupo?: string;
+  // conciliação
+  pagoEm?: string;          // ISO yyyy-mm-dd
+  valorPago?: number;
+  conta?: string;
+}
+
+/** Converte "dd/mm/aaaa" ou ISO em "aaaa-mm". */
+export function monthKey(d?: string): string {
+  if (!d) return "";
+  const br = d.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (br) return `${br[3]}-${br[2]}`;
+  return d.slice(0, 7);
 }
 
 export interface ExpenseGroup {
