@@ -14,6 +14,10 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "Torre de Controle | Novaris" },
       { name: "description", content: "Visão consolidada em tempo real de entregas, ocorrências, receita e ordens ativas." },
+      { property: "og:title", content: "Torre de Controle | Novaris" },
+      { property: "og:description", content: "Visão consolidada em tempo real de entregas, ocorrências, receita e ordens ativas." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: () => (

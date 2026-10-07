@@ -18,6 +18,10 @@ export const Route = createFileRoute("/configuracoes")({
     meta: [
       { title: "Configurações | Novaris" },
       { name: "description", content: "Parâmetros globais: tolerância de divergência CT-e, custos de frota (diesel, arla, pedágio, comissão) e reset de dados." },
+      { property: "og:title", content: "Configurações | Novaris" },
+      { property: "og:description", content: "Parâmetros globais: tolerância de divergência CT-e, custos de frota (diesel, arla, pedágio, comissão) e reset de dados." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: () => (

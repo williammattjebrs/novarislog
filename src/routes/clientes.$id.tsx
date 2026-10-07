@@ -16,6 +16,10 @@ export const Route = createFileRoute("/clientes/$id")({
     meta: [
       { title: "Cliente | Novaris" },
       { name: "description", content: "Detalhe do cliente: CNPJs do grupo, tabelas de frete e cotações." },
+      { property: "og:title", content: "Cliente | Novaris" },
+      { property: "og:description", content: "Detalhe do cliente: CNPJs do grupo, tabelas de frete e cotações." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: () => (

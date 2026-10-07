@@ -15,6 +15,7 @@ import { Route as ColetasRouteImport } from './routes/coletas'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ManualRouteImport } from './routes/manual'
 import { Route as MonitoramentoRouteImport } from './routes/monitoramento'
 import { Route as TvRouteImport } from './routes/tv'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
@@ -50,6 +51,11 @@ const FinanceiroRoute = FinanceiroRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManualRoute = ManualRouteImport.update({
+  id: '/manual',
+  path: '/manual',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MonitoramentoRoute = MonitoramentoRouteImport.update({
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
   '/login': typeof LoginRoute
+  '/manual': typeof ManualRoute
   '/monitoramento': typeof MonitoramentoRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
@@ -104,6 +111,7 @@ export interface FileRoutesByTo {
   '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
   '/login': typeof LoginRoute
+  '/manual': typeof ManualRoute
   '/monitoramento': typeof MonitoramentoRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
@@ -119,6 +127,7 @@ export interface FileRoutesById {
   '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
   '/login': typeof LoginRoute
+  '/manual': typeof ManualRoute
   '/monitoramento': typeof MonitoramentoRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/financeiro'
     | '/login'
+    | '/manual'
     | '/monitoramento'
     | '/tv'
     | '/usuarios'
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/financeiro'
     | '/login'
+    | '/manual'
     | '/monitoramento'
     | '/tv'
     | '/usuarios'
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/financeiro'
     | '/login'
+    | '/manual'
     | '/monitoramento'
     | '/tv'
     | '/usuarios'
@@ -178,6 +190,7 @@ export interface RootRouteChildren {
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   FinanceiroRoute: typeof FinanceiroRoute
   LoginRoute: typeof LoginRoute
+  ManualRoute: typeof ManualRoute
   MonitoramentoRoute: typeof MonitoramentoRoute
   TvRoute: typeof TvRoute
   UsuariosRoute: typeof UsuariosRoute
@@ -227,6 +240,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manual': {
+      id: '/manual'
+      path: '/manual'
+      fullPath: '/manual'
+      preLoaderRoute: typeof ManualRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/monitoramento': {
@@ -293,6 +313,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConfiguracoesRoute: ConfiguracoesRoute,
   FinanceiroRoute: FinanceiroRoute,
   LoginRoute: LoginRoute,
+  ManualRoute: ManualRoute,
   MonitoramentoRoute: MonitoramentoRoute,
   TvRoute: TvRoute,
   UsuariosRoute: UsuariosRoute,

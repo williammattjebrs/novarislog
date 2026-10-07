@@ -135,6 +135,7 @@ export const MODULE_OPTIONS: { path: string; label: string }[] = [
 ];
 
 export function canAccess(role: Role, pathname: string, extras: string[] = []): boolean {
+  if (pathname === "/manual") return true;
   const allowed = [...ROLE_ACCESS[role], ...extras];
   return allowed.some((p) => (p === "/" ? pathname === "/" : pathname.startsWith(p)));
 }

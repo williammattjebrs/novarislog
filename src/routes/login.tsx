@@ -12,6 +12,10 @@ export const Route = createFileRoute("/login")({
     meta: [
       { title: "Entrar | Novaris" },
       { name: "description", content: "Acesso à plataforma de gestão logística Novaris." },
+      { property: "og:title", content: "Entrar | Novaris" },
+      { property: "og:description", content: "Acesso à plataforma de gestão logística Novaris." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: LoginPage,

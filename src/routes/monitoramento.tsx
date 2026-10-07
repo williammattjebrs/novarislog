@@ -20,6 +20,10 @@ export const Route = createFileRoute("/monitoramento")({
     meta: [
       { title: "Monitoramento | Novaris" },
       { name: "description", content: "Torre de controle ponta a ponta: rastreamento, ocorrências, follow-up e custos por entrega." },
+      { property: "og:title", content: "Monitoramento | Novaris" },
+      { property: "og:description", content: "Torre de controle ponta a ponta: rastreamento, ocorrências, follow-up e custos por entrega." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: () => (

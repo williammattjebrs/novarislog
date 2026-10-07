@@ -16,6 +16,10 @@ export const Route = createFileRoute("/usuarios")({
         name: "description",
         content: "Convide usuários da sua empresa, defina perfis de acesso e gerencie contas do TMS Novaris.",
       },
+      { property: "og:title", content: "Usuários & acessos | Novaris" },
+      { property: "og:description", content: "Convide usuários da sua empresa, defina perfis de acesso e gerencie contas do TMS Novaris." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: () => (
