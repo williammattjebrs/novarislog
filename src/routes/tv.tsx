@@ -132,7 +132,7 @@ function TvPage() {
       <header className="flex items-center justify-between">
         <img src={logo.url} alt="Novaris" className="h-12 w-auto" />
         <div className="text-center">
-          <div className="font-display text-3xl">Indicadores de Transporte</div>
+          <h1 className="font-display text-3xl">Indicadores de Transporte</h1>
           <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Mês corrente · atualização automática</div>
         </div>
         <div className="text-right num">

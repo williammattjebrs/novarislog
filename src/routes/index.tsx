@@ -71,7 +71,7 @@ function Dashboard() {
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Radio className="h-3.5 w-3.5 text-success" />
-              <span>feed tempo real</span>
+              <span>Dados compartilhados · atualização periódica</span>
             </div>
           </div>
 
