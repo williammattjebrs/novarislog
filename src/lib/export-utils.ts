@@ -1,5 +1,7 @@
 // Utilidades de exportação e backup: CSV (Excel), PDF (via impressão) e JSON.
 
+import { setDoc, setList, SHARED_KEYS } from "./shared-db";
+
 const PREFIX = "novaris:";
 
 function isBrowser() {
@@ -104,10 +106,15 @@ export function restoreBackup(json: string): number {
       }
     }
     for (const [k, v] of Object.entries(dados)) {
-      if (k.startsWith(PREFIX)) {
-        localStorage.setItem(k, v);
+      if (!k.startsWith(PREFIX)) continue;
+      const key = k.slice(PREFIX.length);
+      try {
+        const val = JSON.parse(v);
+        if (key === "config") setDoc("config", Array.isArray(val) ? val[0]?.value : val);
+        else if (Array.isArray(val) && SHARED_KEYS.has(key)) setList(key, val);
+        else localStorage.setItem(k, v);
         n++;
-      }
+      } catch { /* ignora chave inválida */ }
     }
   }
   return n;
