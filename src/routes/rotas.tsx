@@ -94,6 +94,77 @@ function Rotas({ onEdit }: { onEdit: (ocId: string) => void }) {
   );
 }
 
+// Seletor de motorista/veículo com opção de cadastrar um novo na hora.
+function MotoristaSelect({ value, onChange, disabled }: { value: string; onChange: (id: string) => void; disabled?: boolean }) {
+  const mot = useMotoristas();
+  const [novo, setNovo] = useState(false);
+  const [f, setF] = useState({ nome: "", cpf: "", telefone: "" });
+  const [err, setErr] = useState("");
+  function salvar() {
+    const cpf = f.cpf.replace(/\D/g, "");
+    if (!f.nome.trim() || cpf.length !== 11 || f.telefone.replace(/\D/g, "").length < 10) return setErr("Nome, CPF (11 dígitos) e telefone com DDD são obrigatórios.");
+    const existente = mot.list.find((x) => x.cpf.replace(/\D/g, "") === cpf);
+    if (existente) { onChange(existente.id); setNovo(false); setErr(""); return; }
+    const id = newId("MOT");
+    mot.add({ id, nome: f.nome.trim(), cpf: fmtCpf(cpf), telefone: f.telefone.trim(), cnh: "", ativo: true, criadoEm: new Date().toISOString() });
+    onChange(id); setNovo(false); setF({ nome: "", cpf: "", telefone: "" }); setErr("");
+  }
+  if (novo) return (
+    <div className="space-y-1 border border-primary/40 rounded p-2">
+      <div className="text-xs font-semibold text-primary">Novo motorista</div>
+      <input className={inp} placeholder="Nome completo" value={f.nome} onChange={(e) => setF({ ...f, nome: e.target.value })} />
+      <div className="flex gap-1">
+        <input className={inp} placeholder="CPF" value={f.cpf} onChange={(e) => setF({ ...f, cpf: fmtCpf(e.target.value) })} />
+        <input className={inp} placeholder="Telefone (DDD)" value={f.telefone} onChange={(e) => setF({ ...f, telefone: e.target.value })} />
+      </div>
+      {err && <div className="text-xs text-danger">{err}</div>}
+      <div className="flex gap-1"><Button size="sm" onClick={salvar}>Salvar e vincular</Button><Button size="sm" variant="outline" onClick={() => setNovo(false)}>Voltar</Button></div>
+    </div>
+  );
+  return (
+    <select className={inp} value={value} disabled={disabled} onChange={(e) => e.target.value === "__novo__" ? setNovo(true) : onChange(e.target.value)}>
+      <option value="">Motorista…</option>
+      {mot.list.filter((m) => m.ativo).map((m) => <option key={m.id} value={m.id}>{m.nome} · {m.cpf} · {m.telefone}</option>)}
+      <option value="__novo__">+ Cadastrar novo motorista…</option>
+    </select>
+  );
+}
+
+function VeiculoSelect({ value, onChange, disabled }: { value: string; onChange: (id: string) => void; disabled?: boolean }) {
+  const vei = useVeiculos();
+  const [novo, setNovo] = useState(false);
+  const [f, setF] = useState({ placa: "", tipo: "Truck", proprietario: "frota" as "frota" | "terceiro" });
+  const [err, setErr] = useState("");
+  function salvar() {
+    const placa = f.placa.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(placa)) return setErr("Placa inválida (ex.: ABC1D23 ou ABC1234).");
+    const existente = vei.list.find((x) => x.placa === placa);
+    if (existente) { onChange(existente.id); setNovo(false); setErr(""); return; }
+    const id = newId("VEI");
+    vei.add({ id, placa, tipo: f.tipo, modelo: "", proprietario: f.proprietario, ativo: true, criadoEm: new Date().toISOString() });
+    onChange(id); setNovo(false); setF({ placa: "", tipo: "Truck", proprietario: "frota" }); setErr("");
+  }
+  if (novo) return (
+    <div className="space-y-1 border border-primary/40 rounded p-2">
+      <div className="text-xs font-semibold text-primary">Novo veículo</div>
+      <div className="flex gap-1">
+        <input className={inp} placeholder="Placa" value={f.placa} onChange={(e) => setF({ ...f, placa: e.target.value.toUpperCase() })} />
+        <select className={inp} value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })}>{TIPOS_CAMINHAO.map((t) => <option key={t}>{t}</option>)}</select>
+      </div>
+      <select className={inp} value={f.proprietario} onChange={(e) => setF({ ...f, proprietario: e.target.value as "frota" | "terceiro" })}><option value="frota">Frota própria</option><option value="terceiro">Terceiro</option></select>
+      {err && <div className="text-xs text-danger">{err}</div>}
+      <div className="flex gap-1"><Button size="sm" onClick={salvar}>Salvar e vincular</Button><Button size="sm" variant="outline" onClick={() => setNovo(false)}>Voltar</Button></div>
+    </div>
+  );
+  return (
+    <select className={inp} value={value} disabled={disabled} onChange={(e) => e.target.value === "__novo__" ? setNovo(true) : onChange(e.target.value)}>
+      <option value="">Veículo (placa)…</option>
+      {vei.list.filter((v) => v.ativo).map((v) => <option key={v.id} value={v.id}>{v.placa} · {v.tipo}</option>)}
+      <option value="__novo__">+ Cadastrar novo veículo…</option>
+    </select>
+  );
+}
+
 function EditOC({ ocId, onClose }: { ocId: string; onClose: () => void }) {
   const orders = useOrders(); const ocs = useOrdensColeta(); const rotas = useRotas(); const mot = useMotoristas(); const vei = useVeiculos();
   const { user } = useAuth();
