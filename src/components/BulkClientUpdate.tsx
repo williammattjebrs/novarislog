@@ -1,11 +1,15 @@
 // Envio de atualização de rastreio em lote: escolhe o cliente e as notas.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Mail, X, Copy } from "lucide-react";
 import { stageLabel, type Order, type TimelineEntry } from "@/lib/mock-data";
 
 import { Button } from "@/components/ui/button";
 import { TrackingEmailPreview } from "@/components/TrackingEmailPreview";
-import { buildTrackingEmail, copyTrackingEmail, downloadTrackingEmail } from "@/lib/tracking-email";
+import { buildTrackingEmail, copyTrackingEmail } from "@/lib/tracking-email";
+
+import { useServerFn } from "@tanstack/react-start";
+import { sendTrackingUpdate } from "@/lib/tracking-send.functions";
+import { readTrackingGroup, saveTrackingGroup, trackingPayload } from "@/lib/tracking-groups";
 
 export function BulkClientUpdate({ orders, autor, onClose, onSent }: {
   orders: Order[];
@@ -22,6 +26,20 @@ export function BulkClientUpdate({ orders, autor, onClose, onSent }: {
   const [email, setEmail] = useState("");
   const emailSugerido = lista.find((o) => o.emailCliente)?.emailCliente ?? "";
 
+  const send = useServerFn(sendTrackingUpdate);
+  const [automatic, setAutomatic] = useState(false);
+  const [intervalMin, setIntervalMin] = useState(60);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { const group = readTrackingGroup(cliente); setEmail(group.emails.join("; ")); setAutomatic(group.automatic); setIntervalMin(group.intervalMin); }, [cliente]);
+  function recipients() {
+    const emails = Array.from(new Set((email || emailSugerido).split(/[;,\s]+/).map((v) => v.trim().toLowerCase()).filter(Boolean)));
+    if (!emails.length || emails.length > 30 || emails.some((e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))) throw new Error("Informe de 1 a 30 e-mails válidos, separados por ponto e vírgula.");
+    return emails;
+  }
+  function saveGroup() {
+    try { const old = readTrackingGroup(cliente); saveTrackingGroup(cliente, { emails: recipients(), automatic, intervalMin, lastSent: old.lastSent }); setFeedback("Grupo salvo. O envio automático funciona enquanto Monitoramento estiver aberto neste navegador."); }
+    catch (error) { setFeedback(error instanceof Error ? error.message : "Falha ao salvar grupo."); }
+  }
   function trocarCliente(c: string) { setCliente(c); setMarcadas(null); setEmail(""); }
   function toggle(id: string) {
     const n = new Set(sel); if (n.has(id)) n.delete(id); else n.add(id); setMarcadas(n);
@@ -30,17 +48,17 @@ export function BulkClientUpdate({ orders, autor, onClose, onSent }: {
   const escolhidas = lista.filter((o) => sel.has(o.id));
   const draft = buildTrackingEmail(escolhidas, cliente);
   const [feedback, setFeedback] = useState("");
-  function enviar() {
-    const destino = (email || emailSugerido).trim();
-    if (!escolhidas.length) { setFeedback("Selecione ao menos uma nota."); return; }
+  async function enviar() {
+    if (!escolhidas.length || busy) return;
+    setBusy(true); setFeedback("");
     try {
-      downloadTrackingEmail(draft, destino);
-      onSent(escolhidas.map((o) => o.id), {
-        quando: new Date().toISOString(), autor, tipo: "sistema",
-        texto: `Rascunho de atualização consolidada preparado para ${destino} (${escolhidas.length} notas); envio não confirmado`,
-      }, destino);
-      setFeedback("E-mail baixado. Abra o arquivo .eml no Outlook para revisar e enviar, ou copie a tabela e cole no corpo de uma nova mensagem.");
-    } catch (error) { setFeedback(error instanceof Error ? error.message : "Não foi possível preparar o e-mail."); }
+      const emails = recipients();
+      await send({ data: { cliente, destinatarios: emails, ordens: trackingPayload(escolhidas) } });
+      saveTrackingGroup(cliente, { emails, automatic, intervalMin, lastSent: new Date().toISOString() });
+      onSent(escolhidas.map((o) => o.id), { quando: new Date().toISOString(), autor, tipo: "sistema", texto: `Atualização em tabela aceita pela Microsoft para envio a ${emails.join("; ")} (${escolhidas.length} notas)` }, emails[0] ?? "");
+      setFeedback("Atualização aceita pela Microsoft para envio ao grupo. Confira a caixa de enviados para acompanhar.");
+    } catch (error) { setFeedback(error instanceof Error ? error.message : "Falha no envio."); }
+    finally { setBusy(false); }
   }
   async function copiar() {
     try { await copyTrackingEmail(draft); setFeedback("Tabela copiada. Cole no corpo de uma nova mensagem de e-mail e confirme o envio."); }
@@ -58,7 +76,13 @@ export function BulkClientUpdate({ orders, autor, onClose, onSent }: {
           <select aria-label="Cliente da atualização" value={cliente} onChange={(e) => trocarCliente(e.target.value)} className="input">
             {clientes.map((c) => <option key={c}>{c}</option>)}
           </select>
-          <input aria-label="E-mail do cliente" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={emailSugerido || "e-mail do cliente"} className="input" />
+          <input aria-label="E-mail do cliente" type="text" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={emailSugerido || "email1@empresa.com; email2@empresa.com"} className="input" />
+        </div>
+        <div className="flex flex-wrap items-center gap-3 mb-3 text-xs">
+          <label className="flex items-center gap-2"><input type="checkbox" checked={automatic} onChange={(e) => setAutomatic(e.target.checked)} /> Envio automático</label>
+          <label className="flex items-center gap-2">A cada <select aria-label="Intervalo de envio" value={intervalMin} onChange={(e) => setIntervalMin(Number(e.target.value))} className="input w-auto"><option value={15}>15 minutos</option><option value={30}>30 minutos</option><option value={60}>1 hora</option><option value={120}>2 horas</option><option value={240}>4 horas</option><option value={1440}>24 horas</option></select></label>
+          <Button variant="outline" size="sm" onClick={saveGroup}>Salvar grupo</Button>
+          <span className="text-muted-foreground">Automático com Monitoramento aberto; envia notas não entregues.</span>
         </div>
         <div className="flex items-center justify-between text-xs mb-2">
           <label className="inline-flex items-center gap-2"><input type="checkbox" checked={soAbertas} onChange={(e) => { setSoAbertas(e.target.checked); setMarcadas(null); }} /> Só notas não entregues</label>
@@ -84,7 +108,7 @@ export function BulkClientUpdate({ orders, autor, onClose, onSent }: {
           <span className="text-xs text-muted-foreground">{lista.filter((o) => sel.has(o.id)).length} de {lista.length} selecionadas</span>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={copiar} disabled={!escolhidas.length}><Copy /> Copiar tabela</Button>
-            <Button onClick={enviar} disabled={!escolhidas.length}><Mail /> Preparar e-mail</Button>
+            <Button onClick={enviar} disabled={!escolhidas.length || busy}><Mail /> {busy ? "Enviando…" : "Enviar atualização"}</Button>
           </div>
         </div>
       </div>

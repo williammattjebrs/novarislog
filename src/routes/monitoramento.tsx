@@ -2,7 +2,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
-import { useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Filter, MessageSquare, X, Truck, Search, Mail } from "lucide-react";
 import { BulkClientUpdate } from "@/components/BulkClientUpdate";
 import { useOrders, useConfig } from "@/lib/mock-store";
@@ -33,6 +33,10 @@ export const Route = createFileRoute("/monitoramento")({
   ),
 });
 
+import { useServerFn } from "@tanstack/react-start";
+import { sendTrackingUpdate } from "@/lib/tracking-send.functions";
+import { readTrackingGroup, saveTrackingGroup, trackingPayload } from "@/lib/tracking-groups";
+
 function MonitoramentoPage() {
   const orders = useOrders();
   const [cfg] = useConfig();
@@ -43,6 +47,39 @@ function MonitoramentoPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [followFor, setFollowFor] = useState<Order | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
+
+  const sendTracking = useServerFn(sendTrackingUpdate);
+  const currentOrders = useRef(orders.list);
+  currentOrders.current = orders.list;
+  const autoBusy = useRef(false);
+  const [autoStatus, setAutoStatus] = useState("");
+  useEffect(() => {
+    const timer = window.setInterval(async () => {
+      if (autoBusy.current) return;
+      autoBusy.current = true;
+      try {
+        const names = Array.from(new Set(currentOrders.current.map((o) => o.clienteNome)));
+        for (const name of names) {
+          const group = readTrackingGroup(name);
+          if (!group.automatic || !group.emails.length || (group.lastSent && Date.now() - Date.parse(group.lastSent) < group.intervalMin * 60000)) continue;
+          const list = currentOrders.current.filter((o) => o.clienteNome === name && o.stage !== "entregue");
+          if (!list.length) continue;
+          // A cross-tab Web Lock prevents duplicate sends from two open monitoring tabs.
+          if (!navigator.locks) { setAutoStatus("Envio automático indisponível neste navegador; use o envio manual."); break; }
+          await navigator.locks.request(`novaris-tracking:${name}`, { ifAvailable: true }, async (lock) => {
+            if (!lock) return;
+            const latest = readTrackingGroup(name);
+            if (latest.lastSent && Date.now() - Date.parse(latest.lastSent) < latest.intervalMin * 60000) return;
+            await sendTracking({ data: { cliente: name, destinatarios: latest.emails, ordens: trackingPayload(list) } });
+            saveTrackingGroup(name, { ...latest, lastSent: new Date().toISOString() });
+            setAutoStatus(`Atualização automática de ${name} aceita pela Microsoft.`);
+          });
+        }
+      } catch (error) { setAutoStatus(error instanceof Error ? error.message : "Falha no envio automático."); }
+      finally { autoBusy.current = false; }
+    }, 60000);
+    return () => window.clearInterval(timer);
+  }, [sendTracking]);
 
   const clientes = useMemo(() => Array.from(new Set(orders.list.map((o) => o.clienteNome))), [orders.list]);
 
@@ -203,6 +240,7 @@ function MonitoramentoPage() {
         </div>
       </div>
 
+      {autoStatus && <p role="status" className="px-6 py-3 text-sm text-info">{autoStatus}</p>}
       {bulkOpen && (
         <BulkClientUpdate
           orders={orders.list}
@@ -213,7 +251,6 @@ function MonitoramentoPage() {
             orders.set(orders.list.map((o) => ids.includes(o.id)
               ? { ...o, emailCliente: o.emailCliente || email, timeline: [...o.timeline, entry], atualizadoEm: now }
               : o));
-            setBulkOpen(false);
           }}
         />
       )}
