@@ -20,7 +20,7 @@ import { useAuth } from "@/lib/auth";
 import { ColetasTriage } from "@/components/ColetasTriage";
 import { NovaTabelaPanel } from "@/components/NovaTabelaPanel";
 import { correctCity, sameCityName } from "@/components/CityPicker";
-import { useAutoRotas } from "@/lib/use-auto-rotas";
+import { useAutoRotas, vincularOrderEmRota } from "@/lib/use-auto-rotas";
 
 export const Route = createFileRoute("/coletas")({
   head: () => ({
@@ -469,6 +469,23 @@ function OrderDetail({ order, onClose, onUpdate }: {
   const [cfg] = useConfig();
   const tables = useFreightTables();
   const quotes = useQuotations();
+  const rotas = useRotas();
+  const ocs = useOrdensColeta();
+  const { user } = useAuth();
+
+  const ocDaNota = ocs.list.find((oc) => oc.orderIds.includes(order.id) && oc.status !== "cancelada");
+
+  function gerarOC() {
+    const r = vincularOrderEmRota(order, rotas.list, ocs.list, user?.nome ?? "usuário");
+    rotas.set(r.rotas);
+    ocs.set(r.ocs);
+    onUpdate({
+      timeline: [...order.timeline, {
+        quando: new Date().toISOString(), autor: user?.nome ?? "usuário", tipo: "sistema",
+        texto: `Ordem de coleta ${r.oc.numero} gerada manualmente a partir da tela de Coletas`,
+      }],
+    });
+  }
 
   // Sugestões de match manual quando aguarda vinculação
   const suggestions = order.stage === "aguarda_vinculacao" ? tables.list.filter(
