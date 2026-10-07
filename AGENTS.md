@@ -13,4 +13,4 @@
 - Send tracking updates through authenticated server functions using the existing workspace Outlook connection and a shared escaped HTML formatter; mailto cannot preserve tables or control character encoding.
 - Keep interval-based tracking sends active only while Monitoramento is open until operational orders are persisted in Cloud; a background scheduler cannot read browser-local orders.
 - Persist all operational collections (clients, tables, orders, finance, config, tracking groups) in the shared app_records table via src/lib/shared-db.ts with local cache and realtime; every signed-in user must see the same data.
-- Group NF-e orders into Rotas (same sender+recipient) and issue OrdensColeta from rotas as separate shared collections; an order (NF) stays the tracking unit and OC status propagates to its NFs.
+- Group NF-e orders into Rotas (same sender+recipient) and auto-create one OrdemColeta per open rota (useAutoRotas) as shared collections; the NF order stays the tracking unit and OC status propagates to its NFs. Email import waits for sharedReady so dedupe never runs against an empty cache.

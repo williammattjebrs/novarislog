@@ -563,6 +563,8 @@ function OrderDetail({ order, onClose, onUpdate }: {
         </div>
       )}
 
+      {order.cteValor == null && <ManualCte order={order} tolerancia={cfg.toleranciaDivergenciaPercent} onUpdate={onUpdate} />}
+
       <QuickCost key={order.id} order={order} onUpdate={onUpdate} />
 
 
@@ -586,6 +588,31 @@ function Info({ label, v }: { label: string; v: string }) {
     <div>
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="text-sm">{v}</div>
+    </div>
+  );
+}
+
+// Vínculo manual de CT-e (quando o XML não chegou ou não casou automaticamente)
+function ManualCte({ order, tolerancia, onUpdate }: { order: Order; tolerancia: number; onUpdate: (p: Partial<Order>) => void }) {
+  const [numero, setNumero] = useState("");
+  const [valor, setValor] = useState("");
+  const { user } = useAuth();
+  function vincular() {
+    const v = Number(valor.replace(/\./g, "").replace(",", "."));
+    if (!numero.trim() || !(v > 0)) return alert("Informe o número e o valor do CT-e.");
+    const diff = order.valorFrete > 0 ? ((v - order.valorFrete) / order.valorFrete) * 100 : 0;
+    const stage: OrderStage = Math.abs(diff) > tolerancia ? "cte_divergente" : "cte_ok";
+    onUpdate({ cteNumero: numero.trim(), cteChave: `MANUAL-${numero.trim()}`, cteValor: v, divergenciaPercent: diff, stage,
+      timeline: [...order.timeline, { quando: new Date().toISOString(), autor: user?.nome ?? "usuário", tipo: "status", texto: `CT-e ${numero.trim()} vinculado manualmente · ${fmtBRL(v)} · divergência ${diff.toFixed(2)}%` }] });
+  }
+  return (
+    <div className="rounded-md border border-border p-3 space-y-2">
+      <div className="text-xs uppercase tracking-wider text-muted-foreground">Vincular CT-e manualmente</div>
+      <div className="flex gap-2">
+        <input className="flex-1 bg-input/40 border border-border rounded px-2 py-1 text-sm" placeholder="Nº CT-e" value={numero} onChange={(e) => setNumero(e.target.value)} />
+        <input className="w-28 bg-input/40 border border-border rounded px-2 py-1 text-sm" placeholder="Valor R$" value={valor} onChange={(e) => setValor(e.target.value)} />
+        <button onClick={vincular} className="text-xs px-3 rounded border border-primary/40 text-primary hover:bg-primary/10">Vincular</button>
+      </div>
     </div>
   );
 }
