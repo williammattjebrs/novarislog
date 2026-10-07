@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 
 - Keep in-app training content in a browser-safe module and render it through a dedicated manual route available to all signed-in roles; this keeps guidance separate from operational workflows.
+- Generate tracking email drafts through a shared UTF-8 multipart EML formatter rather than mailto bodies; mailto cannot preserve HTML tables or control email character encoding.
