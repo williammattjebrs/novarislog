@@ -2,11 +2,12 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Users, PackageSearch, Radar, Wallet, Settings, UserCog,
-  Radio, Bell, Search, LogOut,
+  Radio, Bell, Search, LogOut, BookOpen,
 } from "lucide-react";
 import logo from "@/assets/novaris-logo.png.asset.json";
 import simbolo from "@/assets/novaris-simbolo.png.asset.json";
 import { useAuth, ROLE_LABEL, canAccess, type Role } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
 
@@ -19,6 +20,7 @@ const NAV: NavItem[] = [
   { to: "/tv", label: "Indicadores (TV)", icon: Radio },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
   { to: "/usuarios", label: "Usuários & acessos", icon: UserCog },
+  { to: "/manual", label: "Manual de uso", icon: BookOpen },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -84,6 +86,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span>Perfil: <span className="text-foreground font-medium">{user ? ROLE_LABEL[role] : "—"}</span></span>
           </div>
           <div className="flex-1" />
+          <Button variant="ghost" size="icon" asChild title="Manual de uso">
+            <Link to="/manual" search={{ modulo: "torre" }} aria-label="Manual de uso"><BookOpen className="h-4 w-4" /></Link>
+          </Button>
           <div className="hidden md:flex items-center gap-2 rounded-md border border-border bg-panel px-3 py-1.5 min-w-[280px]">
             <Search className="h-4 w-4 text-muted-foreground" />
             <input className="bg-transparent outline-none text-sm placeholder:text-muted-foreground w-full" placeholder="Buscar pedido, placa, CTe, cliente…" />
