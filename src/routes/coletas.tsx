@@ -391,7 +391,7 @@ function ColetasPage() {
                       {canSeeFinance && o.cteValor ? (
                         <div>
                           <div>{fmtBRL(o.cteValor)}</div>
-                          {o.divergenciaPercent != null && (
+                          {financialState(o)==='pendente' ? <div className="text-warning">Aguarda conferência de valor</div> : o.divergenciaPercent != null && (
                             <DivergenceBadge percent={o.divergenciaPercent} tolerancia={cfg.toleranciaDivergenciaPercent} />
                           )}
                         </div>
@@ -404,7 +404,7 @@ function ColetasPage() {
                     </td>
                     <td>
                       <span className={`text-[11px] px-2 py-0.5 rounded border ${toneClass(statusTone(o.stage))}`}>
-                        {stageLabel(o.stage)}
+                        {o.stage==='cte_ok' && financialState(o)==='pendente' ? 'CT-e recebido · valor pendente' : stageLabel(o.stage)}
                       </span>
                     </td>
                     <td className="text-right pr-4" onClick={(e) => e.stopPropagation()}>

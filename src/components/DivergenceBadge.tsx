@@ -22,6 +22,7 @@ export function DivergenceBadge({ percent, tolerancia }: { percent: number; tole
 export function DivergenceLine({ ordemValor, cteValor, tolerancia }: {
   ordemValor: number; cteValor: number; tolerancia: number;
 }) {
+  if(!(ordemValor>0 && cteValor>0))return <p className="text-xs text-warning">Aguarda conferência de valor</p>;
   const diff = cteValor - ordemValor;
   const pct = ordemValor > 0 ? (diff / ordemValor) * 100 : 0;
   return (

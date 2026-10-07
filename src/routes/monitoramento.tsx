@@ -15,6 +15,7 @@ import { ORDER_STAGES, type OrderStage } from "@/lib/mock-data";
 import { TrackingPanel } from "@/components/TrackingPanel";
 import { useAuth } from "@/lib/auth";
 import { financialAccess } from "@/lib/permissions";
+import {financialState} from '@/lib/reliability';
 
 export const Route = createFileRoute("/monitoramento")({
   validateSearch: (search: Record<string, unknown>): {registro?:string} => ({ registro: typeof search.registro === "string" ? search.registro : undefined }),
@@ -141,7 +142,7 @@ function MonitoramentoPage() {
                       {canSeeCosts && o.cteValor ? (
                         <div className="flex flex-col items-end">
                           <span>{fmtBRL(o.cteValor)}</span>
-                          {o.divergenciaPercent != null && <DivergenceBadge percent={o.divergenciaPercent} tolerancia={cfg.toleranciaDivergenciaPercent}  />}
+                          {financialState(o)==='pendente' ? <span className="text-warning">Aguarda conferência de valor</span> : o.divergenciaPercent != null && <DivergenceBadge percent={o.divergenciaPercent} tolerancia={cfg.toleranciaDivergenciaPercent}  />}
                         </div>
                       ) : <span className="text-muted-foreground">—</span>}
                     </td>
