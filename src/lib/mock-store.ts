@@ -9,7 +9,7 @@ import type {
   AppConfig, ClientGroup, ExpenseGroup, Rota, OrdemColeta, Motorista, Veiculo,
 } from "./mock-data";
 import { DEFAULT_CONFIG } from "./mock-data";
-import { getDoc, getList, notify, setDoc, setList, startSharedSync, subscribe } from "./shared-db";
+import { getDoc, getList, notify, setDoc, setList, startSharedSync, subscribe, sharedReady } from "./shared-db";
 if (typeof window !== "undefined") startSharedSync();
 
 const PREFIX = "novaris:";
@@ -149,6 +149,8 @@ export function getConfigSync(): AppConfig {
 }
 
 export function resetAllData() {
+  if (!isBrowser) return;
+  Object.keys(localStorage).filter(k => k.startsWith("novaris:")).forEach(k => localStorage.removeItem(k));
   if (!isBrowser) return;
   (["clients", "freightTables", "routeRates", "quotations", "crmDeals", "orders",
     "warehouseInbound", "warehouseOutbound", "stock", "invoices", "expenses", "clientGroups"] as StoreKey[]

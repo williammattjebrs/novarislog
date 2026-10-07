@@ -4,6 +4,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyProfile } from "@/lib/users.functions";
+import { resetAllData } from "@/lib/mock-store";
 
 export type Role = "admin" | "comercial" | "operacao" | "financeiro";
 
@@ -95,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    resetAllData();
     await supabase.auth.signOut();
     setUser(null);
   };
