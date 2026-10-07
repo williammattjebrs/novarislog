@@ -17,6 +17,7 @@ import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ManualRouteImport } from './routes/manual'
 import { Route as MonitoramentoRouteImport } from './routes/monitoramento'
+import { Route as MotoristasRouteImport } from './routes/motoristas'
 import { Route as TvRouteImport } from './routes/tv'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
@@ -63,6 +64,11 @@ const MonitoramentoRoute = MonitoramentoRouteImport.update({
   path: '/monitoramento',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MotoristasRoute = MotoristasRouteImport.update({
+  id: '/motoristas',
+  path: '/motoristas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TvRoute = TvRouteImport.update({
   id: '/tv',
   path: '/tv',
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
   '/monitoramento': typeof MonitoramentoRoute
+  '/motoristas': typeof MotoristasRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
   '/clientes/$id': typeof ClientesIdRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
   '/monitoramento': typeof MonitoramentoRoute
+  '/motoristas': typeof MotoristasRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
   '/clientes/$id': typeof ClientesIdRoute
@@ -129,6 +137,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
   '/monitoramento': typeof MonitoramentoRoute
+  '/motoristas': typeof MotoristasRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
   '/clientes/$id': typeof ClientesIdRoute
@@ -146,6 +155,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/manual'
     | '/monitoramento'
+    | '/motoristas'
     | '/tv'
     | '/usuarios'
     | '/clientes/$id'
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/manual'
     | '/monitoramento'
+    | '/motoristas'
     | '/tv'
     | '/usuarios'
     | '/clientes/$id'
@@ -176,6 +187,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/manual'
     | '/monitoramento'
+    | '/motoristas'
     | '/tv'
     | '/usuarios'
     | '/clientes/$id'
@@ -192,6 +204,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ManualRoute: typeof ManualRoute
   MonitoramentoRoute: typeof MonitoramentoRoute
+  MotoristasRoute: typeof MotoristasRoute
   TvRoute: typeof TvRoute
   UsuariosRoute: typeof UsuariosRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
@@ -256,6 +269,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MonitoramentoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/motoristas': {
+      id: '/motoristas'
+      path: '/motoristas'
+      fullPath: '/motoristas'
+      preLoaderRoute: typeof MotoristasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tv': {
       id: '/tv'
       path: '/tv'
@@ -315,6 +335,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ManualRoute: ManualRoute,
   MonitoramentoRoute: MonitoramentoRoute,
+  MotoristasRoute: MotoristasRoute,
   TvRoute: TvRoute,
   UsuariosRoute: UsuariosRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
