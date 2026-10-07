@@ -53,5 +53,5 @@ export function useAutoRotas() {
     rotas.set(nextRotas);
     ocs.set(nextOcs);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orders.list.length, rotas.list.length]);
+  }, [orders.list.length, rotas.list.map((r) => r.orderIds.length + r.status).join()]);
 }
