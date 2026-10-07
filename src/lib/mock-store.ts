@@ -55,7 +55,7 @@ function useCollection<T extends { id?: string }>(
   const [, setTick] = useState(0);
   useEffect(() => {
     const unsub = subscribe(key, () => setTick((t) => t + 1));
-    return () => { unsub; };
+    return unsub;
   }, [key]);
   const list = read<T[]>(key, fallback);
 
