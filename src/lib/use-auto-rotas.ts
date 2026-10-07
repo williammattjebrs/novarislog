@@ -16,7 +16,7 @@ export function useAutoRotas() {
   const ocs = useOrdensColeta();
   useEffect(() => {
     const vinculadas = new Set(rotas.list.flatMap((r) => r.orderIds));
-    const soltas = orders.list.filter((o) => !vinculadas.has(o.id) && o.stage !== "entregue" && !o.cteChave);
+    const soltas = orders.list.filter((o) => !vinculadas.has(o.id) && o.stage !== "entregue");
     if (!soltas.length) return;
     const nextRotas: Rota[] = rotas.list.map((r) => ({ ...r }));
     const nextOcs: OrdemColeta[] = ocs.list.map((o) => ({ ...o }));
