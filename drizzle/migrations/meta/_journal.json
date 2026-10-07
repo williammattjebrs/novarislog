@@ -78,6 +78,13 @@
       "when": 1791389331585,
       "tag": "0010_rollback_access_validation",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791389387753,
+      "tag": "0011_rollback_import_and_role_matrix_validation",
+      "breakpoints": true
     }
   ]
 }

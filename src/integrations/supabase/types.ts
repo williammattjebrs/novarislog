@@ -312,6 +312,7 @@ export type Database = {
         Returns: string
       }
       tms_collection: { Args: { c: string; op?: string }; Returns: boolean }
+      tms_extended_selftest: { Args: never; Returns: Json }
       tms_import_cte: { Args: { xml_text: string }; Returns: Json }
       tms_import_nfe_worker: { Args: { payload: Json }; Returns: Json }
       tms_module: { Args: { module_name: string }; Returns: boolean }
