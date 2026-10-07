@@ -7,7 +7,7 @@ import { RoleGate } from "@/components/RoleGate";
 import { Button } from "@/components/ui/button";
 import { useOrders, useRotas, useOrdensColeta, useMotoristas, useVeiculos, newId } from "@/lib/mock-store";
 import { OC_STATUS, TIPOS_CAMINHAO, type OrdemColeta, type OCStatus, type Order } from "@/lib/mock-data";
-import { fmtCpf } from "@/routes/motoristas";
+const fmtCpf = (v: string) => v.replace(/\D/g, "").slice(0, 11).replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, (_, a, b, c, d) => `${a}.${b}.${c}${d ? "-" + d : ""}`);
 import { useAutoRotas } from "@/lib/use-auto-rotas";
 import { useAuth } from "@/lib/auth";
 import { abrirEspelho, baixarEspelho, whatsappMotorista, fmtDH } from "@/lib/espelho-coleta";
