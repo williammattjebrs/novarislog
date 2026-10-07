@@ -3,6 +3,22 @@
 
 const GATEWAY = "https://connector-gateway.lovable.dev/microsoft_outlook";
 
+export async function graphSendTracking(recipients: string[], subject: string, html: string) {
+  const key = process.env.MICROSOFT_OUTLOOK_API_KEY;
+  const lovable = process.env.LOVABLE_API_KEY;
+  if (!key || !lovable) throw new Error("Conexão Microsoft não configurada.");
+  const response = await fetch(`${GATEWAY}/me/sendMail`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${lovable}`, "X-Connection-Api-Key": key, "Content-Type": "application/json; charset=utf-8" },
+    body: JSON.stringify({ message: { subject, body: { contentType: "HTML", content: html }, toRecipients: recipients.map((address) => ({ emailAddress: { address } })) }, saveToSentItems: true }),
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    console.error(`Microsoft envio [${response.status}]: ${body}`);
+    throw new Error(`Microsoft [${response.status}]: ${body}`);
+  }
+}
+
 export function microsoftDisponivel(host: string | null | undefined) {
   return !!process.env.MICROSOFT_OUTLOOK_API_KEY && /office365|outlook\.(com|office)/i.test(host ?? "");
 }
