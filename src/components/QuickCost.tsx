@@ -5,26 +5,31 @@ import type { Order, OrderCosts } from "@/lib/mock-data";
 import { fmtBRL } from "@/lib/mock-data";
 import { useConfig } from "@/lib/mock-store";
 import { calcOrderCost } from "@/lib/cost-calc";
+import {Button} from './ui/button';
 
-export function QuickCost({ order, onUpdate }: { order: Order; onUpdate: (patch: Partial<Order>) => void }) {
+export function QuickCost({ order, onUpdate }: { order: Order; onUpdate: (patch: Partial<Order>) => Promise<void> | void }) {
   const [cfg] = useConfig();
   const [c, setC] = useState<OrderCosts>({ ...order.costs, execMode: order.costs?.execMode || "terceiro" });
   const [saved, setSaved] = useState(false);
+  const [error,setError]=useState('');
+  const [busy,setBusy]=useState(false);
   const receita = order.cteValor ?? order.valorFrete;
   const custo = calcOrderCost(c, cfg.frota, receita).total;
   const margem = receita - custo;
   const pct = receita > 0 ? (margem / receita) * 100 : 0;
   const set = (patch: Partial<OrderCosts>) => { setC((p) => ({ ...p, ...patch })); setSaved(false); };
 
-  function salvar() {
-    onUpdate({
+  async function salvar() {
+    if(busy)return;
+    setBusy(true);setError('');
+    try {await onUpdate({
       costs: c,
       timeline: [...order.timeline, {
         quando: new Date().toISOString(), autor: "sistema", tipo: "custo",
         texto: `Custo lançado: ${fmtBRL(custo)} (${c.execMode === "frota" ? "frota própria" : `terceiro${c.fornecedor ? ` · ${c.fornecedor}` : ""}`})`,
       }],
     });
-    setSaved(true);
+    setSaved(true);}catch(e){setError(e instanceof Error?e.message:'Falha ao salvar custo.');}finally{setBusy(false);}
   }
 
   return (
@@ -49,10 +54,11 @@ export function QuickCost({ order, onUpdate }: { order: Order; onUpdate: (patch:
       )}
       <div className="flex items-center justify-between text-xs">
         <span>Custo <b className="num text-accent">{fmtBRL(custo)}</b> · Margem <b className={`num ${margem >= 0 ? "text-success" : "text-danger"}`}>{fmtBRL(margem)} ({pct.toFixed(1)}%)</b></span>
-        <button onClick={salvar} className="text-xs px-2.5 py-1 rounded bg-primary text-primary-foreground hover:opacity-90 inline-flex items-center gap-1">
+        <Button disabled={busy} size="sm" onClick={()=>void salvar()}>
           {saved ? <><Check className="h-3 w-3" />Salvo</> : "Salvar custo"}
-        </button>
+        </Button>
       </div>
+      {error&&<p role="alert" className="text-sm text-danger">{error}</p>}
     </div>
   );
 }

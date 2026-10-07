@@ -7,3 +7,9 @@ export const schedulerStatus=createServerFn({method:'GET'}).middleware([requireS
   if(error)throw error;
   return {enabled:process.env['ENABLE_SERVER_SCHEDULER']==='true',secretConfigured:!!process.env['INTERNAL_SCHEDULER_KEY'],runs:data};
 });
+export const schedulerDryRun=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).handler(async({context})=>{
+  const {data:allowed}=await context.supabase.rpc('tms_module',{module_name:'/configuracoes'});
+  if(!allowed)throw new Error('Apenas administradores ativos.');
+  const {runScheduler}=await import('./scheduler.server');
+  return runScheduler(true);
+});
