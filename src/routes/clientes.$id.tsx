@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useState, useRef } from "react";
 import { RouteRatesTable } from "@/components/RouteRatesTable";
+import { TrackingGroupEditor } from "@/components/TrackingGroupEditor";
 import { ArrowLeft, Plus, FileUp, Trash2, Check } from "lucide-react";
 import {
   useClients, useFreightTables, useQuotations, newId,
@@ -93,6 +94,7 @@ function ClienteDetalhe() {
               <Line label="Telefone" v={client.telefone} />
               <Line label="E-mail" v={client.email} />
               <Line label="Segmento" v={client.segmento} />
+              <TrackingGroupEditor client={client.nome} defaultEmail={client.email} />
             </div>
             <div className="panel p-5">
               <div className="flex items-center justify-between mb-3">

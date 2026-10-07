@@ -2,9 +2,12 @@ import { useState } from "react";
 import { MapPin, Mail, Copy } from "lucide-react";
 import { DEFAULT_EMAIL_TEMPLATE, renderTemplate, stageLabel, type AppConfig, type Order, type TimelineEntry } from "@/lib/mock-data";
 
-import { buildTrackingEmail, downloadTrackingEmail, copyTrackingEmail } from "@/lib/tracking-email";
+import { buildTrackingEmail, copyTrackingEmail } from "@/lib/tracking-email";
 import { TrackingEmailPreview } from "@/components/TrackingEmailPreview";
 import { Button } from "@/components/ui/button";
+import { useServerFn } from "@tanstack/react-start";
+import { sendTrackingUpdate } from "@/lib/tracking-send.functions";
+import { readTrackingGroup, trackingPayload } from "@/lib/tracking-groups";
 
 const SITUACOES = [
   "Aguardando coleta", "Coletado", "Em trânsito", "Em transferência (CD)", "Saiu para entrega",
@@ -25,6 +28,8 @@ export function TrackingPanel({
   const [email, setEmail] = useState(order.emailCliente ?? "");
   const [preview, setPreview] = useState<Order | null>(null);
   const [feedback, setFeedback] = useState("");
+  const [busy, setBusy] = useState(false);
+  const send = useServerFn(sendTrackingUpdate);
   const tpl = cfg.emailTemplate ?? DEFAULT_EMAIL_TEMPLATE;
 
   function entry(texto: string, tipo: TimelineEntry["tipo"] = "status"): TimelineEntry {
@@ -47,12 +52,17 @@ export function TrackingPanel({
   }
 
   const draft = buildTrackingEmail([preview ?? order], order.clienteNome, renderTemplate(tpl.assunto, preview ?? order, stageLabel((preview ?? order).stage)), renderTemplate(tpl.corpo, preview ?? order, stageLabel((preview ?? order).stage)));
-  function preparar() {
+  async function preparar() {
+    if (busy) return;
+    setBusy(true);
     try {
-      downloadTrackingEmail(draft, email.trim());
-      onUpdate({ emailCliente: email, timeline: [...order.timeline, entry(`Rascunho de rastreio preparado para ${email}; envio não confirmado`, "sistema")] });
-      setFeedback("Abra o arquivo .eml no Outlook para revisar e enviar, ou copie a tabela e cole em uma nova mensagem.");
+      const group = readTrackingGroup(order.clienteNome);
+      const recipients = group.emails.length ? group.emails : [email.trim()];
+      await send({ data: { cliente: order.clienteNome, destinatarios: recipients, ordens: trackingPayload([preview ?? order]) } });
+      onUpdate({ emailCliente: email, timeline: [...order.timeline, entry(`Atualização de rastreio aceita pela Microsoft para envio a ${recipients.join("; ")}`, "sistema")] });
+      setFeedback("Atualização aceita pela Microsoft para envio ao grupo do cliente.");
     } catch (error) { setFeedback(error instanceof Error ? error.message : "Falha ao preparar e-mail."); }
+    finally { setBusy(false); }
   }
   async function copiar() {
     try { await copyTrackingEmail(draft); setFeedback("Tabela copiada. Cole no corpo da mensagem e confirme o envio no seu e-mail."); }
@@ -95,7 +105,7 @@ export function TrackingPanel({
       </div>
       {preview && <div className="space-y-3 border-t border-border pt-3">
         <TrackingEmailPreview email={draft} />
-        <div className="flex flex-wrap gap-2"><Button onClick={preparar}><Mail /> Preparar e-mail</Button><Button variant="outline" onClick={copiar}><Copy /> Copiar tabela</Button></div>
+        <div className="flex flex-wrap gap-2"><Button onClick={preparar} disabled={busy}><Mail />{busy ? "Enviando…" : "Enviar atualização"}</Button><Button variant="outline" onClick={copiar}><Copy /> Copiar tabela</Button></div>
         {feedback && <p role="status" className="text-sm text-info">{feedback}</p>}
       </div>}
       <div className="text-[10px] text-muted-foreground">
