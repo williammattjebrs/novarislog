@@ -509,11 +509,8 @@ function OrderDetail({ order, onClose, onUpdate }: {
                 </button>
               ))}
             </div>
-          ) : (
-            <div className="text-xs text-muted-foreground mt-2">
-              <Link to="/clientes" className="text-primary hover:underline">Cadastre uma tabela</Link> para este cliente.
-            </div>
-          )}
+          ) : null}
+          <NovaTabelaPanel order={order} onUpdate={onUpdate} />
           <div className="mt-2">
             <button
               onClick={() => {
