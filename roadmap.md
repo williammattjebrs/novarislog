@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Grupos de e-mail por cliente e envio pelo sistema, manual ou com frequência configurável
+
 - [ ] Atualização de rastreio: tabela por nota, previsão com data/hora e e-mail UTF-8 sem acentos corrompidos
 
 - [x] Manual de uso: treinamento por módulo com telas reais, busca e navegação no app
