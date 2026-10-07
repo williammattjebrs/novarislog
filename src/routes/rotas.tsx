@@ -79,12 +79,8 @@ function Rotas({ onEdit }: { onEdit: (ocId: string) => void }) {
             <div className="text-xs text-muted-foreground">Cliente: <b className="text-foreground">{r.clienteNome}</b> · Remetente: <b className="text-foreground">{r.remetente}</b> · Destinatário: <b className="text-foreground">{r.destinatario}</b></div>
             <div className="text-xs">NFs: {nfs.map((n) => n.numeroNFe).join(", ") || "—"}</div>
             <div className="grid md:grid-cols-3 gap-2 items-center">
-              <select className={inp} value={r.motoristaId ?? ""} disabled={r.status === "encerrada"} onChange={(e) => setRota(r.id, { motoristaId: e.target.value || undefined })}>
-                <option value="">Motorista…</option>{mot.list.filter((m) => m.ativo).map((m) => <option key={m.id} value={m.id}>{m.nome} · {m.cpf} · {m.telefone}</option>)}
-              </select>
-              <select className={inp} value={r.veiculoId ?? ""} disabled={r.status === "encerrada"} onChange={(e) => setRota(r.id, { veiculoId: e.target.value || undefined })}>
-                <option value="">Veículo (placa)…</option>{vei.list.filter((v) => v.ativo).map((v) => <option key={v.id} value={v.id}>{v.placa} · {v.tipo}</option>)}
-              </select>
+              <MotoristaSelect value={r.motoristaId ?? ""} disabled={r.status === "encerrada"} onChange={(id) => setRota(r.id, { motoristaId: id || undefined })} />
+              <VeiculoSelect value={r.veiculoId ?? ""} disabled={r.status === "encerrada"} onChange={(id) => setRota(r.id, { veiculoId: id || undefined })} />
               {oc ? <Button onClick={() => onEdit(oc.id)}><Pencil className="h-4 w-4" /> Programar ordem de coleta</Button> : <span className="text-xs text-muted-foreground">Sem OC ativa</span>}
             </div>
           </div>
@@ -210,12 +206,8 @@ function EditOC({ ocId, onClose }: { ocId: string; onClose: () => void }) {
       <div className="panel p-5 w-full max-w-3xl max-h-[90vh] overflow-auto space-y-3">
         <div className="flex items-center"><h2 className="font-display text-lg">Ordem de coleta {oc.numero}</h2><button className="ml-auto" onClick={onClose}><X className="h-4 w-4" /></button></div>
         <div className="grid md:grid-cols-2 gap-2">
-          <select className={inp} value={f.motoristaId} onChange={(e) => setF({ ...f, motoristaId: e.target.value })}>
-            <option value="">Motorista…</option>{mot.list.filter((m) => m.ativo).map((m) => <option key={m.id} value={m.id}>{m.nome} · {m.cpf} · {m.telefone}</option>)}
-          </select>
-          <select className={inp} value={f.veiculoId} onChange={(e) => setF({ ...f, veiculoId: e.target.value })}>
-            <option value="">Veículo (placa)…</option>{vei.list.filter((v) => v.ativo).map((v) => <option key={v.id} value={v.id}>{v.placa} · {v.tipo}</option>)}
-          </select>
+          <MotoristaSelect value={f.motoristaId} onChange={(id) => setF({ ...f, motoristaId: id })} />
+          <VeiculoSelect value={f.veiculoId} onChange={(id) => setF({ ...f, veiculoId: id })} />
         </div>
         <div className="text-xs font-semibold">Notas que irão carregar</div>
         <div className="grid md:grid-cols-2 gap-1 text-sm">
