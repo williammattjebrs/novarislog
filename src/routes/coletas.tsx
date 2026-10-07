@@ -22,6 +22,9 @@ import { NovaTabelaPanel } from "@/components/NovaTabelaPanel";
 import { correctCity, sameCityName } from "@/components/CityPicker";
 import { useAutoRotas, vincularOrderEmRota } from "@/lib/use-auto-rotas";
 
+import { commitLists, getList, sharedReady } from "@/lib/shared-db";
+import { allocateCte, compareCte, financialState, identifyClient } from "@/lib/reliability";
+
 export const Route = createFileRoute("/coletas")({
   head: () => ({
     meta: [
@@ -90,6 +93,7 @@ function ColetasPage() {
 
   async function importNFeTexts(texts: string[]) {
     // Sem cliente cadastrado para o CNPJ, a ordem entra como "(sem cliente)" na fila de tratamento.
+    await sharedReady;
     let ok = 0, fail = 0, dup = 0;
     const corrigidas: string[] = [];
     const chavesExistentes = new Set(orders.list.map((o) => o.chaveNFe).filter(Boolean));
@@ -105,7 +109,7 @@ function ColetasPage() {
       }
 
       // Cliente = quem tem esse CNPJ como remetente (emitente)
-      const client = clients.list.find((c) => c.cnpjs.some((x) => x.cnpj.replace(/\D/g, "") === p.emitente.cnpj.replace(/\D/g, "")));
+      const { client } = identifyClient(clients.list, p.emitente.cnpj);
       const clienteId = client?.id ?? "";
       const clienteNome = client?.nome ?? `(sem cliente) ${p.emitente.nome}`;
 
@@ -123,7 +127,9 @@ function ColetasPage() {
         ? findQuotation(quotes.list, {
             clienteId,
             ufColeta: p.emitente.uf,
+            cidadeColeta: p.emitente.cidade,
             ufEntrega: p.destinatario.uf,
+            cidadeEntrega: p.destinatario.cidade,
           })
         : null;
 
@@ -141,8 +147,8 @@ function ColetasPage() {
       if (table) {
         const c = calcFreight(table, { peso: p.pesoBruto, valorNF: p.valorTotal });
         valorFrete = c.total;
-        origemValor = "tabela";
-        refValor = table.id;
+        origemValor = c.error ? "" : "tabela";
+        refValor = c.error ? undefined : table.id;
       } else if (quote) {
         valorFrete = quote.valorCalculado;
         origemValor = "cotacao";
@@ -164,6 +170,7 @@ function ColetasPage() {
         clienteId,
         clienteNome,
         chaveNFe: p.chave,
+        xmlOriginal: text,
         numeroNFe: p.numero,
         remetente: p.emitente.nome,
         remetenteCnpj: p.emitente.cnpj,
@@ -195,7 +202,8 @@ function ColetasPage() {
         criadoEm: new Date().toISOString(),
         atualizadoEm: new Date().toISOString(),
       };
-      orders.add(order);
+      const lists = vincularOrderEmRota(order, getList("rotas") ?? [], getList("ordensColeta") ?? [], autor);
+      await commitLists({ orders: [order, ...(getList<Order>("orders") ?? [])], rotas: lists.rotas, ordensColeta: lists.ocs }, "Importação NF-e com rota e OC");
       ok++;
     }
     return { ok, fail, dup, corrigidas: [...new Set(corrigidas)] };
@@ -207,62 +215,38 @@ function ColetasPage() {
   async function importCTe(files: FileList) {
     const texts: string[] = [];
     for (const f of Array.from(files)) texts.push(await readFileText(f));
-    const r = importCTeTexts(texts);
+    const r = await importCTeTexts(texts);
     alert(`✓ ${r.ok} CT-e(s) vinculado(s) a ordens${r.dup ? ` · ${r.dup} já vinculado(s)` : ""}${r.semOrdem ? ` · ${r.semOrdem} sem NF-e correspondente (importe a NF-e primeiro)` : ""}`);
     if (cteInput.current) cteInput.current.value = "";
   }
 
-  function importCTeTexts(texts: string[]) {
+  async function importCTeTexts(texts: string[]) {
+    await sharedReady;
     let ok = 0, dup = 0, semOrdem = 0;
     const vinculadas: string[] = [];
-    // Lê a lista atualizada (as NF-e do mesmo lote acabaram de ser gravadas)
-    const freshOrders = (): Order[] => { try { return JSON.parse(localStorage.getItem("novaris:orders") ?? "[]"); } catch { return orders.list; } };
-    const ctesExistentes = new Set(freshOrders().map((o) => o.cteChave).filter(Boolean));
     for (const text of texts) {
       const p = parseCTe(text);
-      if (!p) continue;
-      if (p.chave && ctesExistentes.has(p.chave)) { dup++; vinculadas.push(p.chave); continue; }
-
-      // Casa pelas chaves de NF-e citadas no CT-e (qualquer etapa da ordem, sem CT-e ainda)
-      const refs = new Set([...(p.chavesNFe ?? []), p.chaveNFeReferenciada].filter(Boolean) as string[]);
-      const list = freshOrders();
-      const order = list.find((o) => !o.cteChave && refs.has(o.chaveNFe))
-        ?? (refs.size === 0 ? list.find((o) => !o.cteChave && (o.stage === "aguardando_cte" || o.stage === "coletado")) : undefined);
-      if (!order) { semOrdem++; continue; }
-      ctesExistentes.add(p.chave);
-      vinculadas.push(p.chave);
-      const diff = order.valorFrete > 0 ? ((p.valorTotal - order.valorFrete) / order.valorFrete) * 100 : 0;
-      const stage: OrderStage = Math.abs(diff) > cfg.toleranciaDivergenciaPercent ? "cte_divergente" : "cte_ok";
-
-      orders.update(order.id, {
-        cteChave: p.chave,
-        cteNumero: p.numero,
-        cteValor: p.valorTotal,
-        divergenciaPercent: diff,
-        stage,
-        atualizadoEm: new Date().toISOString(),
-        timeline: [
-          ...order.timeline,
-          {
-            quando: new Date().toISOString(),
-            autor,
-            tipo: "sistema",
-            texto: `CT-e ${p.numero} vinculado · ${fmtBRL(p.valorTotal)} · divergência ${diff.toFixed(2)}% ${stage === "cte_divergente" ? "(FORA da tolerância)" : "(dentro da tolerância)"}`,
-          },
-        ],
+      if (!p?.chave) { semOrdem++; continue; }
+      const docs = getList<any>("cteDocuments") ?? [];
+      if (docs.some(d => d.chave === p.chave)) { dup++; vinculadas.push(p.chave); continue; }
+      const list = getList<Order>("orders") ?? [];
+      const refs = [...new Set([...(p.chavesNFe ?? []), p.chaveNFeReferenciada].filter(Boolean) as string[])];
+      const linked = list.filter(o => refs.includes(o.chaveNFe));
+      if (!refs.length || linked.length !== refs.length) { semOrdem++; continue; }
+      const allocation = allocateCte(p.valorTotal, linked);
+      const validBase = linked.every(o => o.valorFrete > 0 && !!o.origemValor);
+      const conference = compareCte(validBase ? linked.reduce((sum, o) => sum + o.valorFrete, 0) : 0, p.valorTotal, cfg.toleranciaDivergenciaPercent);
+      const now = new Date().toISOString();
+      const doc = { id: `CTE-${p.chave}`, chave: p.chave, numero: p.numero, valorFiscal: p.valorTotal, xmlOriginal: text, nfChaves: refs, orderIds: linked.map(o => o.id), rateio: allocation, conferencia: conference, criadoEm: now };
+      const next = list.map(o => {
+        if (!linked.some(x => x.id === o.id)) return o;
+        const value = allocation.allocations.find(x => x.orderId === o.id)?.value;
+        return { ...o, cteChave: o.cteChave || p.chave, cteNumero: o.cteNumero || p.numero, cteChaves: [...new Set([...(o.cteChaves ?? []), ...(o.cteChave ? [o.cteChave] : []), p.chave])], cteValor: value === undefined ? o.cteValor : (o.cteValor ?? 0) + value, conferencia: conference, divergenciaPercent: conference.percent, stage: ['em_viagem','entregue','ocorrencia'].includes(o.stage) ? o.stage : conference.status === 'divergente' ? 'cte_divergente' as const : conference.status === 'conferido' ? 'cte_ok' as const : o.stage, atualizadoEm: now, timeline: [...o.timeline, { quando: now, autor, tipo: 'sistema' as const, texto: `CT-e ${p.numero} vinculado a ${linked.length} NF(s); conferência ${conference.status}; rateio ${allocation.method}` }] };
       });
-
-      // Emite fatura (mock)
-      invoices.add({
-        numero: `CTe ${p.numero}`,
-        clienteNome: order.clienteNome,
-        emissao: new Date().toLocaleDateString("pt-BR"),
-        vencimento: new Date(Date.now() + 30 * 86400_000).toLocaleDateString("pt-BR"),
-        valor: p.valorTotal,
-        status: "aberta",
-        tipo: "CTe",
-      });
-      ok++;
+      // One fiscal document, all links and one receivable share a single database transaction.
+      const title = { id: `REC-CTE-${p.chave}`, cteChave: p.chave, numero: `CTe ${p.numero}`, clienteNome: linked[0].clienteNome, emissao: now.slice(0,10), competencia: now.slice(0,10), vencimento: new Date(Date.now() + 30 * 86400000).toISOString().slice(0,10), valor: p.valorTotal, status: 'aberta' as const, tipo: 'CTe' as const };
+      await commitLists({ orders: next, cteDocuments: [doc, ...docs], invoices: [title, ...(getList<any>('invoices') ?? [])] }, 'Importação CT-e: documento, vínculos, rateio e receita única');
+      ok++; vinculadas.push(p.chave);
     }
     return { ok, dup, semOrdem, vinculadas };
   }
@@ -272,10 +256,11 @@ function ColetasPage() {
     const ctes = xmls.filter((x) => x.tipo === "cte");
     const rn = nfes.length ? await importNFeTexts(nfes.map((x) => x.xml)) : { ok: 0, fail: 0, dup: 0, corrigidas: [] };
     if (!rn) return null; // sem clientes cadastrados — mantém os XML pendentes
-    const rc = ctes.length ? importCTeTexts(ctes.map((x) => x.xml)) : { ok: 0, dup: 0, semOrdem: 0, vinculadas: [] as string[] };
+    const rc = ctes.length ? await importCTeTexts(ctes.map((x) => x.xml)) : { ok: 0, dup: 0, semOrdem: 0, vinculadas: [] as string[] };
     // CT-e sem NF-e correspondente continua pendente e é tentado de novo na próxima busca
     const ctesOk = new Set(rc.vinculadas);
-    const chaves = [...nfes.map((x) => x.chave), ...ctes.filter((x) => ctesOk.has(x.chave)).map((x) => x.chave)];
+    const importedNfe = new Set((getList<Order>("orders") ?? []).map(o => o.chaveNFe));
+    const chaves = [...nfes.filter(x => importedNfe.has(x.chave)).map((x) => x.chave), ...ctes.filter((x) => ctesOk.has(x.chave)).map((x) => x.chave)];
     return { nfe: rn.ok, cte: rc.ok, dup: rn.dup + rc.dup, fail: rn.fail, chaves, cteAguardando: rc.semOrdem };
   }
 

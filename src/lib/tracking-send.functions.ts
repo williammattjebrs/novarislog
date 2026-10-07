@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { buildTrackingEmail } from "@/lib/tracking-email";
 import type { Order } from "@/lib/mock-data";
 
-const rowSchema = z.object({ numeroNFe: z.string().max(60), destinatario: z.string().max(300), cidadeColeta: z.string().max(150), ufColeta: z.string().max(2), cidadeEntrega: z.string().max(150), ufEntrega: z.string().max(2), previsaoEntrega: z.string().max(60).optional(), stage: z.enum(["aguarda_vinculacao", "valorizada", "coleta_agendada", "em_coleta", "coletado", "aguarda_cte", "cte_ok", "cte_divergente", "em_viagem", "entregue", "ocorrencia"]), rastreio: z.object({ situacao: z.string().max(200) }).optional() });
+const rowSchema = z.object({ numeroNFe: z.string().max(60), destinatario: z.string().max(300), cidadeColeta: z.string().max(150), ufColeta: z.string().max(2), cidadeEntrega: z.string().max(150), ufEntrega: z.string().max(2), previsaoEntrega: z.string().max(60).optional(), stage: z.enum(["aguarda_vinculacao", "valorizada", "coleta_agendada", "em_coleta", "coletado", "aguardando_cte", "cte_ok", "cte_divergente", "em_viagem", "entregue", "ocorrencia"]), rastreio: z.object({ situacao: z.string().max(200) }).optional() });
 
 export const sendTrackingUpdate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
