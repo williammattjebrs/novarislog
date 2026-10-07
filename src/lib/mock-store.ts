@@ -9,6 +9,8 @@ import type {
   AppConfig, ClientGroup, ExpenseGroup,
 } from "./mock-data";
 import { DEFAULT_CONFIG } from "./mock-data";
+import { getDoc, getList, notify, setDoc, setList, startSharedSync, subscribe } from "./shared-db";
+if (typeof window !== "undefined") startSharedSync();
 
 const PREFIX = "novaris:";
 const isBrowser = typeof window !== "undefined";
@@ -29,39 +31,19 @@ type StoreKey =
   | "expenseGroups"
   | "config";
 
-// Signature externa dos listeners por chave
-const listeners: Record<string, Set<() => void>> = {};
-
-function notify(key: string) {
-  listeners[key]?.forEach((l) => l());
-}
-
-function subscribe(key: string, cb: () => void) {
-  if (!listeners[key]) listeners[key] = new Set();
-  listeners[key].add(cb);
-  return () => listeners[key].delete(cb);
-}
-
+// Dados compartilhados no banco (app_records) com cache local e realtime.
 function read<T>(key: StoreKey, fallback: T): T {
   if (!isBrowser) return fallback;
-  try {
-    const raw = localStorage.getItem(PREFIX + key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
+  if (key === "config") return (getDoc<T>("config") ?? fallback);
+  return (getList<any>(key) as T | undefined) ?? fallback;
 }
 
 function write<T>(key: StoreKey, val: T) {
   if (!isBrowser) return;
-  try {
-    localStorage.setItem(PREFIX + key, JSON.stringify(val));
-    notify(key);
-  } catch (e) {
-    console.error("store write failed", key, e);
-  }
+  if (key === "config") setDoc("config", val);
+  else setList(key, val as any[]);
 }
+void PREFIX;
 
 // ==================================================================
 // Hook genérico — coleção CRUD
@@ -73,7 +55,7 @@ function useCollection<T extends { id?: string }>(
   const [, setTick] = useState(0);
   useEffect(() => {
     const unsub = subscribe(key, () => setTick((t) => t + 1));
-    return () => { unsub; };
+    return unsub;
   }, [key]);
   const list = read<T[]>(key, fallback);
 
@@ -121,18 +103,14 @@ export const useExpenseGroups = () => useCollection<ExpenseGroup>("expenseGroups
 // ==================================================================
 // Config global
 // ==================================================================
-let cfgCacheRaw: string | null = null;
+let cfgCacheRaw: unknown = undefined;
 let cfgCacheVal: AppConfig = DEFAULT_CONFIG;
 function configSnapshot(): AppConfig {
   if (!isBrowser) return DEFAULT_CONFIG;
-  const raw = localStorage.getItem(PREFIX + "config");
+  const raw = getDoc<AppConfig>("config");
   if (raw === cfgCacheRaw) return cfgCacheVal;
   cfgCacheRaw = raw;
-  try {
-    cfgCacheVal = raw ? ({ ...DEFAULT_CONFIG, ...JSON.parse(raw) } as AppConfig) : DEFAULT_CONFIG;
-  } catch {
-    cfgCacheVal = DEFAULT_CONFIG;
-  }
+  cfgCacheVal = raw ? ({ ...DEFAULT_CONFIG, ...raw } as AppConfig) : DEFAULT_CONFIG;
   return cfgCacheVal;
 }
 
@@ -159,24 +137,14 @@ export function getClients(): Client[] {
   return read<Client[]>("clients", []);
 }
 export function getConfigSync(): AppConfig {
-  if (!isBrowser) return DEFAULT_CONFIG;
-  try {
-    const raw = localStorage.getItem(PREFIX + "config");
-    if (!raw) return DEFAULT_CONFIG;
-    return { ...DEFAULT_CONFIG, ...JSON.parse(raw) } as AppConfig;
-  } catch {
-    return DEFAULT_CONFIG;
-  }
+  return configSnapshot();
 }
 
 export function resetAllData() {
   if (!isBrowser) return;
   (["clients", "freightTables", "routeRates", "quotations", "crmDeals", "orders",
     "warehouseInbound", "warehouseOutbound", "stock", "invoices", "expenses", "clientGroups"] as StoreKey[]
-  ).forEach((k) => {
-    localStorage.removeItem(PREFIX + k);
-    notify(k);
-  });
+  ).forEach((k) => { write(k, []); notify(k); });
 }
 
 // util: gera ID curto
