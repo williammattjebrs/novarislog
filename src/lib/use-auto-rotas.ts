@@ -14,6 +14,7 @@ export function useAutoRotas() {
   const orders = useOrders();
   const rotas = useRotas();
   const ocs = useOrdensColeta();
+  const pendentes = (() => { const v = new Set(rotas.list.flatMap((r) => r.orderIds)); return orders.list.filter((o) => !v.has(o.id) && o.stage !== "entregue").length; })();
   useEffect(() => {
     const vinculadas = new Set(rotas.list.flatMap((r) => r.orderIds));
     const soltas = orders.list.filter((o) => !vinculadas.has(o.id) && o.stage !== "entregue");
@@ -53,5 +54,5 @@ export function useAutoRotas() {
     rotas.set(nextRotas);
     ocs.set(nextOcs);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orders.list.length, rotas.list.map((r) => r.orderIds.length + r.status).join()]);
+  }, [pendentes]);
 }
