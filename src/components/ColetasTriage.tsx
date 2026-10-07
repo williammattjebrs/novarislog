@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Mail, FileCheck2, AlertTriangle, RefreshCw } from "lucide-react";
 import { fmtBRL, type Order } from "@/lib/mock-data";
+import { sharedReady } from "@/lib/shared-db";
 import { getInboxConfig, syncInbox, listPendingXml, markXmlImported } from "@/lib/email-inbox.functions";
 
 type EmailImportResult = { nfe: number; cte: number; dup: number; fail: number; chaves: string[]; cteAguardando?: number } | null;
@@ -35,6 +36,7 @@ export function ColetasTriage({
     busyRef.current = true;
     setBusy(true);
     try {
+      await Promise.race([sharedReady, new Promise((r) => setTimeout(r, 15000))]);
       const r = await sync();
       const lista = await pending();
       let resumo = r.mensagem;

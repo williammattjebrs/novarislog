@@ -219,12 +219,13 @@ export interface Rota {
   orderIds: string[]; motoristaId?: string; veiculoId?: string;
   status: RotaStatus; criadoEm: string; atualizadoEm: string;
 }
-export type OCStatus = "emitida" | "enviada_motorista" | "em_coleta" | "coletada" | "em_viagem" | "entregue" | "cancelada";
+export type OCStatus = "aguardando_programacao" | "emitida" | "enviada_motorista" | "em_coleta" | "coletada" | "em_viagem" | "entregue" | "cancelada";
 export const OC_STATUS: { id: OCStatus; label: string; stage?: OrderStage }[] = [
-  { id: "emitida", label: "Emitida", stage: "coleta_agendada" },
+  { id: "aguardando_programacao", label: "Aguardando motorista/veículo" },
+  { id: "emitida", label: "Programada", stage: "coleta_agendada" },
   { id: "enviada_motorista", label: "Enviada ao motorista", stage: "coleta_agendada" },
   { id: "em_coleta", label: "Em coleta", stage: "em_coleta" },
-  { id: "coletada", label: "Coletada", stage: "coletado" },
+  { id: "coletada", label: "Coletada · aguardando CT-e", stage: "aguardando_cte" },
   { id: "em_viagem", label: "Em viagem", stage: "em_viagem" },
   { id: "entregue", label: "Entregue", stage: "entregue" },
   { id: "cancelada", label: "Cancelada" },
@@ -232,7 +233,7 @@ export const OC_STATUS: { id: OCStatus; label: string; stage?: OrderStage }[] = 
 /** Ordem de Coleta = documento operacional gerado a partir da rota, enviado ao motorista. */
 export interface OrdemColeta {
   id: string; numero: string; rotaId: string; clienteNome: string;
-  orderIds: string[]; motoristaId: string; veiculoId: string;
+  orderIds: string[]; motoristaId?: string; veiculoId?: string;
   localColeta: string; cidadeColeta: string; ufColeta: string; dataHoraColeta: string;
   localEntrega: string; cidadeEntrega: string; ufEntrega: string; dataHoraEntrega: string;
   observacao?: string; status: OCStatus; criadoPor: string; criadoEm: string; atualizadoEm: string;

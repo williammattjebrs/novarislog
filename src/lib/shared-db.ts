@@ -20,6 +20,9 @@ export function subscribe(key: string, cb: () => void) {
 const cache: Record<string, any[]> = {};
 let started = false;
 let channelOn = false;
+let markReady: () => void = () => {};
+/** Resolve quando os dados do banco compartilhado foram carregados (evita importar contra cache vazio). */
+export const sharedReady: Promise<void> = new Promise((r) => { markReady = r; });
 
 function persistLocal(key: string) {
   try { localStorage.setItem(PREFIX + key, JSON.stringify(cache[key])); } catch { /* ignore */ }
@@ -111,6 +114,7 @@ async function loadAll() {
     } catch { /* ignore */ }
   }
   Object.entries(grouped).forEach(([k, list]) => { cache[k] = list; persistLocal(k); notify(k); });
+  markReady();
 }
 
 export function startSharedSync() {
