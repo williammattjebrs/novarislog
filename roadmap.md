@@ -22,3 +22,6 @@
 - [x] Ordem de Coleta com local/horário de coleta e entrega, base do monitoramento
 - [x] Espelho de coleta exportável (PDF/impressão) e envio ao motorista
 - [x] Fluxo automático NF-e → rota → OC; coletada aguarda CT-e; vínculo manual de CT-e
+
+## Pendente
+- [x] Multi-NF e multi-CT-e: rota/OC já agrupam várias NFs; CT-e vincula por todas as chaves de NF referenciadas; mesmo veículo/motorista reutilizável em várias OCs
