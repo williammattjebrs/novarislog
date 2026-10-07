@@ -26,6 +26,10 @@ export const Route = createFileRoute("/coletas")({
     meta: [
       { title: "Coletas & Ordens | Novaris" },
       { name: "description", content: "Fluxo NF-e → Ordem de Coleta → CT-e → Ordem de Transporte com detecção de divergência." },
+      { property: "og:title", content: "Coletas & Ordens | Novaris" },
+      { property: "og:description", content: "Fluxo NF-e → Ordem de Coleta → CT-e → Ordem de Transporte com detecção de divergência." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: () => (

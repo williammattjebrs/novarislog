@@ -15,6 +15,10 @@ export const Route = createFileRoute("/financeiro")({
     meta: [
       { title: "Financeiro | Novaris" },
       { name: "description", content: "Receitas, despesas fixas/variáveis, fluxo de caixa, rentabilidade por cliente e por área." },
+      { property: "og:title", content: "Financeiro | Novaris" },
+      { property: "og:description", content: "Receitas, despesas fixas/variáveis, fluxo de caixa, rentabilidade por cliente e por área." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: () => (
