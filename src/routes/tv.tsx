@@ -2,6 +2,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useOrders, useConfig } from "@/lib/mock-store";
+import { useAuth } from "@/lib/auth";
 import { fmtBRL, stageLabel, type Order } from "@/lib/mock-data";
 import { calcOrderCost } from "@/lib/cost-calc";
 import logo from "@/assets/novaris-logo.png.asset.json";
@@ -34,6 +35,8 @@ const fmtK = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 0
 
 function TvPage() {
   const orders = useOrders();
+  const { user } = useAuth();
+  const canSeeFinance = user?.role === "admin" || user?.role === "financeiro";
   const [cfg] = useConfig();
   const [now, setNow] = useState<Date | null>(null);
   const [, tick] = useState(0);
@@ -135,9 +138,9 @@ function TvPage() {
       </header>
 
       <section className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <Big l="Faturamento (mês)" v={fmtBRL(k.receita)} s={`${k.mesN} ordens · ticket ${fmtBRL(k.ticket)}`} />
-        <Big l="Custo operacional" v={fmtBRL(k.custo)} s={`R$ ${k.custoKg.toFixed(2)}/kg · ${fmtK(k.peso)} kg`} />
-        <Big l="Resultado" v={fmtBRL(k.resultado)} s={`Margem ${fmtPct(k.margem)}`} tone={k.resultado >= 0 ? "text-success" : "text-danger"} />
+        {canSeeFinance ? <Big l="Faturamento (mês)" v={fmtBRL(k.receita)} s={`${k.mesN} ordens · ticket ${fmtBRL(k.ticket)}`} /> : <Big l="Operação (mês)" v={`${k.mesN} ordens`} s={`Ticket médio oculto`} />}
+        {canSeeFinance ? <Big l="Custo operacional" v={fmtBRL(k.custo)} s={`R$ ${k.custoKg.toFixed(2)}/kg · ${fmtK(k.peso)} kg`} /> : <Big l="Peso movimentado" v={`${fmtK(k.peso)} kg`} s="Custos ocultos" />}
+        {canSeeFinance && <Big l="Resultado" v={fmtBRL(k.resultado)} s={`Margem ${fmtPct(k.margem)}`} tone={k.resultado >= 0 ? "text-success" : "text-danger"} />}
         <Big l="Entregas no prazo (OTD)" v={k.comPrevN ? fmtPct(k.otd) : "—"} s={`${k.noPrazo} de ${k.comPrevN} com previsão · ${k.entregues} entregues`} tone={k.otd >= 95 ? "text-success" : k.otd >= 85 ? "text-warning" : "text-danger"} />
       </section>
 
@@ -165,7 +168,7 @@ function TvPage() {
                 <Tooltip contentStyle={tipStyle} formatter={(v: number) => fmtBRL(v)} />
                 <Legend />
                 <Area type="monotone" dataKey="receita" name="Faturamento" stroke="var(--primary)" fill="url(#gR)" strokeWidth={2} />
-                <Area type="monotone" dataKey="custo" name="Custo" stroke="var(--danger)" fill="transparent" strokeWidth={2} />
+                {canSeeFinance && <Area type="monotone" dataKey="custo" name="Custo" stroke="var(--danger)" fill="transparent" strokeWidth={2} />}
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -225,17 +228,17 @@ function TvPage() {
 
       <section className="grid grid-cols-1 xl:grid-cols-3 gap-4 flex-1">
         <div className="panel p-5">
-          <Title>Resultado por cliente</Title>
+          <Title>{canSeeFinance ? "Resultado por cliente" : "Volume por cliente"}</Title>
           {k.topClientes.length === 0 && <Empty />}
           <div className="space-y-3">
             {k.topClientes.map(([n, x]) => {
               const m = pct(x.r - x.c, x.r);
               return (
                 <div key={n}>
-                  <div className="flex justify-between text-sm"><span className="truncate">{n}</span><span className="num">{fmtBRL(x.r)}</span></div>
+                  <div className="flex justify-between text-sm"><span className="truncate">{n}</span><span className="num">{canSeeFinance ? fmtBRL(x.r) : `${x.n} ordens`}</span></div>
                   <div className="flex items-center gap-2 mt-1">
                     <div className="h-2 flex-1 bg-elevated rounded overflow-hidden"><div className="h-full bg-primary" style={{ width: `${Math.min(100, pct(x.r, k.receita))}%` }} /></div>
-                    <span className={`num text-xs w-14 text-right ${m >= 0 ? "text-success" : "text-danger"}`}>{fmtPct(m)}</span>
+                    {canSeeFinance && <span className={`num text-xs w-14 text-right ${m >= 0 ? "text-success" : "text-danger"}`}>{fmtPct(m)}</span>}
                   </div>
                 </div>
               );
