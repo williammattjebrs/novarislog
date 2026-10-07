@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth";
 import { financialAccess } from "@/lib/permissions";
 
 export const Route = createFileRoute("/monitoramento")({
+  validateSearch: (search: Record<string, unknown>) => ({ registro: typeof search.registro === "string" ? search.registro : undefined }),
   head: () => ({
     meta: [
       { title: "Monitoramento | Novaris" },
@@ -46,7 +47,8 @@ function MonitoramentoPage() {
   const [uf, setUf] = useState("");
   const [cliente, setCliente] = useState("");
   const [busca, setBusca] = useState("");
-  const [selected, setSelected] = useState<string | null>(null);
+  const { registro } = Route.useSearch();
+  const [selected, setSelected] = useState<string | null>(registro ?? null);
   const [followFor, setFollowFor] = useState<Order | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
 

@@ -3,6 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useOrders, useConfig } from "@/lib/mock-store";
 import { useAuth } from "@/lib/auth";
+import { RoleGate } from "@/components/RoleGate";
+import { financialAccess } from "@/lib/permissions";
 import { fmtBRL, stageLabel, type Order } from "@/lib/mock-data";
 import { calcOrderCost } from "@/lib/cost-calc";
 import logo from "@/assets/novaris-logo.png.asset.json";
@@ -25,7 +27,7 @@ export const Route = createFileRoute("/tv")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: TvPage,
+  component: () => <RoleGate path="/tv"><TvPage /></RoleGate>,
 });
 
 const TRANSITO = ["coleta_agendada", "em_coleta", "coletado", "aguardando_cte", "cte_ok", "cte_divergente", "em_viagem"];
@@ -36,7 +38,7 @@ const fmtK = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 0
 function TvPage() {
   const orders = useOrders();
   const { user } = useAuth();
-  const canSeeFinance = user?.role === "admin" || user?.role === "financeiro";
+  const canSeeFinance = financialAccess(user);
   const [cfg] = useConfig();
   const [now, setNow] = useState<Date | null>(null);
   const [, tick] = useState(0);
@@ -154,7 +156,7 @@ function TvPage() {
       </section>
 
       <section className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <div className="panel p-5 xl:col-span-2">
+        {canSeeFinance && <div className="panel p-5 xl:col-span-2">
           <Title>Faturamento x Custo — últimos 30 dias</Title>
           <div className="h-64">
             <ResponsiveContainer>
@@ -172,7 +174,7 @@ function TvPage() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </div>}
         <div className="panel p-5">
           <Title>Pontualidade das entregas</Title>
           <div className="h-64 relative">
@@ -192,7 +194,7 @@ function TvPage() {
 
       <section className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div className="panel overflow-hidden xl:col-span-2">
-          <div className="p-5 pb-3"><Title>Mapa de entregas</Title></div>
+          <div className="p-5 pb-3"><Title>Destinos das entregas · sem GPS</Title></div>
           <BrazilMap orders={orders.list} />
         </div>
         <div className="flex flex-col gap-4">

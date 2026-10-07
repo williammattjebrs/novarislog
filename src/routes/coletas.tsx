@@ -26,6 +26,7 @@ import { commitLists, getList, sharedReady } from "@/lib/shared-db";
 import { allocateCte, compareCte, financialState, identifyClient } from "@/lib/reliability";
 
 export const Route = createFileRoute("/coletas")({
+  validateSearch: (search: Record<string, unknown>) => ({ registro: typeof search.registro === "string" ? search.registro : undefined }),
   head: () => ({
     meta: [
       { title: "Coletas & Ordens | Novaris" },
@@ -56,7 +57,8 @@ function ColetasPage() {
   const autor = user?.nome ?? "sistema";
 
   const [filtro, setFiltro] = useState<OrderStage | "todos">("todos");
-  const [selected, setSelected] = useState<string | null>(null);
+  const { registro } = Route.useSearch();
+  const [selected, setSelected] = useState<string | null>(registro ?? null);
   const nfeInput = useRef<HTMLInputElement>(null);
   const cteInput = useRef<HTMLInputElement>(null);
 
