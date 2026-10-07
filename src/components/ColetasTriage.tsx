@@ -59,10 +59,6 @@ export function ColetasTriage({
     }
   }
 
-  return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inbox?.ativo, inbox?.host, inbox?.intervaloMin]);
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
       <div className="panel p-4">
