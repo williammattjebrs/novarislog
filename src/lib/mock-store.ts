@@ -9,8 +9,8 @@ import type {
   AppConfig, ClientGroup, ExpenseGroup, Rota, OrdemColeta, Motorista, Veiculo,
 } from "./mock-data";
 import { DEFAULT_CONFIG } from "./mock-data";
-import { getDoc, getList, notify, setDoc, setList, startSharedSync, subscribe } from "./shared-db";
-if (typeof window !== "undefined") startSharedSync();
+import { getDoc, getList, notify, setDoc, setList, startSharedSync, subscribe, sharedReady } from "./shared-db";
+
 
 const PREFIX = "novaris:";
 const isBrowser = typeof window !== "undefined";
@@ -43,9 +43,9 @@ function read<T>(key: StoreKey, fallback: T): T {
 }
 
 function write<T>(key: StoreKey, val: T) {
-  if (!isBrowser) return;
-  if (key === "config") setDoc("config", val);
-  else setList(key, val as any[]);
+  if (!isBrowser) return Promise.resolve();
+  if (key === "config") return setDoc("config", val);
+  return setList(key, val as any[]);
 }
 void PREFIX;
 
@@ -149,6 +149,8 @@ export function getConfigSync(): AppConfig {
 }
 
 export function resetAllData() {
+  if (!isBrowser) return;
+  Object.keys(localStorage).filter(k => k.startsWith("novaris:")).forEach(k => localStorage.removeItem(k));
   if (!isBrowser) return;
   (["clients", "freightTables", "routeRates", "quotations", "crmDeals", "orders",
     "warehouseInbound", "warehouseOutbound", "stock", "invoices", "expenses", "clientGroups"] as StoreKey[]

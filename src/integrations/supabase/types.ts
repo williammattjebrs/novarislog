@@ -22,6 +22,7 @@ export type Database = {
           criado_em: string
           data: Json
           id: string
+          version: number
         }
         Insert: {
           atualizado_em?: string
@@ -30,6 +31,7 @@ export type Database = {
           criado_em?: string
           data: Json
           id: string
+          version?: number
         }
         Update: {
           atualizado_em?: string
@@ -38,6 +40,7 @@ export type Database = {
           criado_em?: string
           data?: Json
           id?: string
+          version?: number
         }
         Relationships: []
       }
@@ -155,6 +158,60 @@ export type Database = {
         }
         Relationships: []
       }
+      tms_audit: {
+        Row: {
+          author: string
+          collection: string
+          id: number
+          new_version: number | null
+          occurred_at: string
+          previous_version: number | null
+          reason: string
+          record_id: string
+        }
+        Insert: {
+          author: string
+          collection: string
+          id?: never
+          new_version?: number | null
+          occurred_at?: string
+          previous_version?: number | null
+          reason: string
+          record_id: string
+        }
+        Update: {
+          author?: string
+          collection?: string
+          id?: never
+          new_version?: number | null
+          occurred_at?: string
+          previous_version?: number | null
+          reason?: string
+          record_id?: string
+        }
+        Relationships: []
+      }
+      tms_fiscal_keys: {
+        Row: {
+          created_at: string
+          fiscal_key: string
+          kind: string
+          record_id: string
+        }
+        Insert: {
+          created_at?: string
+          fiscal_key: string
+          kind: string
+          record_id: string
+        }
+        Update: {
+          created_at?: string
+          fiscal_key?: string
+          kind?: string
+          record_id?: string
+        }
+        Relationships: []
+      }
       user_modules: {
         Row: {
           criado_em: string
@@ -206,6 +263,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      tms_active: { Args: never; Returns: boolean }
+      tms_collection: { Args: { c: string; op?: string }; Returns: boolean }
+      tms_module: { Args: { module_name: string }; Returns: boolean }
+      tms_records_commit: {
+        Args: { changes: Json; reason?: string }
+        Returns: Json
+      }
+      tms_records_read: { Args: never; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "comercial" | "operacao" | "financeiro"

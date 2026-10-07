@@ -1,8 +1,8 @@
 // Utilidades de exportação e backup: CSV (Excel), PDF (via impressão) e JSON.
 
-import { setDoc, setList, SHARED_KEYS } from "./shared-db";
+import { commitLists, getList, refreshShared, SHARED_KEYS } from "./shared-db";
 
-const PREFIX = "novaris:";
+import { supabase } from "@/integrations/supabase/client";
 
 function isBrowser() {
   return typeof window !== "undefined";
@@ -70,52 +70,35 @@ export function printReport(title: string, subtitle: string, headers: string[], 
   w.document.close();
 }
 
-// ===== Backup de todos os dados =====
-export function backupAllData(): string {
-  const dados: Record<string, string> = {};
-  if (isBrowser()) {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith(PREFIX)) dados[k] = localStorage.getItem(k) ?? "";
-    }
-  }
-  return JSON.stringify(
-    { app: "novaris-tms", versao: 1, exportadoEm: new Date().toISOString(), dados },
-    null,
-    2,
-  );
+// Backup reads persisted authorized records, never browser storage.
+export type BackupPreview = { exportadoEm: string; dados: Record<string, any[]>; impact: { collection:string; incoming:number; existing:number; updates:number; additions:number }[] };
+export async function backupAllData(): Promise<string> {
+  const { data, error } = await supabase.rpc("tms_records_read");
+  if (error) throw new Error("Não foi possível ler o backup confirmado no servidor.");
+  const dados: Record<string, any[]> = {};
+  for (const row of data as unknown as {collection:string; data:any}[]) (dados[row.collection] ??= []).push(row.data);
+  return JSON.stringify({app:"novaris-tms",versao:2,exportadoEm:new Date().toISOString(),abrangencia:Object.keys(dados),dados},null,2);
 }
-
-export function downloadBackup() {
-  const d = new Date().toISOString().slice(0, 10);
-  downloadFile(`backup-novaris-${d}.json`, backupAllData(), "application/json");
+export async function downloadBackup() {
+  try { downloadFile(`backup-novaris-${new Date().toISOString().slice(0,10)}.json`,await backupAllData(),"application/json"); }
+  catch(e) { alert(e instanceof Error ? e.message : "Falha no backup."); }
 }
-
-export function restoreBackup(json: string): number {
-  const parsed = JSON.parse(json) as { dados?: Record<string, string> };
-  const dados = parsed.dados ?? {};
-  let n = 0;
-  if (isBrowser()) {
-    const chavesBackup = new Set(Object.keys(dados));
-    // remove chaves locais que não existem no backup (restauração fiel)
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith(PREFIX) && !chavesBackup.has(k)) {
-        localStorage.removeItem(k);
-        i--; // índices shiftam após removeItem
-      }
-    }
-    for (const [k, v] of Object.entries(dados)) {
-      if (!k.startsWith(PREFIX)) continue;
-      const key = k.slice(PREFIX.length);
-      try {
-        const val = JSON.parse(v);
-        if (key === "config") setDoc("config", Array.isArray(val) ? val[0]?.value : val);
-        else if (Array.isArray(val) && SHARED_KEYS.has(key)) setList(key, val);
-        else localStorage.setItem(k, v);
-        n++;
-      } catch { /* ignora chave inválida */ }
-    }
+export function validateBackup(json:string): BackupPreview {
+  const parsed = JSON.parse(json);
+  if (parsed.app!=="novaris-tms" || parsed.versao!==2 || typeof parsed.dados!=="object" || !parsed.exportadoEm) throw new Error("Backup inválido. Utilize uma cópia confirmada versão 2.");
+  const dados: Record<string,any[]> = {};
+  for (const [key,value] of Object.entries(parsed.dados)) {
+    if (!SHARED_KEYS.has(key) || !Array.isArray(value) || value.some(x => !x || typeof x!=="object" || typeof x.id!=="string" || !x.id)) throw new Error("Coleção ou registro inválido.");
+    if (new Set(value.map(x=>x.id)).size!==value.length) throw new Error("Identificadores duplicados no backup.");
+    if (/"(senha|password|access_token|refresh_token|secret|api_key)"\s*:/i.test(JSON.stringify(value))) throw new Error("Backup contém campos confidenciais.");
+    dados[key]=value;
   }
-  return n;
+  return {exportadoEm:parsed.exportadoEm,dados,impact:Object.entries(dados).map(([collection,items])=>{ const existing=getList<any>(collection)??[]; const updates=items.filter(x=>existing.some(e=>e.id===x.id)).length; return {collection,incoming:items.length,existing:existing.length,updates,additions:items.length-updates}; })};
+}
+export async function restoreBackup(preview: BackupPreview): Promise<number> {
+  await refreshShared();
+  const lists:Record<string,any[]> = {};
+  for (const [key,items] of Object.entries(preview.dados)) { const byId=new Map((getList<any>(key)??[]).map(x=>[x.id,x])); for(const item of items) byId.set(item.id,item); lists[key]=[...byId.values()]; }
+  await commitLists(lists,`Restauração confirmada, cópia de ${preview.exportadoEm}; sem exclusões`);
+  return Object.keys(lists).length;
 }

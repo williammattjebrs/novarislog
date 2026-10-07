@@ -69,6 +69,7 @@ export interface CalcResult {
   pedagio: number;
   total: number;
   faixa: FreightRow | null;
+  error?: string;
 }
 
 export function calcFreight(t: FreightTable, i: CalcInput): CalcResult {
@@ -76,7 +77,8 @@ export function calcFreight(t: FreightTable, i: CalcInput): CalcResult {
     const total = (t.valorLotacao ?? 0) + t.pedagio;
     return { base: t.valorLotacao ?? 0, adValorem: 0, gris: 0, pedagio: t.pedagio, total, faixa: null };
   }
-  const faixa = t.rows.find((r) => i.peso >= r.faixaMin && i.peso <= r.faixaMax) ?? t.rows[t.rows.length - 1] ?? null;
+  const faixa = t.rows.find((r) => i.peso >= r.faixaMin && i.peso <= r.faixaMax) ?? null;
+  if (!faixa) return { base: 0, adValorem: 0, gris: 0, pedagio: 0, total: 0, faixa: null, error: "Tabela não cobre o peso informado." };
   const bruto = faixa ? i.peso * faixa.valorKg : 0;
   const base = faixa ? Math.max(bruto, faixa.minimo) : 0;
   const adValorem = (i.valorNF * t.adValorem) / 100;

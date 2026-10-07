@@ -4,6 +4,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyProfile } from "@/lib/users.functions";
+import { clearSharedSession, startSharedSync } from "./shared-db";
+import { ROLE_MODULES, canUseModule } from "./permissions";
 
 export type Role = "admin" | "comercial" | "operacao" | "financeiro";
 
@@ -11,7 +13,7 @@ export interface AuthUser {
   email: string;
   nome: string;
   role: Role;
-  modulos: string[];
+  modulos: string[]; ativo: boolean;
 }
 
 interface AuthCtx {
@@ -44,7 +46,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function loadProfile() {
     try {
       const p = await getMyProfile();
-      setUser({ email: p.email, nome: p.nome, role: p.role as Role, modulos: p.modulos ?? [] });
+      await startSharedSync();
+      setUser({ email: p.email, nome: p.nome, role: p.role as Role, modulos: p.modulos ?? [], ativo: p.ativo ?? true });
     } catch {
       setUser(null);
     }
@@ -95,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    clearSharedSession();
     await supabase.auth.signOut();
     setUser(null);
   };
@@ -113,12 +117,7 @@ export function useAuth() {
 }
 
 // mapeamento perfil → módulos permitidos
-export const ROLE_ACCESS: Record<Role, string[]> = {
-  admin: ["/", "/clientes", "/coletas", "/rotas", "/motoristas", "/monitoramento", "/financeiro", "/tv", "/configuracoes", "/usuarios"],
-  comercial: ["/", "/clientes", "/tv"],
-  operacao: ["/", "/coletas", "/rotas", "/motoristas", "/monitoramento", "/tv"],
-  financeiro: ["/", "/financeiro", "/tv", "/configuracoes"],
-};
+export const ROLE_ACCESS: Record<Role, string[]> = ROLE_MODULES;
 
 export const ROLE_LABEL: Record<Role, string> = {
   admin: "Administrador",
@@ -139,7 +138,5 @@ export const MODULE_OPTIONS: { path: string; label: string }[] = [
 ];
 
 export function canAccess(role: Role, pathname: string, extras: string[] = []): boolean {
-  if (pathname === "/manual") return true;
-  const allowed = [...ROLE_ACCESS[role], ...extras];
-  return allowed.some((p) => (p === "/" ? pathname === "/" : pathname.startsWith(p)));
+  return canUseModule(role, pathname, extras);
 }

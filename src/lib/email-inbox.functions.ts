@@ -13,6 +13,8 @@ async function adminClient() {
 }
 
 async function getRoleInfo(supabase: SupabaseClient, userId: string) {
+  const { data: active } = await supabase.rpc("tms_active");
+  if (!active) throw new Error("Usuário inativo ou sem acesso.");
   const [{ data: roles }, { data: mods }] = await Promise.all([
     supabase.from("user_roles").select("role").eq("user_id", userId),
     supabase.from("user_modules").select("module").eq("user_id", userId),

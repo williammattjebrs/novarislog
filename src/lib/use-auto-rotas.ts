@@ -13,6 +13,8 @@ const OC_ABERTA = new Set(["aguardando_programacao", "emitida", "enviada_motoris
 // Vincula uma NF a uma rota aberta (mesmo remetente+destinatário) e a uma OC aberta dessa rota,
 // criando rota e/ou OC quando não existirem. Retorna as listas atualizadas e a OC resultante.
 export function vincularOrderEmRota(
+  // Skip if already locked by status
+  if (rotasList.some(r => r.status === 'encerrada')) return { rotas: rotasList, ocs: ocsList, oc: {} as any };
   o: Order,
   rotasList: Rota[],
   ocsList: OrdemColeta[],
@@ -52,24 +54,5 @@ export function vincularOrderEmRota(
   return { rotas: nextRotas, ocs: nextOcs, oc };
 }
 
-export function useAutoRotas() {
-  const orders = useOrders();
-  const rotas = useRotas();
-  const ocs = useOrdensColeta();
-  const pendentes = (() => { const v = new Set(rotas.list.flatMap((r) => r.orderIds)); return orders.list.filter((o) => !v.has(o.id) && o.stage !== "entregue").length; })();
-  useEffect(() => {
-    const vinculadas = new Set(rotas.list.flatMap((r) => r.orderIds));
-    const soltas = orders.list.filter((o) => !vinculadas.has(o.id) && o.stage !== "entregue");
-    if (!soltas.length) return;
-    let curRotas = rotas.list;
-    let curOcs = ocs.list;
-    for (const o of soltas) {
-      const r = vincularOrderEmRota(o, curRotas, curOcs);
-      curRotas = r.rotas;
-      curOcs = r.ocs;
-    }
-    rotas.set(curRotas);
-    ocs.set(curOcs);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendentes]);
-}
+// New import creates all entities atomically. Historical orders are repaired only after preview confirmation.
+export function useAutoRotas() {}

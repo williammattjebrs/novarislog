@@ -9,6 +9,9 @@ import {
   PackageCheck, Timer, AlertTriangle, DollarSign, Radio, ArrowRight,
 } from "lucide-react";
 
+import { financialAccess } from "@/lib/permissions";
+import { monthKey } from "@/lib/mock-data";
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -29,6 +32,8 @@ export const Route = createFileRoute("/")({
 
 function Dashboard() {
   const { user } = useAuth();
+  const canSeeFinance = financialAccess(user);
+  const month = new Date().toISOString().slice(0,7);
   const orders = useOrders();
   const invoices = useInvoices();
   const expenses = useExpenses();
@@ -36,14 +41,14 @@ function Dashboard() {
   const ativos = orders.list.filter((o) => !["entregue"].includes(o.stage));
   const entregues = orders.list.filter((o) => o.stage === "entregue");
   const ocorrencias = orders.list.filter((o) => o.stage === "ocorrencia" || o.stage === "cte_divergente");
-  const receitaMes = invoices.list.reduce((s, i) => s + (i.status !== "vencida" ? i.valor : 0), 0);
-  const despesaMes = expenses.list.reduce((s, e) => s + e.valor, 0);
+  const receitaMes = invoices.list.filter(i => monthKey(i.competencia ?? i.emissao) === month).reduce((s, i) => s + i.valor, 0);
+  const despesaMes = expenses.list.filter(e => monthKey(e.competencia ?? e.vencimento) === month).reduce((s, e) => s + e.valor, 0);
 
   const kpis = [
     { l: "Entregas ativas", v: String(ativos.length), icon: PackageCheck, tone: "text-primary" },
     { l: "Entregas concluídas", v: String(entregues.length), icon: Timer, tone: "text-success" },
     { l: "Ocorrências/divergências", v: String(ocorrencias.length), icon: AlertTriangle, tone: "text-danger" },
-    { l: "Receita prevista", v: fmtBRL(receitaMes), icon: DollarSign, tone: "text-success" },
+    ...(canSeeFinance ? [{ l: "Receita faturada (mês)", v: fmtBRL(receitaMes), icon: DollarSign, tone: "text-success" }] : []),
   ];
 
   return (
@@ -86,7 +91,7 @@ function Dashboard() {
               <div className="flex items-center justify-between p-4 border-b border-border">
                 <div>
                   <div className="text-xs uppercase tracking-widest text-muted-foreground">Mapa do Brasil</div>
-                  <div className="font-display text-lg">Entregas ativas · pins geográficos</div>
+                  <div className="font-display text-lg">Destinos das entregas · não indica GPS</div>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
                   <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary" /> em viagem</span>
@@ -146,7 +151,7 @@ function Dashboard() {
                     <th className="text-left font-normal py-2">Ordem</th>
                     <th className="text-left font-normal">Cliente</th>
                     <th className="text-left font-normal">Rota</th>
-                    <th className="text-right font-normal">Valor</th>
+                    {canSeeFinance && <th className="text-right font-normal">Valor</th>}
                     <th className="text-left font-normal">Estágio</th>
                   </tr>
                 </thead>
@@ -156,7 +161,7 @@ function Dashboard() {
                       <td className="py-2.5 num text-primary">{o.id}</td>
                       <td>{o.clienteNome}</td>
                       <td className="text-muted-foreground text-xs">{o.cidadeColeta}/{o.ufColeta} → {o.cidadeEntrega}/{o.ufEntrega}</td>
-                      <td className="text-right num text-xs">{fmtBRL(o.valorFrete)}</td>
+                      {canSeeFinance && <td className="text-right num text-xs">{fmtBRL(o.valorFrete)}</td>}
                       <td>
                         <span className={`text-[11px] px-2 py-0.5 rounded border ${toneClass(statusTone(o.stage))}`}>
                           {stageLabel(o.stage)}
@@ -170,10 +175,10 @@ function Dashboard() {
                 </tbody>
               </table>
             </div>
-            <div className="mt-4 text-xs text-muted-foreground flex gap-4">
+            {canSeeFinance && <div className="mt-4 text-xs text-muted-foreground flex gap-4">
               <span>Despesa prevista: <span className="num text-foreground">{fmtBRL(despesaMes)}</span></span>
               <span>Margem prevista: <span className={`num ${receitaMes - despesaMes >= 0 ? "text-success" : "text-danger"}`}>{fmtBRL(receitaMes - despesaMes)}</span></span>
-            </div>
+            </div>}
           </div>
         </div>
       </div>

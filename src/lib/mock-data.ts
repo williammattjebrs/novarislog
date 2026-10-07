@@ -187,6 +187,10 @@ export interface Order {
   cteNumero?: string;
   cteValor?: number;
   divergenciaPercent?: number;           // (cte - ordem) / ordem * 100
+  cteChaves?: string[];
+  conferencia?: { status: "pendente" | "divergente" | "conferido"; percent?: number; base: number; fiscal: number; tolerance: number };
+  xmlOriginal?: string;
+  entregueEm?: string;
 
   // Transporte
   transportType: TransportType;
@@ -279,6 +283,10 @@ export interface StockItem {
 
 // ---------- Financeiro ----------
 export interface Invoice {
+  id?: string;
+  cteChave?: string;
+  competencia?: string;
+  movements?: import("./reliability").Movement[];
   numero: string;
   clienteNome: string;
   emissao: string;
@@ -297,6 +305,9 @@ export type ExpenseArea = "operacao" | "armazem" | "frota" | "administrativa" | 
 
 export interface Expense {
   id: string;
+  orderId?: string;
+  competencia?: string;
+  movements?: import("./reliability").Movement[];
   descricao: string;
   tipo: ExpenseType;
   area: ExpenseArea;

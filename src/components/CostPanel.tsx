@@ -3,12 +3,16 @@ import { useState } from "react";
 import type { OrderCosts } from "@/lib/mock-data";
 import { fmtBRL } from "@/lib/mock-data";
 import { useConfig } from "@/lib/mock-store";
+import { useAuth } from "@/lib/auth";
+import { financialAccess } from "@/lib/permissions";
 import { calcOrderCost } from "@/lib/cost-calc";
 import { Truck, Building2 } from "lucide-react";
 
 export function CostPanel({ costs, valorFrete, onSave }: {
   costs: OrderCosts; valorFrete: number; onSave: (next: OrderCosts) => void;
 }) {
+  const { user } = useAuth();
+  const canSee = financialAccess(user);
   const [cfg] = useConfig();
   const [c, setC] = useState<OrderCosts>(costs);
 
@@ -20,6 +24,7 @@ export function CostPanel({ costs, valorFrete, onSave }: {
     setC((prev) => ({ ...prev, [k]: v }));
   }
 
+  if (!canSee) return <div className="panel p-4 text-xs text-muted-foreground italic">Informações de custo restritas ao financeiro.</div>;
   return (
     <div className="panel p-4 space-y-4">
       <div className="flex items-center justify-between">

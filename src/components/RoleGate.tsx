@@ -6,6 +6,16 @@ export function RoleGate({ path, children }: { path: string; children: ReactNode
   const { user, loading } = useAuth();
   if (loading) return null;
   if (!user) return <Navigate to="/login" search={{ redirect: path }} replace />;
+  if (!user.ativo) {
+    return (
+      <div className="min-h-screen grid place-items-center p-6 text-center">
+        <div className="max-w-md panel p-8">
+          <h1 className="text-xl font-semibold text-danger">Acesso Desativado</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Sua conta foi desativada por um administrador.</p>
+        </div>
+      </div>
+    );
+  }
   if (!canAccess(user.role, path, user.modulos)) {
     return (
       <div className="min-h-screen grid place-items-center p-6">
