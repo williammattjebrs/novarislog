@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useState, useRef, useMemo } from "react";
 import { FileUp, FileCheck2, Package, Truck, AlertTriangle, ArrowRight, Link2, Search, Download, Printer } from "lucide-react";
-import { useOrders, useClients, useFreightTables, useRouteRates, useQuotations, useInvoices, useConfig, newId } from "@/lib/mock-store";
+import { useOrders, useClients, useFreightTables, useRouteRates, useQuotations, useInvoices, useConfig, useRotas, useOrdensColeta, newId } from "@/lib/mock-store";
 import {
   ORDER_STAGES, statusTone, toneClass, stageLabel, fmtBRL,
   type Order, type OrderStage,
@@ -20,7 +20,7 @@ import { useAuth } from "@/lib/auth";
 import { ColetasTriage } from "@/components/ColetasTriage";
 import { NovaTabelaPanel } from "@/components/NovaTabelaPanel";
 import { correctCity, sameCityName } from "@/components/CityPicker";
-import { useAutoRotas } from "@/lib/use-auto-rotas";
+import { useAutoRotas, vincularOrderEmRota } from "@/lib/use-auto-rotas";
 
 export const Route = createFileRoute("/coletas")({
   head: () => ({
@@ -469,6 +469,23 @@ function OrderDetail({ order, onClose, onUpdate }: {
   const [cfg] = useConfig();
   const tables = useFreightTables();
   const quotes = useQuotations();
+  const rotas = useRotas();
+  const ocs = useOrdensColeta();
+  const { user } = useAuth();
+
+  const ocDaNota = ocs.list.find((oc) => oc.orderIds.includes(order.id) && oc.status !== "cancelada");
+
+  function gerarOC() {
+    const r = vincularOrderEmRota(order, rotas.list, ocs.list, user?.nome ?? "usuário");
+    rotas.set(r.rotas);
+    ocs.set(r.ocs);
+    onUpdate({
+      timeline: [...order.timeline, {
+        quando: new Date().toISOString(), autor: user?.nome ?? "usuário", tipo: "sistema",
+        texto: `Ordem de coleta ${r.oc.numero} gerada manualmente a partir da tela de Coletas`,
+      }],
+    });
+  }
 
   // Sugestões de match manual quando aguarda vinculação
   const suggestions = order.stage === "aguarda_vinculacao" ? tables.list.filter(
@@ -550,6 +567,23 @@ function OrderDetail({ order, onClose, onUpdate }: {
         <div className="num text-2xl">{fmtBRL(order.valorFrete)}</div>
         <div className="text-[10px] text-muted-foreground">origem: {order.origemValor || "—"} {order.refValor ? `· ${order.refValor}` : ""}</div>
       </div>
+
+      {ocDaNota ? (
+        <div className="rounded-md border border-border p-3 text-xs flex items-center justify-between gap-2">
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Ordem de coleta</div>
+            <div className="num text-primary">{ocDaNota.numero}</div>
+          </div>
+          <Link to="/rotas" className="text-primary hover:underline">abrir em Rotas & OC →</Link>
+        </div>
+      ) : (
+        <button
+          onClick={gerarOC}
+          className="w-full inline-flex items-center justify-center gap-2 rounded-md border border-primary/40 bg-primary/10 text-primary px-3 py-2 text-sm hover:bg-primary/20"
+        >
+          <Package className="h-4 w-4" /> Gerar Ordem de Coleta
+        </button>
+      )}
 
       {order.cteValor != null && (
         <div className="rounded-md border border-border p-3">
