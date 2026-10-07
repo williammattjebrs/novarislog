@@ -19,6 +19,7 @@ export function subscribe(key: string, cb: () => void) {
 // Coleções em lista: key -> array; documentos únicos (config) guardados com id "__doc"
 const cache: Record<string, any[]> = {};
 let started = false;
+let channelOn = false;
 
 function persistLocal(key: string) {
   try { localStorage.setItem(PREFIX + key, JSON.stringify(cache[key])); } catch { /* ignore */ }
@@ -69,6 +70,22 @@ export function setDoc(key: string, value: any) { setList(key, [{ id: "__doc", v
 async function loadAll() {
   const { data: s } = await supabase.auth.getSession();
   if (!s.session) return;
+  if (!channelOn) {
+    channelOn = true;
+    await supabase.realtime.setAuth(s.session.access_token);
+    supabase.channel("app_records_sync")
+    .on("postgres_changes", { event: "*", schema: "public", table: "app_records" }, (p: any) => {
+      const row = (p.new && p.new.collection ? p.new : p.old) as Row;
+      if (!row?.collection) return;
+      const key = row.collection;
+      const list = [...(cache[key] ?? [])];
+      const idx = list.findIndex((x: any) => String(x.id) === row.id);
+      if (p.eventType === "DELETE") { if (idx >= 0) list.splice(idx, 1); }
+      else if (idx >= 0) list[idx] = p.new.data; else list.unshift(p.new.data);
+      cache[key] = list; persistLocal(key); notify(key);
+    })
+    .subscribe();
+  }
   const rows: Row[] = [];
   for (let from = 0; ; from += 1000) {
     const { data, error } = await supabase.from("app_records").select("collection,id,data,criado_em").order("criado_em", { ascending: false }).range(from, from + 999);
@@ -101,16 +118,5 @@ export function startSharedSync() {
   started = true;
   void loadAll();
   supabase.auth.onAuthStateChange((event) => { if (event === "SIGNED_IN") void loadAll(); });
-  supabase.channel("app_records_sync")
-    .on("postgres_changes", { event: "*", schema: "public", table: "app_records" }, (p: any) => {
-      const row = (p.new && p.new.collection ? p.new : p.old) as Row;
-      if (!row?.collection) return;
-      const key = row.collection;
-      const list = [...(cache[key] ?? [])];
-      const idx = list.findIndex((x: any) => String(x.id) === row.id);
-      if (p.eventType === "DELETE") { if (idx >= 0) list.splice(idx, 1); }
-      else if (idx >= 0) list[idx] = p.new.data; else list.unshift(p.new.data);
-      cache[key] = list; persistLocal(key); notify(key);
-    })
-    .subscribe();
+
 }
