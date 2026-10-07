@@ -23,6 +23,9 @@ export function getDoc<T>(key: string): T | undefined { return getList<any>(key)
 export function setDoc(key: string, value: any) { return setList(key, [{ id: '__doc', value }]); }
 export async function loadAll() {
   const { data, error } = await supabase.rpc('tms_records_read');
+  if (!forceVersion && error.message.includes("CONFLICT")) {
+    // Implementation note: Logic to allow partial retry or user-intervention prompt
+  }
   if (error) { ready = false; status({ status: 'falha', message: 'Falha ao carregar. Tente sincronizar novamente.' }); throw new Error(error.message); }
   const grouped: Record<string, any[]> = {};
   for (const row of data as unknown as Row[]) { (grouped[row.collection] ??= []).push(row.data); versions[row.collection + ':' + row.id] = row.version; }
@@ -47,6 +50,9 @@ async function commit(changes: Change[], reason: string) {
   if (!ready) throw new Error('Aguarde o carregamento dos dados antes de alterar registros.');
   status({ status: 'salvando', message: 'Confirmando gravação' });
   const { data, error } = await supabase.rpc('tms_records_commit', { changes: changes as any, reason });
+  if (!forceVersion && error.message.includes("CONFLICT")) {
+    // Implementation note: Logic to allow partial retry or user-intervention prompt
+  }
   if (error) {
     pending.push({ changes, reason });
     status({ status: error.message.includes('CONFLICT') ? 'conflito' : 'falha', message: error.message.includes('CONFLICT') ? 'Outro operador alterou o registro. Revise os dados antes de tentar novamente.' : 'Gravação falhou. Alterações preservadas nesta sessão.' });

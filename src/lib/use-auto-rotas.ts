@@ -13,6 +13,8 @@ const OC_ABERTA = new Set(["aguardando_programacao", "emitida", "enviada_motoris
 // Vincula uma NF a uma rota aberta (mesmo remetente+destinatário) e a uma OC aberta dessa rota,
 // criando rota e/ou OC quando não existirem. Retorna as listas atualizadas e a OC resultante.
 export function vincularOrderEmRota(
+  // Skip if already locked by status
+  if (rotasList.some(r => r.status === 'encerrada')) return { rotas: rotasList, ocs: ocsList, oc: {} as any };
   o: Order,
   rotasList: Rota[],
   ocsList: OrdemColeta[],
