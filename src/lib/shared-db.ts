@@ -83,7 +83,10 @@ async function loadAll() {
     try {
       const val = JSON.parse(localStorage.getItem(lk) ?? "null");
       if (key === "config" && val && !Array.isArray(val)) { cache[key] = []; setDoc(key, val); continue; }
-      if (key.startsWith("tracking-group:") && val) { const c = key.slice("tracking-group:".length); grouped["trackingGroups"] ??= []; continue void c; }
+      if (key.startsWith("tracking-group:")) {
+        if (val && !grouped["trackingGroups"]) { const id = key.slice("tracking-group:".length); setList("trackingGroups", [...(cache["trackingGroups"] ?? []).filter((g: any) => g.id !== id), { ...val, id }]); }
+        continue;
+      }
       if (Array.isArray(val) && val.length) { cache[key] = []; setList(key, val); }
     } catch { /* ignore */ }
   }

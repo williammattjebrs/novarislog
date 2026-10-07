@@ -1,13 +1,16 @@
 import type { Order } from "@/lib/mock-data";
+import { getList, setList } from "@/lib/shared-db";
 
 export type TrackingGroup = { emails: string[]; automatic: boolean; intervalMin: number; lastSent?: string };
-export const groupKey = (client: string) => `novaris:tracking-group:${client}`;
+const EMPTY: TrackingGroup = { emails: [], automatic: false, intervalMin: 60 };
 export function readTrackingGroup(client: string): TrackingGroup {
-  try { return JSON.parse(localStorage.getItem(groupKey(client)) ?? "null") ?? { emails: [], automatic: false, intervalMin: 60 }; }
-  catch { return { emails: [], automatic: false, intervalMin: 60 }; }
+  const g = (getList<any>("trackingGroups") ?? []).find((x) => x.id === client);
+  if (g) { const { id: _id, ...rest } = g; return rest as TrackingGroup; }
+  try { return JSON.parse(localStorage.getItem(`novaris:tracking-group:${client}`) ?? "null") ?? EMPTY; } catch { return EMPTY; }
 }
 export function saveTrackingGroup(client: string, group: TrackingGroup) {
-  localStorage.setItem(groupKey(client), JSON.stringify(group));
+  const list = (getList<any>("trackingGroups") ?? []).filter((x) => x.id !== client);
+  setList("trackingGroups", [{ ...group, id: client }, ...list]);
 }
 export function trackingPayload(orders: Order[]) {
   return orders.map((o) => ({ numeroNFe: String(o.numeroNFe), destinatario: o.destinatario ?? "", cidadeColeta: o.cidadeColeta, ufColeta: o.ufColeta, cidadeEntrega: o.cidadeEntrega, ufEntrega: o.ufEntrega, previsaoEntrega: o.previsaoEntrega || undefined, stage: o.stage, rastreio: o.rastreio ? { situacao: o.rastreio.situacao } : undefined }));
