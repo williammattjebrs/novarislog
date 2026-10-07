@@ -18,6 +18,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ManualRouteImport } from './routes/manual'
 import { Route as MonitoramentoRouteImport } from './routes/monitoramento'
 import { Route as MotoristasRouteImport } from './routes/motoristas'
+import { Route as RotasRouteImport } from './routes/rotas'
 import { Route as TvRouteImport } from './routes/tv'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
@@ -69,6 +70,11 @@ const MotoristasRoute = MotoristasRouteImport.update({
   path: '/motoristas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RotasRoute = RotasRouteImport.update({
+  id: '/rotas',
+  path: '/rotas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TvRoute = TvRouteImport.update({
   id: '/tv',
   path: '/tv',
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/manual': typeof ManualRoute
   '/monitoramento': typeof MonitoramentoRoute
   '/motoristas': typeof MotoristasRoute
+  '/rotas': typeof RotasRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
   '/clientes/$id': typeof ClientesIdRoute
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/manual': typeof ManualRoute
   '/monitoramento': typeof MonitoramentoRoute
   '/motoristas': typeof MotoristasRoute
+  '/rotas': typeof RotasRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
   '/clientes/$id': typeof ClientesIdRoute
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   '/manual': typeof ManualRoute
   '/monitoramento': typeof MonitoramentoRoute
   '/motoristas': typeof MotoristasRoute
+  '/rotas': typeof RotasRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
   '/clientes/$id': typeof ClientesIdRoute
@@ -156,6 +165,7 @@ export interface FileRouteTypes {
     | '/manual'
     | '/monitoramento'
     | '/motoristas'
+    | '/rotas'
     | '/tv'
     | '/usuarios'
     | '/clientes/$id'
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/manual'
     | '/monitoramento'
     | '/motoristas'
+    | '/rotas'
     | '/tv'
     | '/usuarios'
     | '/clientes/$id'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/manual'
     | '/monitoramento'
     | '/motoristas'
+    | '/rotas'
     | '/tv'
     | '/usuarios'
     | '/clientes/$id'
@@ -205,6 +217,7 @@ export interface RootRouteChildren {
   ManualRoute: typeof ManualRoute
   MonitoramentoRoute: typeof MonitoramentoRoute
   MotoristasRoute: typeof MotoristasRoute
+  RotasRoute: typeof RotasRoute
   TvRoute: typeof TvRoute
   UsuariosRoute: typeof UsuariosRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
@@ -276,6 +289,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MotoristasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rotas': {
+      id: '/rotas'
+      path: '/rotas'
+      fullPath: '/rotas'
+      preLoaderRoute: typeof RotasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tv': {
       id: '/tv'
       path: '/tv'
@@ -336,6 +356,7 @@ const rootRouteChildren: RootRouteChildren = {
   ManualRoute: ManualRoute,
   MonitoramentoRoute: MonitoramentoRoute,
   MotoristasRoute: MotoristasRoute,
+  RotasRoute: RotasRoute,
   TvRoute: TvRoute,
   UsuariosRoute: UsuariosRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
