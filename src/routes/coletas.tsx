@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/auth";
 import { ColetasTriage } from "@/components/ColetasTriage";
 import { NovaTabelaPanel } from "@/components/NovaTabelaPanel";
 import { correctCity, sameCityName } from "@/components/CityPicker";
+import { useAutoRotas } from "@/lib/use-auto-rotas";
 
 export const Route = createFileRoute("/coletas")({
   head: () => ({
@@ -40,6 +41,7 @@ export const Route = createFileRoute("/coletas")({
 });
 
 function ColetasPage() {
+  useAutoRotas();
   const orders = useOrders();
   const clients = useClients();
   const tables = useFreightTables();
