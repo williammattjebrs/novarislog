@@ -14,6 +14,7 @@ export interface ParsedCTe {
   chave: string;
   numero: string;
   chaveNFeReferenciada?: string;
+  chavesNFe: string[];
   valorTotal: number;
   emitente: { cnpj: string; nome: string };
   tomador?: { cnpj: string; nome: string };
@@ -93,6 +94,7 @@ export function parseCTe(xml: string): ParsedCTe | null {
       chave,
       numero: text(ide, "nCT"),
       chaveNFeReferenciada: infNF ? text(infNF, "chave") : undefined,
+      chavesNFe: Array.from(infCte.getElementsByTagName("infNFe")).map((n) => text(n, "chave").replace(/\D/g, "")).filter((c) => c.length === 44),
       valorTotal: num(vPrest, "vTPrest"),
       emitente: {
         cnpj: text(emit, "CNPJ"),

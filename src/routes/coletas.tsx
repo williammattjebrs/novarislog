@@ -17,6 +17,7 @@ import { RecordActions } from "@/components/RecordActions";
 import { DivergenceBadge } from "@/components/DivergenceBadge";
 import { useAuth } from "@/lib/auth";
 import { ColetasTriage } from "@/components/ColetasTriage";
+import { NovaTabelaPanel } from "@/components/NovaTabelaPanel";
 import { correctCity, sameCityName } from "@/components/CityPicker";
 
 export const Route = createFileRoute("/coletas")({
@@ -200,26 +201,29 @@ function ColetasPage() {
     const texts: string[] = [];
     for (const f of Array.from(files)) texts.push(await readFileText(f));
     const r = importCTeTexts(texts);
-    alert(`✓ ${r.ok} CT-e(s) vinculado(s) a ordens${r.dup ? ` · ${r.dup} já vinculado(s)` : ""}`);
+    alert(`✓ ${r.ok} CT-e(s) vinculado(s) a ordens${r.dup ? ` · ${r.dup} já vinculado(s)` : ""}${r.semOrdem ? ` · ${r.semOrdem} sem NF-e correspondente (importe a NF-e primeiro)` : ""}`);
     if (cteInput.current) cteInput.current.value = "";
   }
 
   function importCTeTexts(texts: string[]) {
-    let ok = 0, dup = 0;
-    const ctesExistentes = new Set(orders.list.map((o) => o.cteChave).filter(Boolean));
+    let ok = 0, dup = 0, semOrdem = 0;
+    const vinculadas: string[] = [];
+    // Lê a lista atualizada (as NF-e do mesmo lote acabaram de ser gravadas)
+    const freshOrders = (): Order[] => { try { return JSON.parse(localStorage.getItem("novaris:orders") ?? "[]"); } catch { return orders.list; } };
+    const ctesExistentes = new Set(freshOrders().map((o) => o.cteChave).filter(Boolean));
     for (const text of texts) {
       const p = parseCTe(text);
       if (!p) continue;
-      if (p.chave && ctesExistentes.has(p.chave)) { dup++; continue; }
+      if (p.chave && ctesExistentes.has(p.chave)) { dup++; vinculadas.push(p.chave); continue; }
+
+      // Casa pelas chaves de NF-e citadas no CT-e (qualquer etapa da ordem, sem CT-e ainda)
+      const refs = new Set([...(p.chavesNFe ?? []), p.chaveNFeReferenciada].filter(Boolean) as string[]);
+      const list = freshOrders();
+      const order = list.find((o) => !o.cteChave && refs.has(o.chaveNFe))
+        ?? (refs.size === 0 ? list.find((o) => !o.cteChave && (o.stage === "aguardando_cte" || o.stage === "coletado")) : undefined);
+      if (!order) { semOrdem++; continue; }
       ctesExistentes.add(p.chave);
-
-      // Casa por chave da NF-e referenciada
-      const order = orders.list.find((o) =>
-        (p.chaveNFeReferenciada && o.chaveNFe === p.chaveNFeReferenciada) ||
-        (o.stage === "aguardando_cte" || o.stage === "coletado"),
-      );
-      if (!order) continue;
-
+      vinculadas.push(p.chave);
       const diff = order.valorFrete > 0 ? ((p.valorTotal - order.valorFrete) / order.valorFrete) * 100 : 0;
       const stage: OrderStage = Math.abs(diff) > cfg.toleranciaDivergenciaPercent ? "cte_divergente" : "cte_ok";
 
@@ -253,7 +257,7 @@ function ColetasPage() {
       });
       ok++;
     }
-    return { ok, dup };
+    return { ok, dup, semOrdem, vinculadas };
   }
 
   async function importFromEmail(xmls: { chave: string; tipo: "nfe" | "cte"; xml: string }[]) {
@@ -261,8 +265,11 @@ function ColetasPage() {
     const ctes = xmls.filter((x) => x.tipo === "cte");
     const rn = nfes.length ? await importNFeTexts(nfes.map((x) => x.xml)) : { ok: 0, fail: 0, dup: 0, corrigidas: [] };
     if (!rn) return null; // sem clientes cadastrados — mantém os XML pendentes
-    const rc = ctes.length ? importCTeTexts(ctes.map((x) => x.xml)) : { ok: 0, dup: 0 };
-    return { nfe: rn.ok, cte: rc.ok, dup: rn.dup + rc.dup, fail: rn.fail, chaves: xmls.map((x) => x.chave) };
+    const rc = ctes.length ? importCTeTexts(ctes.map((x) => x.xml)) : { ok: 0, dup: 0, semOrdem: 0, vinculadas: [] as string[] };
+    // CT-e sem NF-e correspondente continua pendente e é tentado de novo na próxima busca
+    const ctesOk = new Set(rc.vinculadas);
+    const chaves = [...nfes.map((x) => x.chave), ...ctes.filter((x) => ctesOk.has(x.chave)).map((x) => x.chave)];
+    return { nfe: rn.ok, cte: rc.ok, dup: rn.dup + rc.dup, fail: rn.fail, chaves, cteAguardando: rc.semOrdem };
   }
 
   function ordensExportData(): [string, string[], (string | number)[][]] {
@@ -503,11 +510,8 @@ function OrderDetail({ order, onClose, onUpdate }: {
                 </button>
               ))}
             </div>
-          ) : (
-            <div className="text-xs text-muted-foreground mt-2">
-              <Link to="/clientes" className="text-primary hover:underline">Cadastre uma tabela</Link> para este cliente.
-            </div>
-          )}
+          ) : null}
+          <NovaTabelaPanel order={order} onUpdate={onUpdate} />
           <div className="mt-2">
             <button
               onClick={() => {
