@@ -159,6 +159,7 @@ export interface OrderCosts {
 
 export interface Order {
   id: string;
+  ocId?: string;                        // OC v2 emitida (definido no servidor)
   clienteId: string;
   clienteNome: string;
 
