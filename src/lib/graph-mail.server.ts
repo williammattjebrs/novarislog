@@ -19,6 +19,24 @@ export async function graphSendTracking(recipients: string[], subject: string, h
   }
 }
 
+export class EnvioIncertoError extends Error {}
+/** Envio individual com anexos. Resposta HTTP de erro = falha definitiva; erro de rede = resultado incerto. */
+export async function graphSendMail(to: string, subject: string, html: string, attachments: { name: string; base64: string; contentType: string }[] = []) {
+  const key = process.env.MICROSOFT_OUTLOOK_API_KEY;
+  const lovable = process.env.LOVABLE_API_KEY;
+  if (!key || !lovable) throw new Error("Conexão Microsoft não configurada.");
+  let response: Response;
+  try {
+    response = await fetch(`${GATEWAY}/me/sendMail`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${lovable}`, "X-Connection-Api-Key": key, "Content-Type": "application/json; charset=utf-8" },
+      body: JSON.stringify({ message: { subject, body: { contentType: "HTML", content: html }, toRecipients: [{ emailAddress: { address: to } }],
+        attachments: attachments.map((a) => ({ "@odata.type": "#microsoft.graph.fileAttachment", name: a.name, contentType: a.contentType, contentBytes: a.base64 })) }, saveToSentItems: true }),
+    });
+  } catch (e) { throw new EnvioIncertoError(e instanceof Error ? e.message : "Sem resposta do provedor"); }
+  if (!response.ok) { const body = await response.text(); console.error(`Microsoft envio [${response.status}]: ${body}`); throw new Error(`Microsoft [${response.status}]: ${body.slice(0, 200)}`); }
+}
+
 export function microsoftDisponivel(host: string | null | undefined) {
   return !!process.env.MICROSOFT_OUTLOOK_API_KEY && /office365|outlook\.(com|office)/i.test(host ?? "");
 }
