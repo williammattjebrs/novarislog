@@ -102,10 +102,18 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
   const painel = useRef<HTMLDivElement>(null);
   // Ao abrir a edição, mantém a OC clicada visível no topo (abaixo da barra fixa) com o painel logo abaixo dela.
   useEffect(() => {
-    const row = painel.current?.closest("tr")?.previousElementSibling as HTMLElement | null;
-    if (!row) return;
-    const r = row.getBoundingClientRect();
-    if (r.top < 70 || r.bottom > window.innerHeight) window.scrollTo({ top: window.scrollY + r.top - 76, behavior: "smooth" });
+    const tr = painel.current?.closest("tr"); const row = tr?.previousElementSibling as HTMLElement | null;
+    if (!row || !painel.current) return;
+    if (painel.current.getBoundingClientRect().top < window.innerHeight - 140 && row.getBoundingClientRect().top >= 70) return;
+    let tries = 0;
+    const align = () => {
+      const top = row.getBoundingClientRect().top;
+      if (Math.abs(top - 76) > 4 && tries++ < 8) {
+        window.scrollTo({ top: window.scrollY + top - 76, behavior: tries === 1 ? "smooth" : "auto" });
+        window.setTimeout(align, 120);
+      }
+    };
+    align();
   }, []);
   const editavel = isV2(oc) && !["cancelada", "entregue"].includes(oc.status);
   const emitida = isV2(oc) && OC_EMITIDAS.includes(oc.status);
