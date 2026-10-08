@@ -358,6 +358,13 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
             <Search className="h-3.5 w-3.5 absolute left-2 top-2.5 text-muted-foreground" />
             <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por ordem, cliente, NF-e ou rota" className="input pl-7 text-sm" />
           </div>
+          <select value={cteFiltro} onChange={(e) => setCteFiltro(e.target.value as typeof cteFiltro)} className="input text-sm w-auto" title="Filtrar por situação do CT-e">
+            <option value="todos">Todas as notas</option>
+            <option value="sem">Somente sem CT-e</option>
+            <option value="com">Somente com CT-e</option>
+            <option value="divergente">Somente divergências de CT-e</option>
+            <option value="ocorrencia">Somente ocorrências</option>
+          </select>
           <label className="text-xs flex items-center gap-1"><input type="checkbox" checked={semOc} onChange={(e) => setSemOc(e.target.checked)} /> Somente sem OC</label>
           <label className="text-xs flex items-center gap-1"><input type="checkbox" checked={agrupar} onChange={(e) => setAgrupar(e.target.checked)} /> Agrupar por remetente → destinatário</label>
           {isImp && <Button disabled={!marcadas.length} onClick={() => setCriarOc(true)}><Package className="h-4 w-4" /> Criar OC com {marcadas.length} NF</Button>}
