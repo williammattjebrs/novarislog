@@ -33,9 +33,9 @@ describe("OC v2", () => {
     expect(r.snapshot).toBeNull(); expect(r.erros).toContain("Informe o motorista."); expect(r.erros).toContain("Informe data e hora da coleta.");
   });
   it("destinatários deduplicados e pendência para local sem e-mail", () => {
-    const r = destinatariosOc(alilog, { ...novatrigo, emails: [] }, mot);
-    expect(r.destinatarios).toEqual([{ email: "expedicao@alilog.com.br", papeis: ["coleta", "motorista"] }]);
-    expect(r.pendencias).toEqual(["Local de descarga Novatrigo sem e-mail cadastrado"]);
+    const r = destinatariosOc([alilog, alilog, { ...novatrigo, emails: [] }]);
+    expect(r.destinatarios).toEqual([{ email: "expedicao@alilog.com.br", papeis: ["coleta:L1"] }]);
+    expect(r.pendencias).toEqual(["Local de coleta Novatrigo sem e-mail cadastrado"]);
   });
   it("snapshot EIXO/ALILOG/Novatrigo e imutabilidade frente a cadastro alterado", async () => {
     const nfs = Array.from({ length: 60 }, (_, i) => nf(i + 1));
