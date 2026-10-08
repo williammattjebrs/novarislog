@@ -187,7 +187,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
       <div className="flex items-center gap-2 flex-wrap">
         <h2 className="font-display text-lg">{oc.numero}</h2>
         <span className="text-xs px-2 py-0.5 rounded border border-primary/40 text-primary">{label(oc)}</span>
-        {oc.docVersion ? <span className="text-xs">Documento v{oc.docVersion}</span> : null}
+        {oc.docVersion ? <><span className="text-xs">Documento v{oc.docVersion}</span><Button size="sm" variant="outline" onClick={() => abrirPdf(oc.docVersion!)}><FileText className="h-3 w-3" /> Reimprimir OC</Button></> : null}
         {oc.conteudoPendenteRevisao && <span className="text-xs text-warning">Conteúdo alterado após a emissão</span>}
         <button className="ml-auto" aria-label="Fechar" onClick={onClose}><X className="h-4 w-4" /></button>
       </div>
