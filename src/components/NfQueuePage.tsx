@@ -7,6 +7,8 @@ import { useState, useRef, useMemo, useEffect } from "react";
 import { FileUp, FileCheck2, Package, Truck, AlertTriangle, ArrowRight, Link2, Search, Download, Printer } from "lucide-react";
 import { useOrders, useClients, useFreightTables, useRouteRates, useQuotations, useInvoices, useConfig, useOrdensColeta, newId } from "@/lib/mock-store";
 import { CriarOcPanel } from "@/components/CriarOcPanel";
+import { AcompanhamentoColeta } from "@/components/AcompanhamentoColeta";
+import { useEmpresaFiltro, filtrarNfs } from "@/lib/empresa-filter";
 import { ocAtivaDaNf } from "@/lib/oc-model";
 import { OC_STATUS } from "@/lib/mock-data";
 import {
@@ -69,7 +71,8 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
   // Rotas: somente cargas coletadas aguardando emissão de CT-e; com CT-e emitido a NF segue para o Monitoramento.
   const temCte = (o: Order) => !!o.cteChave || !!o.cteNumero || !!(o.cteChaves?.length);
   const naRota = (o: Order) => (o.stage === "coletado" || o.stage === "aguardando_cte") && !temCte(o);
-  const listaAba = orders.list.filter((o) => (isImp ? !naRota(o) : naRota(o)));
+  const [empresaF] = useEmpresaFiltro();
+  const listaAba = filtrarNfs(empresaF, orders.list, ocs.list).filter((o) => (isImp ? !naRota(o) : naRota(o)));
   const stagesAba = ORDER_STAGES.filter((s) => (isImp ? !POS_COLETA.includes(s.id) : POS_COLETA.includes(s.id)));
   const porStage = useMemo(() => {
     const m: Record<string, number> = {};
@@ -297,8 +300,8 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
         <div className="flex items-end justify-between flex-wrap gap-3">
           <div>
             <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{isImp ? "Entrada de documentos" : "Viagem"}</div>
-            <h1 className="mt-1 text-2xl md:text-3xl font-semibold">{isImp ? "Importação · XML NF-e e CT-e" : "Rotas · aguardando emissão de CT-e"}</h1>
-            <p className="text-sm text-muted-foreground mt-1">{isImp ? <>Importe XML manualmente ou pela integração de e-mail. NFs ainda não coletadas ficam aqui para montar a ordem de coleta. CT-e tolerância ±{cfg.toleranciaDivergenciaPercent}%.</> : <>Somente cargas coletadas aguardando emissão de CT-e. Ao receber o CT-e, a NF segue para o Monitoramento. A importação de XML fica na aba <Link to="/importacao" className="text-primary">Importação</Link>.</>}</p>
+            <h1 className="mt-1 text-2xl md:text-3xl font-semibold">{isImp ? "Importação · XML NF-e e CT-e" : "Acompanhamento de Coleta"}</h1>
+            <p className="text-sm text-muted-foreground mt-1">{isImp ? <>Importe XML manualmente ou pela integração de e-mail. NFs ainda não coletadas ficam aqui para montar a ordem de coleta. CT-e tolerância ±{cfg.toleranciaDivergenciaPercent}%.</> : <>OCs emitidas entram aqui para o follow-up da coleta (previsão, status e observações). Depois de coletada, a NF aguarda o CT-e; ao receber o CT-e segue para o Monitoramento.</>}</p>
           </div>
           {isImp && <div className="flex gap-2">
             <label className="inline-flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 text-primary px-3 py-2 text-sm hover:bg-primary/20 cursor-pointer">
@@ -311,6 +314,8 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
             </label>
           </div>}
         </div>
+
+        {!isImp && <AcompanhamentoColeta />}
 
         {isImp && <ColetasTriage
           orders={orders.list}
