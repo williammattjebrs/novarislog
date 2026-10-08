@@ -256,6 +256,21 @@ export interface OrdemColeta {
   documentoEstado?: "sem_documento" | "emitido" | "legado_sem_snapshot";
   conteudoPendenteRevisao?: boolean;
   legado?: { statusOriginal: string; rotaId?: string; convertidoEm: string; convertidoPor: string };
+  /** Empresa do grupo que emite a OC e toda a documentação. */
+  empresaId?: string;
+  /** Contratação do transporte: terceiro (valor fechado com o motorista) ou frota própria (custo manual). */
+  contratacao?: "terceiro" | "frota";
+  custoMotorista?: number;
+  custoObs?: string;
+  /** Chave de agrupamento automático (remetente|destinatário) do rascunho sugerido na importação. */
+  autoKey?: string;
+  /** Previsão e follow-up da coleta (Acompanhamento de Coleta). */
+  previsaoColeta?: string;
+}
+/** Empresa do grupo (emissora de OCs e documentos). */
+export interface Empresa {
+  id: string; nome: string; razaoSocial?: string; cnpj?: string; endereco?: string; cidade?: string; uf?: string;
+  telefone?: string; email?: string; site?: string; logoDataUrl?: string; ativa: boolean; criadoEm: string;
 }
 /** Local operacional (armazém/estabelecimento físico). Pode atender vários donos de carga. */
 export interface LocalOperacional {
@@ -318,6 +333,7 @@ export interface Invoice {
   recebidoEm?: string;      // ISO yyyy-mm-dd
   valorRecebido?: number;
   conta?: string;
+  empresaId?: string;
 }
 
 export type ExpenseType = "fixa" | "variavel" | "frete_terceiros" | "administrativa";
@@ -340,6 +356,8 @@ export interface Expense {
   // conciliação
   pagoEm?: string;          // ISO yyyy-mm-dd
   valorPago?: number;
+  empresaId?: string;
+  ocId?: string;
   conta?: string;
 }
 

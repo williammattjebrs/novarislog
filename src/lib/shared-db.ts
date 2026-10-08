@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 type Row = { collection: string; id: string; data: any; version: number; atualizado_em?: string };
 type Change = { collection: string; id: string; data?: any; version: number; remove?: boolean };
-export const SHARED_KEYS = new Set(['clients','freightTables','routeRates','quotations','crmDeals','orders','invoices','expenses','clientGroups','expenseGroups','config','trackingGroups','rotas','ordensColeta','motoristas','veiculos','cteDocuments','locais']);
+export const SHARED_KEYS = new Set(['clients','freightTables','routeRates','quotations','crmDeals','orders','invoices','expenses','clientGroups','expenseGroups','config','trackingGroups','rotas','ordensColeta','motoristas','veiculos','cteDocuments','locais','companies']);
 const listeners: Record<string, Set<() => void>> = {};
 export function notify(key: string) { listeners[key]?.forEach(cb => cb()); }
 export function subscribe(key: string, cb: () => void) { (listeners[key] ??= new Set()).add(cb); return () => { listeners[key]?.delete(cb); }; }
