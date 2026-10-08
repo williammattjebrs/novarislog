@@ -368,6 +368,10 @@ function ColetasPage() {
           </button>
         </div>
 
+        {(() => { const g = new Map<string, Order[]>(); orders.list.filter((o) => !ocAtivaDaNf(ocs.list, o.id)).forEach((o) => { const k = `${o.remetente} → ${o.destinatario}`; g.set(k, [...(g.get(k) ?? []), o]); }); const grupos = [...g.entries()]; return grupos.length ? (
+          <div className="panel p-3 space-y-2"><div className="text-xs font-semibold text-primary">Sugestões de OC (mesmo remetente e destinatário)</div>
+            {grupos.map(([k, ns]) => <div key={k} className="flex items-center gap-2 text-xs border-t border-border pt-2"><span className="flex-1 truncate">{k}</span><span className="text-muted-foreground">{ns.length} NF · {ns.map((n) => n.numeroNFe).join(", ")}</span><Button size="sm" variant="outline" onClick={() => setMarcadas(ns.map((n) => n.id))}>Marcar grupo</Button></div>)}
+            <p className="text-[11px] text-muted-foreground">Marque o grupo inteiro ou desmarque notas na lista. O número da OC só é gerado ao salvar.</p></div>) : null; })()}
         <RegularizationPreview />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Lista */}

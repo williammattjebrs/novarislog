@@ -40,7 +40,8 @@ function MonitoramentoPage() {
   const [selected, setSelected] = useState<string | null>(registro ?? null);
   useEffect(() => { if (registro) setSelected(registro); }, [registro]);
   const [bulkOpen, setBulkOpen] = useState(false);
-  const emitidas = ocs.list.filter(isEmitida);
+  // Rascunhos v2 também aparecem (aguardando programação); somente emitidas enviam e-mail.
+  const emitidas = ocs.list.filter((o) => isEmitida(o) || (isV2(o) && o.status === "rascunho"));
   const q = busca.trim().toLowerCase();
   const nfById = useMemo(() => new Map(orders.list.map((o) => [o.id, o])), [orders.list]);
   const filtered = emitidas.filter((oc) => (!st || oc.status === st) && (!q || [oc.numero, oc.clienteColetaNome, oc.clienteDescargaNome, oc.localColeta, oc.localEntrega, mot.list.find((m) => m.id === oc.motoristaId)?.nome, vei.list.find((v) => v.id === oc.veiculoId)?.placa, ...oc.orderIds.map((id) => nfById.get(id)?.numeroNFe)].join(" ").toLowerCase().includes(q)));
@@ -88,7 +89,7 @@ function MonitoramentoPage() {
                     </tr>
                   );
                 })}
-                {!filtered.length && <tr><td colSpan={6} className="py-8 text-center text-xs text-muted-foreground">Nenhuma OC emitida com esses filtros.</td></tr>}
+                {!filtered.length && <tr><td colSpan={6} className="py-8 text-center text-xs text-muted-foreground">Nenhuma OC com esses filtros.</td></tr>}
               </tbody>
             </table>
           </div>
