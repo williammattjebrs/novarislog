@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as ColetasRouteImport } from './routes/coletas'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
+import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as ImportacaoRouteImport } from './routes/importacao'
 import { Route as LocaisOperacionaisRouteImport } from './routes/locais-operacionais'
@@ -21,6 +22,7 @@ import { Route as ManualRouteImport } from './routes/manual'
 import { Route as MonitoramentoRouteImport } from './routes/monitoramento'
 import { Route as MotoristasRouteImport } from './routes/motoristas'
 import { Route as OrdensColetaRouteImport } from './routes/ordens-coleta'
+import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as RotasRouteImport } from './routes/rotas'
 import { Route as TvRouteImport } from './routes/tv'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
@@ -47,6 +49,11 @@ const ColetasRoute = ColetasRouteImport.update({
 const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
   id: '/configuracoes',
   path: '/configuracoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmpresasRoute = EmpresasRouteImport.update({
+  id: '/empresas',
+  path: '/empresas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FinanceiroRoute = FinanceiroRouteImport.update({
@@ -87,6 +94,11 @@ const MotoristasRoute = MotoristasRouteImport.update({
 const OrdensColetaRoute = OrdensColetaRouteImport.update({
   id: '/ordens-coleta',
   path: '/ordens-coleta',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RelatoriosRoute = RelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RotasRoute = RotasRouteImport.update({
@@ -130,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/clientes': typeof ClientesRouteWithChildren
   '/coletas': typeof ColetasRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/empresas': typeof EmpresasRoute
   '/financeiro': typeof FinanceiroRoute
   '/importacao': typeof ImportacaoRoute
   '/locais-operacionais': typeof LocaisOperacionaisRoute
@@ -138,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/monitoramento': typeof MonitoramentoRoute
   '/motoristas': typeof MotoristasRoute
   '/ordens-coleta': typeof OrdensColetaRoute
+  '/relatorios': typeof RelatoriosRoute
   '/rotas': typeof RotasRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
@@ -151,6 +165,7 @@ export interface FileRoutesByTo {
   '/clientes': typeof ClientesRouteWithChildren
   '/coletas': typeof ColetasRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/empresas': typeof EmpresasRoute
   '/financeiro': typeof FinanceiroRoute
   '/importacao': typeof ImportacaoRoute
   '/locais-operacionais': typeof LocaisOperacionaisRoute
@@ -159,6 +174,7 @@ export interface FileRoutesByTo {
   '/monitoramento': typeof MonitoramentoRoute
   '/motoristas': typeof MotoristasRoute
   '/ordens-coleta': typeof OrdensColetaRoute
+  '/relatorios': typeof RelatoriosRoute
   '/rotas': typeof RotasRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
@@ -173,6 +189,7 @@ export interface FileRoutesById {
   '/clientes': typeof ClientesRouteWithChildren
   '/coletas': typeof ColetasRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/empresas': typeof EmpresasRoute
   '/financeiro': typeof FinanceiroRoute
   '/importacao': typeof ImportacaoRoute
   '/locais-operacionais': typeof LocaisOperacionaisRoute
@@ -181,6 +198,7 @@ export interface FileRoutesById {
   '/monitoramento': typeof MonitoramentoRoute
   '/motoristas': typeof MotoristasRoute
   '/ordens-coleta': typeof OrdensColetaRoute
+  '/relatorios': typeof RelatoriosRoute
   '/rotas': typeof RotasRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
@@ -196,6 +214,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/coletas'
     | '/configuracoes'
+    | '/empresas'
     | '/financeiro'
     | '/importacao'
     | '/locais-operacionais'
@@ -204,6 +223,7 @@ export interface FileRouteTypes {
     | '/monitoramento'
     | '/motoristas'
     | '/ordens-coleta'
+    | '/relatorios'
     | '/rotas'
     | '/tv'
     | '/usuarios'
@@ -217,6 +237,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/coletas'
     | '/configuracoes'
+    | '/empresas'
     | '/financeiro'
     | '/importacao'
     | '/locais-operacionais'
@@ -225,6 +246,7 @@ export interface FileRouteTypes {
     | '/monitoramento'
     | '/motoristas'
     | '/ordens-coleta'
+    | '/relatorios'
     | '/rotas'
     | '/tv'
     | '/usuarios'
@@ -238,6 +260,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/coletas'
     | '/configuracoes'
+    | '/empresas'
     | '/financeiro'
     | '/importacao'
     | '/locais-operacionais'
@@ -246,6 +269,7 @@ export interface FileRouteTypes {
     | '/monitoramento'
     | '/motoristas'
     | '/ordens-coleta'
+    | '/relatorios'
     | '/rotas'
     | '/tv'
     | '/usuarios'
@@ -260,6 +284,7 @@ export interface RootRouteChildren {
   ClientesRoute: typeof ClientesRouteWithChildren
   ColetasRoute: typeof ColetasRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
+  EmpresasRoute: typeof EmpresasRoute
   FinanceiroRoute: typeof FinanceiroRoute
   ImportacaoRoute: typeof ImportacaoRoute
   LocaisOperacionaisRoute: typeof LocaisOperacionaisRoute
@@ -268,6 +293,7 @@ export interface RootRouteChildren {
   MonitoramentoRoute: typeof MonitoramentoRoute
   MotoristasRoute: typeof MotoristasRoute
   OrdensColetaRoute: typeof OrdensColetaRoute
+  RelatoriosRoute: typeof RelatoriosRoute
   RotasRoute: typeof RotasRoute
   TvRoute: typeof TvRoute
   UsuariosRoute: typeof UsuariosRoute
@@ -304,6 +330,13 @@ declare module '@tanstack/react-router' {
       path: '/configuracoes'
       fullPath: '/configuracoes'
       preLoaderRoute: typeof ConfiguracoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/empresas': {
+      id: '/empresas'
+      path: '/empresas'
+      fullPath: '/empresas'
+      preLoaderRoute: typeof EmpresasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/financeiro': {
@@ -360,6 +393,13 @@ declare module '@tanstack/react-router' {
       path: '/ordens-coleta'
       fullPath: '/ordens-coleta'
       preLoaderRoute: typeof OrdensColetaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/relatorios': {
+      id: '/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof RelatoriosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rotas': {
@@ -431,6 +471,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClientesRoute: ClientesRouteWithChildren,
   ColetasRoute: ColetasRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
+  EmpresasRoute: EmpresasRoute,
   FinanceiroRoute: FinanceiroRoute,
   ImportacaoRoute: ImportacaoRoute,
   LocaisOperacionaisRoute: LocaisOperacionaisRoute,
@@ -439,6 +480,7 @@ const rootRouteChildren: RootRouteChildren = {
   MonitoramentoRoute: MonitoramentoRoute,
   MotoristasRoute: MotoristasRoute,
   OrdensColetaRoute: OrdensColetaRoute,
+  RelatoriosRoute: RelatoriosRoute,
   RotasRoute: RotasRoute,
   TvRoute: TvRoute,
   UsuariosRoute: UsuariosRoute,

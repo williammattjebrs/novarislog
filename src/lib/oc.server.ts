@@ -1,7 +1,7 @@
 // Emissão de OC e fila de envio no servidor. Chamado somente após verificação de permissão do chamador.
 import { renderOcPdf, sha256Hex, fmtDataHora } from "./oc-pdf";
 import { buildSnapshot, conteudoSnapshot, localColetaDaNf, type OcSnapshot } from "./oc-model";
-import type { LocalOperacional, Motorista, OrdemColeta, Order, Veiculo } from "./mock-data";
+import type { Empresa, LocalOperacional, Motorista, OrdemColeta, Order, Veiculo } from "./mock-data";
 
 type Admin = Awaited<typeof import("@/integrations/supabase/client.server")>["supabaseAdmin"];
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
@@ -18,11 +18,12 @@ export async function emitOc(db: Admin, actor: { id: string; nome: string }, ocI
   const [oc] = await rows<OrdemColeta>(db, "ordensColeta", [ocId]);
   if (!oc) throw new Error("OC não encontrada.");
   if (oc.__version !== expectedVersion) throw new Error("CONFLICT: a OC foi alterada por outro operador; recarregue.");
-  const [nfs, locais, motoristas, veiculos] = await Promise.all([
+  const [nfs, locais, motoristas, veiculos, empresas] = await Promise.all([
     rows<Order>(db, "orders", oc.orderIds), rows<LocalOperacional>(db, "locais", [...new Set([...oc.orderIds.map((id) => localColetaDaNf(oc, id)), oc.localDescargaId ?? ""])].filter(Boolean)),
     rows<Motorista>(db, "motoristas", [oc.motoristaId ?? ""]), rows<Veiculo>(db, "veiculos", [oc.veiculoId ?? ""]),
+    rows<Empresa>(db, "companies"),
   ]);
-  const { erros, snapshot } = buildSnapshot(oc, { nfs, locais, motoristas, veiculos, emitidoPor: actor.nome });
+  const { erros, snapshot } = buildSnapshot(oc, { nfs, locais, motoristas, veiculos, empresas, emitidoPor: actor.nome });
   if (!snapshot) return { ok: false as const, erros };
   const versao = (oc.docVersion ?? 0) + 1;
   if (oc.docVersion) {
@@ -63,7 +64,7 @@ export function ocEmailHtml(s: OcSnapshot & { versao?: number }, nfs = s.nfs) {
 ${linhas}
 <tr><td style="${td}">Entregas: ${nfs.length}</td><td style="${td}">Peso total: ${peso.toLocaleString("pt-BR")}kg</td><td colspan="5" style="${td}">Criado por: ${esc(s.emitidoPor)}</td></tr>
 </table>
-<p style="margin-top:28px">Atenciosamente;<br><b>Equipe de Monitoramento Novaris.</b><br><i>Esta mensagem é enviada automaticamente pelo Novaris TMS.</i></p></body></html>`;
+<p style="margin-top:28px">Atenciosamente;<br><b>Equipe de Monitoramento ${esc(s.empresa?.nome ?? "Novaris")}.</b>${s.empresa?.telefone || s.empresa?.email ? `<br>${esc([s.empresa?.telefone, s.empresa?.email].filter(Boolean).join(" · "))}` : ""}<br><i>Esta mensagem é enviada automaticamente pelo TMS.</i></p></body></html>`;
 }
 
 export type Sender = (to: string, subject: string, html: string) => Promise<void>;

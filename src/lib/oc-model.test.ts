@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { writeFileSync } from "node:fs";
-import { buildSnapshot, conteudoSnapshot, destinatariosOc, novaOcRascunho, ocAtivaDaNf, previewConversao, stageFromOc, isEmitida } from "./oc-model";
+import { buildSnapshot, conteudoSnapshot, destinatariosOc, novaOcRascunho, ocAtivaDaNf, previewConversao, stageFromOc, isEmitida, validarEmissao } from "./oc-model";
 import { renderOcPdf } from "./oc-pdf";
 import type { LocalOperacional, Motorista, Order, OrdemColeta, Veiculo } from "./mock-data";
 
@@ -17,7 +17,7 @@ const vei: Veiculo = { id: "V1", placa: "ABC1D23", tipo: "Carreta", proprietario
 
 function ocEixo(nfs: Order[]): OrdemColeta {
   const oc = novaOcRascunho(nfs, { id: "OC-T1", numero: "OC-T1", autor: "teste", agora: now, clienteColetaNome: "EIXO", localColetaId: "L1", clienteDescargaNome: "Novatrigo", localDescargaId: "L2", contratanteNome: "EIXO", locais: [alilog, novatrigo] });
-  return { ...oc, motoristaId: "M1", veiculoId: "V1", dataHoraColeta: "2026-10-09T11:00:00.000Z", dataHoraEntrega: "2026-10-10T14:00:00.000Z", instrucoes: "Conferir lacre. Atenção à descarga com agendamento prévio." };
+  return { ...oc, motoristaId: "M1", veiculoId: "V1", dataHoraColeta: "2026-10-09T11:00:00.000Z", dataHoraEntrega: "2026-10-10T14:00:00.000Z", contratacao: "terceiro", custoMotorista: 1500, instrucoes: "Conferir lacre. Atenção à descarga com agendamento prévio." };
 }
 
 describe("OC v2", () => {
@@ -76,5 +76,16 @@ describe("OC v2", () => {
     expect(p[0].proposta!.status).toBe("rascunho"); expect(p[0].proposta!.numero).toBe("OC-00001"); expect(p[0].proposta!.orderIds).toEqual(["NF1"]);
     expect(p[1].proposta!.status).toBe("emitida"); expect(p[1].proposta!.documentoEstado).toBe("legado_sem_snapshot"); expect(p[1].proposta!.docVersion).toBeUndefined();
     expect(p[2].proposta).toBeNull(); // NF já ocupada: não converte
+  });
+});
+
+describe("OC · empresa e custo", () => {
+  it("exige custo e empresa quando há empresas cadastradas", () => {
+    const base = { nfs: [], locais: [], motoristas: [], veiculos: [] };
+    const oc = { ...novaOcRascunho([], { id: "Y", numero: "Y", autor: "t", clienteColetaNome: "A", clienteDescargaNome: "B", locais: [] }) };
+    const e = validarEmissao(oc, { ...base, empresas: [{ id: "E1", nome: "RTM", ativa: true, criadoEm: "" }] }).erros;
+    expect(e).toContain("Escolha a empresa emissora da OC.");
+    expect(e).toContain("Informe a contratação: terceiro ou frota própria.");
+    expect(validarEmissao({ ...oc, empresaId: "E1", contratacao: "frota" }, { ...base, empresas: [{ id: "E1", nome: "RTM", ativa: true, criadoEm: "" }] }).erros).toContain("Informe o custo da frota própria.");
   });
 });

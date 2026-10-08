@@ -26,10 +26,19 @@ export async function renderOcPdf(s: OcSnapshot & { versao?: number }) {
   const font = await doc.embedFont(StandardFonts.Helvetica), bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const W = 595.28, H = 841.89, M = 40, CW = W - 2 * M;
   let page: PDFPage = doc.addPage([W, H]); let y = H - M; let pageNo = 1;
+  // Logo da empresa emissora (PNG/JPEG em data URL); sem logo usa o nome.
+  let logoImg: Awaited<ReturnType<typeof doc.embedPng>> | null = null;
+  try {
+    const m = /^data:image\/(png|jpe?g);base64,(.+)$/i.exec(s.empresa?.logoDataUrl ?? "");
+    if (m) { const bin = Uint8Array.from(atob(m[2]), (c) => c.charCodeAt(0)); logoImg = m[1].toLowerCase() === "png" ? await doc.embedPng(bin) : await doc.embedJpg(bin); }
+  } catch { logoImg = null; }
   const header = () => {
     page.drawRectangle({ x: 0, y: H - 70, width: W, height: 70, color: NAVY });
-    page.drawText("NOVARIS", { x: M, y: H - 38, size: 20, font: bold, color: rgb(1, 1, 1) });
-    page.drawText("Operador Logístico Integrado", { x: M, y: H - 54, size: 9, font, color: ORANGE });
+    let tx = M;
+    if (logoImg) { const sc = Math.min(44 / logoImg.height, 90 / logoImg.width); const lw = logoImg.width * sc; page.drawRectangle({ x: M - 3, y: H - 60, width: lw + 6, height: 50, color: rgb(1, 1, 1) }); page.drawImage(logoImg, { x: M, y: H - 57, width: lw, height: logoImg.height * sc }); tx = M + lw + 12; }
+    page.drawText(clean(s.empresa?.nome ?? "NOVARIS").slice(0, 34), { x: tx, y: H - 36, size: s.empresa ? 14 : 20, font: bold, color: rgb(1, 1, 1) });
+    page.drawText(clean(s.empresa ? [s.empresa.cnpj && `CNPJ ${s.empresa.cnpj}`, s.empresa.telefone].filter(Boolean).join(" · ") : "Operador Logístico Integrado").slice(0, 60), { x: tx, y: H - 52, size: 8, font, color: ORANGE });
+    if (s.empresa?.endereco || s.empresa?.email) page.drawText(clean([s.empresa.endereco, s.empresa.email].filter(Boolean).join(" · ")).slice(0, 70), { x: tx, y: H - 63, size: 7, font, color: rgb(1, 1, 1) });
     const t = clean(`ORDEM DE COLETA ${s.numero}`);
     page.drawText(t, { x: W - M - bold.widthOfTextAtSize(t, 14), y: H - 36, size: 14, font: bold, color: rgb(1, 1, 1) });
     const v = clean(`Documento v${s.versao ?? 1} · emitido ${fmtDataHora(s.emitidoEm)} · pág. ${pageNo}`);

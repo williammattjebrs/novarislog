@@ -435,6 +435,11 @@ export type Database = {
       tms_import_nfe_worker: { Args: { payload: Json }; Returns: Json }
       tms_is_master: { Args: never; Returns: boolean }
       tms_module: { Args: { module_name: string }; Returns: boolean }
+      tms_oc_auto_draft: { Args: { p_nf_ids: string[] }; Returns: Json }
+      tms_oc_auto_draft_worker: {
+        Args: { p_actor?: string; p_nf_id: string }
+        Returns: string
+      }
       tms_oc_email_claim: {
         Args: { p_limit: number; p_oc_id: string }
         Returns: {
