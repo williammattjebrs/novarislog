@@ -151,7 +151,17 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
       const r = await emitir({ data: { ocId: oc.id, version: getVersion("ordensColeta", oc.id), enviarRevisao: !!oc.docVersion && enviarRev } });
       await refreshShared(); await loadDocs();
       if (!r.ok) setMsg({ tipo: "erro", texto: r.erros.join(" ") });
-      else setMsg({ tipo: "ok", texto: `Documento v${r.docVersion} emitido e gravado. ${r.enfileirados} envio(s) na fila (não enviados ainda).${r.pendencias.length ? ` Pendência: ${r.pendencias.join("; ")}.` : ""}` });
+      else {
+        const pend = r.pendencias.length ? ` Pendência: ${r.pendencias.join("; ")}.` : "";
+        if (r.enfileirados > 0) {
+          setMsg({ tipo: "ok", texto: `Documento v${r.docVersion} emitido. Enviando e-mail aos cadastrados…` });
+          try {
+            const s = await enviarAgora({ data: { ocId: oc.id } });
+            setMsg({ tipo: s.falhas || s.incertos ? "erro" : "ok", texto: `Documento v${r.docVersion} emitido. E-mail: ${s.aceitos} aceito(s) pelo provedor, ${s.falhas} falha(s), ${s.incertos} incerto(s).${pend}` });
+          } catch (e) { setMsg({ tipo: "erro", texto: `Documento v${r.docVersion} emitido, mas o envio falhou: ${e instanceof Error ? e.message : "erro"}. Use "Enviar agora" abaixo.${pend}` }); }
+          await loadDocs();
+        } else setMsg({ tipo: "ok", texto: `Documento v${r.docVersion} emitido e gravado. Nenhum e-mail a enviar.${pend}` });
+      }
     } catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha na emissão." }); }
     finally { setBusy(false); }
   }
@@ -164,8 +174,13 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
     finally { setBusy(false); }
   }
   async function abrirPdf(version: number) {
-    try { const { url } = await pdfLink({ data: { ocId: oc.id, version } }); window.open(url, "_blank", "noopener"); }
-    catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao abrir PDF." }); }
+    // Abre a aba já no clique (senão o navegador bloqueia como pop-up) e depois aponta para o PDF.
+    const w = window.open("about:blank", "_blank");
+    try {
+      const { url } = await pdfLink({ data: { ocId: oc.id, version } });
+      if (w) w.location.href = url;
+      else { const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove(); }
+    } catch (e) { w?.close(); setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao abrir PDF." }); }
   }
   return (
     <div ref={painel} className="panel p-4 space-y-4">
