@@ -28,6 +28,7 @@ export function CriarOcPanel({ nfs, onClose }: { nfs: Order[]; onClose: (ok?: bo
   const clients = useClients(); const locais = useLocais(); const { user } = useAuth(); const navigate = useNavigate();
   const n0 = nfs[0];
   const [f, setF] = useState({ clienteColetaId: n0?.clienteId ?? "", clienteColetaNome: n0?.clienteNome.replace(/^\(sem cliente\)\s*/, "") ?? "", localColetaId: "", clienteDescargaNome: n0?.destinatario ?? "", localDescargaId: "", contratanteNome: n0?.clienteNome.replace(/^\(sem cliente\)\s*/, "") ?? "" });
+  const [fretes, setFretes] = useState<Record<string, string>>({});
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   const pares = new Set(nfs.map((n) => `${n.remetente} → ${n.destinatario}`));
   async function criar() {
@@ -37,9 +38,12 @@ export function CriarOcPanel({ nfs, onClose }: { nfs: Order[]; onClose: (ok?: bo
     if (!f.clienteColetaNome.trim() || !f.clienteDescargaNome.trim()) return setErr("Informe cliente da coleta e cliente da descarga.");
     const id = newId("OC");
     const oc = novaOcRascunho(nfs, { id, numero: numeroOc(), autor: user?.nome ?? "usuário", ...f, clienteColetaId: f.clienteColetaId || undefined, localColetaId: f.localColetaId || undefined, localDescargaId: f.localDescargaId || undefined, locais: locais.list });
+    const now = new Date().toISOString();
+    const manuais = nfs.filter((n) => !(n.valorFrete > 0) && Number(String(fretes[n.id] ?? "").replace(",", ".")) > 0);
+    const orders = manuais.length ? (getList<Order>("orders") ?? []).map((o) => { const m = manuais.find((x) => x.id === o.id); if (!m) return o; const v = Number(String(fretes[o.id]).replace(",", ".")); return { ...o, valorFrete: v, origemValor: "manual" as const, stage: o.stage === "aguarda_vinculacao" ? "valorizada" as const : o.stage, atualizadoEm: now, timeline: [...o.timeline, { quando: now, autor: user?.nome ?? "usuário", tipo: "sistema" as const, texto: `Frete informado manualmente na criação da OC: R$ ${v.toFixed(2)}` }] }; }) : undefined;
     setBusy(true);
     try {
-      await commitLists({ ordensColeta: [oc, ...(getList<OrdemColeta>("ordensColeta") ?? [])] }, `Rascunho ${oc.numero} criado em Rotas`);
+      await commitLists({ ordensColeta: [oc, ...(getList<OrdemColeta>("ordensColeta") ?? [])], ...(orders ? { orders } : {}) }, `Rascunho ${oc.numero} criado em Rotas`);
       onClose(true);
       void navigate({ to: "/ordens-coleta", search: { registro: id } });
     } catch (e) { setErr(e instanceof Error ? e.message : "Falha ao criar OC."); }
@@ -64,8 +68,11 @@ export function CriarOcPanel({ nfs, onClose }: { nfs: Order[]; onClose: (ok?: bo
             <LocalSelect label="Local da descarga" value={f.localDescargaId} onChange={(id) => setF({ ...f, localDescargaId: id })} />
           </fieldset>
         </div>
+        <fieldset className="space-y-1"><legend className="text-xs font-semibold text-primary">Frete (tabela / cotação ou manual)</legend>
+          {nfs.map((n) => <div key={n.id} className="flex items-center gap-2 text-xs"><span className="num w-24">NF {n.numeroNFe}</span>{n.valorFrete > 0 ? <span className="text-success">R$ {n.valorFrete.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} · {n.origemValor || "tabela"}</span> : <><span className="text-warning">sem tabela</span><input aria-label={`Frete manual NF ${n.numeroNFe}`} className={inp + " max-w-40"} placeholder="Frete R$" inputMode="decimal" value={fretes[n.id] ?? ""} onChange={(e) => setFretes({ ...fretes, [n.id]: e.target.value })} /></>}</div>)}
+        </fieldset>
         <input aria-label="Contratante do frete" className={inp} placeholder="Contratante do frete" value={f.contratanteNome} onChange={(e) => setF({ ...f, contratanteNome: e.target.value })} />
-        <p className="text-xs text-muted-foreground">O rascunho não aparece no Monitoramento e não envia e-mail. Motorista, veículo e horários são definidos em Ordens de coleta antes da emissão.</p>
+        <p className="text-xs text-muted-foreground">O rascunho aparece no Monitoramento como "aguardando programação" e não envia e-mail. Motorista, veículo e horários são definidos em Ordens de coleta antes da emissão.</p>
         {err && <div className="text-xs text-danger" role="alert">{err}</div>}
         <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => onClose()}>Cancelar</Button><Button disabled={busy} onClick={criar}>{busy ? "Gravando…" : "Criar rascunho"}</Button></div>
       </div>
