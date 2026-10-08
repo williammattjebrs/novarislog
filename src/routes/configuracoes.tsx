@@ -150,6 +150,8 @@ function ConfigPage() {
             </label>
           </div>
         </section>
+        <ResetImportsSection />
+
 
 
       </div>
