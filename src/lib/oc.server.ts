@@ -84,8 +84,16 @@ export async function processOcOutbox(db: Admin, ocId: string | null, send: Send
         snap = doc.snapshot as unknown as OcSnapshot; snapCache.set(key, snap);
       }
       const s = { ...snap, versao: row.doc_version };
-      const nfs = nfsDoDestinatario(s, row.papeis ?? []);
-      await send(row.email, `Solicitação de carregamento · ${s.numero} · ${nfs.length} NF(s) · ${s.veiculo.placa}`, ocEmailHtml(s, nfs));
+      // Um e-mail por armazém de coleta, mesmo quando o mesmo endereço atende mais de um local.
+      const locaisColeta = (row.papeis ?? []).filter((p) => p.startsWith("coleta:"));
+      const grupos = locaisColeta.length ? locaisColeta.map((p) => [p]) : [row.papeis ?? []];
+      for (const papeis of grupos) {
+        const nfs = nfsDoDestinatario(s, papeis);
+        if (!nfs.length) continue;
+        const localId = papeis[0]?.startsWith("coleta:") ? papeis[0].slice(7) : "";
+        const nomeLocal = (localId && (s.nfs.find((n) => n.coletaLocalId === localId) as { coletaLocalNome?: string } | undefined)?.coletaLocalNome) || "";
+        await send(row.email, `Solicitação de carregamento · ${s.numero}${nomeLocal ? ` · ${nomeLocal}` : ""} · ${nfs.length} NF(s) · ${s.veiculo.placa}`, ocEmailHtml(s, nfs));
+      }
       await db.rpc("tms_oc_email_finish", { p_id: row.id, p_status: "aceito", p_error: "" }); aceitos++;
     } catch (e) {
       const incerto = e instanceof Error && e.name === "EnvioIncertoError";
