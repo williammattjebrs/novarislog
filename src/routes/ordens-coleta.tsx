@@ -155,7 +155,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
     catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao abrir PDF." }); }
   }
   return (
-    <div className="panel p-4 space-y-4">
+    <div ref={painel} className="panel p-4 space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
         <h2 className="font-display text-lg">{oc.numero}</h2>
         <span className="text-xs px-2 py-0.5 rounded border border-primary/40 text-primary">{label(oc)}</span>
