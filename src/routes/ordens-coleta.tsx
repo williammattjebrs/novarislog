@@ -1,6 +1,6 @@
 // Ordens de coleta: rascunho → programação → emissão no servidor (PDF + fila de envio) → execução no Monitoramento.
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { FileText, Send, X, RefreshCw, Ban } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -66,21 +66,24 @@ function Page() {
           <thead className="text-xs text-muted-foreground text-left"><tr className="border-b border-border"><th className="p-2">OC</th><th>Cliente coleta → descarga</th><th>Locais</th><th>Coleta</th><th>NFs</th><th>Documento</th><th>Status</th></tr></thead>
           <tbody>
             {lista.map((oc) => (
-              <tr key={oc.id} onClick={() => setSel(oc.id)} className={`border-b border-border cursor-pointer hover:bg-elevated/50 ${sel === oc.id ? "bg-elevated/60" : ""}`}>
-                <td className="p-2 num text-primary">{oc.numero}</td>
-                <td className="text-xs">{oc.clienteColetaNome ?? oc.clienteNome} → {oc.clienteDescargaNome ?? "—"}</td>
-                <td className="text-xs">{oc.localColeta || "—"} ({oc.cidadeColeta}/{oc.ufColeta}) → {oc.localEntrega || "—"} ({oc.cidadeEntrega}/{oc.ufEntrega})</td>
-                <td className="text-xs">{fmtDataHora(oc.dataHoraColeta)}</td>
-                <td className="text-xs">{oc.orderIds.length}</td>
-                <td className="text-xs">{oc.docVersion ? `v${oc.docVersion}${oc.conteudoPendenteRevisao ? " · revisão pendente" : ""}` : oc.documentoEstado === "legado_sem_snapshot" ? "legado sem PDF" : "—"}</td>
-                <td className="text-xs">{label(oc)}</td>
-              </tr>
+              <Fragment key={oc.id}>
+                <tr onClick={() => setSel(oc.id)} className={`border-b border-border cursor-pointer hover:bg-elevated/50 ${sel === oc.id ? "bg-elevated/60" : ""}`}>
+                  <td className="p-2 num text-primary">{oc.numero}</td>
+                  <td className="text-xs">{oc.clienteColetaNome ?? oc.clienteNome} → {oc.clienteDescargaNome ?? "—"}</td>
+                  <td className="text-xs">{oc.localColeta || "—"} ({oc.cidadeColeta}/{oc.ufColeta}) → {oc.localEntrega || "—"} ({oc.cidadeEntrega}/{oc.ufEntrega})</td>
+                  <td className="text-xs">{fmtDataHora(oc.dataHoraColeta)}</td>
+                  <td className="text-xs">{oc.orderIds.length}</td>
+                  <td className="text-xs">{oc.docVersion ? `v${oc.docVersion}${oc.conteudoPendenteRevisao ? " · revisão pendente" : ""}` : oc.documentoEstado === "legado_sem_snapshot" ? "legado sem PDF" : "—"}</td>
+                  <td className="text-xs">{label(oc)}</td>
+                </tr>
+                {sel === oc.id && <tr aria-label={`Edição de ${oc.numero}`}><td colSpan={7} className="p-0 bg-elevated/20"><OcDetalhe key={oc.id} ocId={oc.id} onClose={() => setSel(null)} /></td></tr>}
+              </Fragment>
             ))}
             {!lista.length && <tr><td colSpan={7} className="p-6 text-center text-xs text-muted-foreground">Nenhuma OC. Selecione NFs em <Link to="/rotas" className="text-primary">Rotas</Link> para criar um rascunho.</td></tr>}
           </tbody>
         </table>
       </div>
-      {sel && ocs.list.some((o) => o.id === sel) && <OcDetalhe key={sel} ocId={sel} onClose={() => setSel(null)} />}
+      {sel && !lista.some((o) => o.id === sel) && ocs.list.some((o) => o.id === sel) && <OcDetalhe key={sel} ocId={sel} onClose={() => setSel(null)} />}
     </div>
   );
 }
@@ -96,6 +99,22 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
   const [busy, setBusy] = useState(false); const [enviarRev, setEnviarRev] = useState(false);
   const [docs, setDocs] = useState<{ version: number; created_at: string; pdf_sha256: string; send_requested: boolean; snapshot: any }[]>([]);
   const [envios, setEnvios] = useState<{ id: string; doc_version: number; email: string; papeis: string[]; status: string; attempts: number; last_error: string | null; accepted_at: string | null }[]>([]);
+  const painel = useRef<HTMLDivElement>(null);
+  // Ao abrir a edição, mantém a OC clicada visível no topo (abaixo da barra fixa) com o painel logo abaixo dela.
+  useEffect(() => {
+    const tr = painel.current?.closest("tr"); const row = tr?.previousElementSibling as HTMLElement | null;
+    if (!row || !painel.current) return;
+    if (painel.current.getBoundingClientRect().top < window.innerHeight - 140 && row.getBoundingClientRect().top >= 70) return;
+    let tries = 0;
+    const align = () => {
+      const top = row.getBoundingClientRect().top;
+      if (Math.abs(top - 76) > 4 && tries++ < 8) {
+        window.scrollTo({ top: window.scrollY + top - 76, behavior: tries === 1 ? "smooth" : "auto" });
+        window.setTimeout(align, 120);
+      }
+    };
+    align();
+  }, []);
   const editavel = isV2(oc) && !["cancelada", "entregue"].includes(oc.status);
   const emitida = isV2(oc) && OC_EMITIDAS.includes(oc.status);
   async function loadDocs() {
@@ -149,7 +168,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
     catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao abrir PDF." }); }
   }
   return (
-    <div className="panel p-4 space-y-4">
+    <div ref={painel} className="panel p-4 space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
         <h2 className="font-display text-lg">{oc.numero}</h2>
         <span className="text-xs px-2 py-0.5 rounded border border-primary/40 text-primary">{label(oc)}</span>
