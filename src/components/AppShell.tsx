@@ -2,14 +2,15 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Users, PackageSearch, Radar, Wallet, Settings, UserCog,
-  Radio, Bell, Search, LogOut, BookOpen, Route as RouteIcon, Truck, Menu, X,
+  Radio, Bell, Search, LogOut, BookOpen, Route as RouteIcon, Truck, Menu, X, MapPin,
 } from "lucide-react";
 import logo from "@/assets/novaris-logo.png.asset.json";
 import simbolo from "@/assets/novaris-simbolo.png.asset.json";
 import { useAuth, ROLE_LABEL, canAccess, type Role } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { useClients, useOrders, useOrdensColeta, useRotas } from "@/lib/mock-store";
+import { useClients, useOrders, useOrdensColeta } from "@/lib/mock-store";
+import { ocAtivaDaNf, isEmitida } from "@/lib/oc-model";
 import { SyncStatus } from "./SyncStatus";
 import { financialState } from "@/lib/reliability";
 
@@ -18,8 +19,9 @@ type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?
 const NAV: NavItem[] = [
   { to: "/", label: "Torre de controle", icon: LayoutDashboard, exact: true },
   { to: "/clientes", label: "Clientes & CRM", icon: Users },
-  { to: "/coletas", label: "Coletas & Ordens", icon: PackageSearch },
-  { to: "/rotas", label: "Rotas & OC", icon: RouteIcon },
+  { to: "/rotas", label: "Rotas · NF-e", icon: RouteIcon },
+  { to: "/ordens-coleta", label: "Ordens de coleta", icon: PackageSearch },
+  { to: "/locais-operacionais", label: "Locais operacionais", icon: MapPin },
   { to: "/motoristas", label: "Motoristas & Veículos", icon: Truck },
   { to: "/monitoramento", label: "Monitoramento", icon: Radar },
   { to: "/financeiro", label: "Financeiro", icon: Wallet },
@@ -38,17 +40,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const orders = useOrders();
   const clients = useClients();
   const ocs = useOrdensColeta();
-  const rotas = useRotas();
   const role: Role = user?.role ?? "operacao";
 
   const items = NAV.filter((i) => user && canAccess(role, i.to, user?.modulos));
   const query = search.trim().toLocaleLowerCase("pt-BR");
   const results = query ? [
-    ...orders.list.filter(o => [o.id,o.numeroNFe,o.cteNumero,o.cteChave,...(o.cteChaves ?? []),o.clienteNome,o.placa].join(" ").toLocaleLowerCase("pt-BR").includes(query)).map(o => ({ id: o.id, label: `NF ${o.numeroNFe} · ${o.clienteNome}`, to: canAccess(role,"/coletas",user?.modulos) ? "/coletas" : "/monitoramento", record: o.id })),
+    ...orders.list.filter(o => [o.id,o.numeroNFe,o.cteNumero,o.cteChave,...(o.cteChaves ?? []),o.clienteNome,o.placa].join(" ").toLocaleLowerCase("pt-BR").includes(query)).map(o => ({ id: o.id, label: `NF ${o.numeroNFe} · ${o.clienteNome}`, to: canAccess(role,"/rotas",user?.modulos) ? "/rotas" : "/monitoramento", record: o.id })),
     ...clients.list.filter(c => [c.nome,...c.cnpjs.map(x => x.cnpj)].join(" ").toLowerCase().includes(query)).map(c => ({ id:c.id,label:c.nome,to:"/clientes",record:c.id })),
-    ...ocs.list.filter(o => [o.id,o.numero,o.clienteNome].join(" ").toLowerCase().includes(query)).map(o => ({ id:o.id,label:`${o.numero} · ${o.clienteNome}`,to:"/rotas",record:o.rotaId })),
+    ...ocs.list.filter(o => [o.id,o.numero,o.clienteNome,o.clienteColetaNome,o.clienteDescargaNome,o.localColeta,o.localEntrega].join(" ").toLowerCase().includes(query)).map(o => ({ id:o.id,label:`${o.numero} · ${o.clienteColetaNome ?? o.clienteNome}`,to:canAccess(role,"/ordens-coleta",user?.modulos) || !isEmitida(o) ? "/ordens-coleta" : "/monitoramento",record:o.id })),
   ].filter(r => canAccess(role,r.to,user?.modulos)).slice(0,12) : [];
-  const notices = orders.list.map(o => ({ order:o, label: !o.clienteId ? "Cliente não vinculado" : !o.valorFrete || !o.origemValor ? "Frete pendente" : !ocs.list.some(oc => oc.orderIds.includes(o.id) && oc.dataHoraColeta) ? "Programação pendente" : !o.cteChave ? "Documento pendente" : financialState(o)==="pendente" ? "Conferência pendente" : o.stage!=="entregue" && o.previsaoEntrega && Date.parse(o.previsaoEntrega)<Date.now() ? "Entrega atrasada" : !o.costs?.execMode ? "Custo pendente" : "" })).filter(x => x.label);
+  const notices = orders.list.map(o => ({ order:o, label: !o.clienteId ? "Cliente não vinculado" : !o.valorFrete || !o.origemValor ? "Frete pendente" : !ocAtivaDaNf(ocs.list, o.id) ? "Sem OC" : !ocs.list.some(oc => oc.orderIds.includes(o.id) && isEmitida(oc)) ? "OC não emitida" : !o.cteChave ? "Documento pendente" : financialState(o)==="pendente" ? "Conferência pendente" : o.stage!=="entregue" && o.previsaoEntrega && Date.parse(o.previsaoEntrega)<Date.now() ? "Entrega atrasada" : !o.costs?.execMode ? "Custo pendente" : "" })).filter(x => x.label);
 
   return (
     <div className="min-h-screen text-foreground flex">
@@ -119,7 +120,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Button variant="outline" size="icon" className="relative shrink-0" title="Central de pendências" aria-label="Central de pendências" onClick={() => setNoticeOpen(!noticeOpen)}>
             <Bell className="h-4 w-4" />
           </Button>
-          {noticeOpen && <div className="absolute top-16 right-4 w-80 max-w-[calc(100vw-2rem)] max-h-96 overflow-auto border border-border bg-panel rounded-md shadow-lg"><h2 className="p-3 font-semibold">Pendências ({notices.length})</h2>{notices.slice(0,30).map(n => <Link key={n.order.id} to={canAccess(role,"/coletas",user?.modulos) ? "/coletas" : "/monitoramento"} search={{registro:n.order.id}} className="block border-t border-border p-3 text-xs" onClick={() => setNoticeOpen(false)}>{n.label} · NF {n.order.numeroNFe}<div className="text-muted-foreground">{n.order.clienteNome}</div></Link>)}{!notices.length && <p className="p-3 text-xs text-muted-foreground">Nenhuma pendência disponível.</p>}</div>}
+          {noticeOpen && <div className="absolute top-16 right-4 w-80 max-w-[calc(100vw-2rem)] max-h-96 overflow-auto border border-border bg-panel rounded-md shadow-lg"><h2 className="p-3 font-semibold">Pendências ({notices.length})</h2>{notices.slice(0,30).map(n => <Link key={n.order.id} to={canAccess(role,"/rotas",user?.modulos) ? "/rotas" : "/monitoramento"} search={{registro:n.order.id}} className="block border-t border-border p-3 text-xs" onClick={() => setNoticeOpen(false)}>{n.label} · NF {n.order.numeroNFe}<div className="text-muted-foreground">{n.order.clienteNome}</div></Link>)}{!notices.length && <p className="p-3 text-xs text-muted-foreground">Nenhuma pendência disponível.</p>}</div>}
         </header>
         <div className="px-4 md:px-6 border-b border-border"><SyncStatus /></div>
         <main className="flex-1 min-w-0">{children}</main>

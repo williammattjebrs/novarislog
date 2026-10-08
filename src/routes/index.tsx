@@ -107,7 +107,7 @@ function Dashboard() {
               <BrazilMap orders={orders.list} />
               {orders.list.length === 0 && (
                 <div className="p-4 text-xs text-muted-foreground border-t border-border">
-                  Nenhuma ordem cadastrada. Vá em <Link to="/coletas" className="text-primary hover:underline">Coletas & Ordens</Link> para importar XMLs e criar as primeiras ordens.
+                  Nenhuma ordem cadastrada. Vá em <Link to="/rotas" className="text-primary hover:underline">Rotas</Link> para importar XMLs e montar as primeiras ordens de coleta.
                 </div>
               )}
             </div>
@@ -144,7 +144,7 @@ function Dashboard() {
                 <div className="text-xs uppercase tracking-widest text-muted-foreground">Últimas ordens</div>
                 <div className="font-display text-lg">Fluxo geral</div>
               </div>
-              <Link to="/coletas" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+              <Link to="/rotas" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
                 ver todas <ArrowRight className="h-3 w-3" />
               </Link>
             </div>

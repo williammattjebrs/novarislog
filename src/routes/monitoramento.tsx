@@ -99,7 +99,6 @@ function MonitoramentoPage() {
         <BulkClientUpdate orders={nfsMonitoradas} autor={user?.nome ?? "sistema"} onClose={() => setBulkOpen(false)}
           onSent={(ids, entry, email) => { const now = new Date().toISOString(); orders.set(orders.list.map((o) => ids.includes(o.id) ? { ...o, emailCliente: o.emailCliente || email, timeline: [...o.timeline, entry], atualizadoEm: now } : o)); }} />
       )}
-      {void cfg}
     </AppShell>
   );
 }
@@ -117,7 +116,7 @@ function OcPainel({ ocId, onClose, canSeeCosts }: { ocId: string; onClose: () =>
     try {
       const novo = tipo === "ocorrencia" ? "ocorrencia" : tipo === "status" ? status : oc.status;
       const label = OC_STATUS.find((s) => s.id === novo)?.label ?? novo;
-      await aplicarStatusOc(oc, novo, tipo === "obs" ? texto.trim() : `${label}${texto.trim() ? ` · ${texto.trim()}` : ""}`, user?.nome ?? "usuário", tipo === "ocorrencia" ? "ocorrencia" : tipo === "obs" ? "obs" : "status");
+      await aplicarStatusOc(oc, novo, tipo === "obs" ? texto.trim() : `${label}${texto.trim() ? ` · ${texto.trim()}` : ""}`, user?.nome ?? "usuário", tipo === "ocorrencia" ? "ocorrencia" : tipo === "obs" ? "observacao" : "status");
       setTexto("");
     } catch (e) { setErr(e instanceof Error ? e.message : "Falha ao gravar."); }
     finally { setBusy(false); }
