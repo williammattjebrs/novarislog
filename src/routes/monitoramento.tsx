@@ -38,7 +38,7 @@ function MonitoramentoPage() {
   const [busca, setBusca] = useState(""); const [st, setSt] = useState<OCStatus | "">("");
   const [cteFiltro, setCteFiltro] = useState<"" | "com" | "sem" | "divergente" | "ocorrencia">("");
   const [nfStage, setNfStage] = useState("");
-  const filtroKey = user?.id ? `novaris:monitoramento:filtro:${user.id}` : null;
+  const filtroKey = user?.email ? `novaris:monitoramento:filtro:${user.email.toLowerCase()}` : null;
   const [temPadrao, setTemPadrao] = useState(false);
   const [msgFiltro, setMsgFiltro] = useState("");
   useEffect(() => {
