@@ -93,7 +93,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
   const { user } = useAuth(); const autor = user?.nome ?? "usuário";
   const oc = ocs.list.find((o) => o.id === ocId)!;
   const emitir = useServerFn(emitirOC); const pdfLink = useServerFn(linkPdfOC); const requeue = useServerFn(reenfileirarEnvios); const enviarAgora = useServerFn(enviarAgoraOC);
-  const init = () => ({ motoristaId: oc.motoristaId ?? "", veiculoId: oc.veiculoId ?? "", clienteColetaId: oc.clienteColetaId ?? "", clienteColetaNome: oc.clienteColetaNome ?? oc.clienteNome, localColetaId: oc.localColetaId ?? "", clienteDescargaNome: oc.clienteDescargaNome ?? "", localDescargaId: oc.localDescargaId ?? "", contratanteNome: oc.contratanteNome ?? "", dataHoraColeta: toLocal(oc.dataHoraColeta), dataHoraEntrega: toLocal(oc.dataHoraEntrega), instrucoes: oc.instrucoes ?? oc.observacao ?? "", orderIds: oc.orderIds, coletaPorNf: oc.coletaPorNf ?? {} as Record<string, string> });
+  const init = () => ({ motoristaId: oc.motoristaId ?? "", veiculoId: oc.veiculoId ?? "", clienteColetaId: oc.clienteColetaId ?? "", clienteColetaNome: oc.clienteColetaNome ?? oc.clienteNome, clienteDescargaNome: oc.clienteDescargaNome ?? "", localDescargaId: oc.localDescargaId ?? "", contratanteNome: oc.contratanteNome ?? "", dataHoraColeta: toLocal(oc.dataHoraColeta), dataHoraEntrega: toLocal(oc.dataHoraEntrega), instrucoes: oc.instrucoes ?? oc.observacao ?? "", orderIds: oc.orderIds, coletaPorNf: oc.coletaPorNf ?? {} as Record<string, string> });
   const [f, setF] = useState(init);
   const [msg, setMsg] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
   const [busy, setBusy] = useState(false); const [enviarRev, setEnviarRev] = useState(false);
@@ -125,11 +125,11 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
     setDocs((d.data ?? []) as never); setEnvios((e.data ?? []) as never);
   }
   useEffect(() => { void loadDocs(); }, [ocId, oc.docVersion]);
-  const draft: OrdemColeta = { ...oc, ...f, clienteColetaId: f.clienteColetaId || undefined, motoristaId: f.motoristaId || undefined, veiculoId: f.veiculoId || undefined, localColetaId: f.localColetaId || undefined, localDescargaId: f.localDescargaId || undefined, dataHoraColeta: f.dataHoraColeta ? new Date(f.dataHoraColeta).toISOString() : "", dataHoraEntrega: f.dataHoraEntrega ? new Date(f.dataHoraEntrega).toISOString() : "" };
+  const draft: OrdemColeta = { ...oc, ...f, clienteColetaId: f.clienteColetaId || undefined, motoristaId: f.motoristaId || undefined, veiculoId: f.veiculoId || undefined, localColetaId: undefined, localDescargaId: f.localDescargaId || undefined, dataHoraColeta: f.dataHoraColeta ? new Date(f.dataHoraColeta).toISOString() : "", dataHoraEntrega: f.dataHoraEntrega ? new Date(f.dataHoraEntrega).toISOString() : "" };
   const dirty = JSON.stringify(f) !== JSON.stringify(init());
   const nfs = f.orderIds.map((id) => orders.list.find((n) => n.id === id)).filter(Boolean) as Order[];
   const livres = orders.list.filter((n) => !f.orderIds.includes(n.id) && !ocAtivaDaNf(ocs.list, n.id));
-  const lc = locais.list.find((l) => l.id === f.localColetaId); const ld = locais.list.find((l) => l.id === f.localDescargaId); const m = mot.list.find((x) => x.id === f.motoristaId);
+  const lc = undefined as (typeof locais.list)[number] | undefined; const ld = locais.list.find((l) => l.id === f.localDescargaId); const m = mot.list.find((x) => x.id === f.motoristaId);
   const lcs = [...new Set(f.orderIds.map((id) => localColetaDaNf(draft, id)))].map((id) => locais.list.find((l) => l.id === id)).filter(Boolean) as typeof locais.list;
   const dest = destinatariosOc(lcs);
   const val = validarEmissao(draft, { nfs: orders.list, locais: locais.list, motoristas: mot.list, veiculos: vei.list });
@@ -217,7 +217,6 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
               <option value="">Cliente cadastrado (opcional)…</option>{clients.list.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
             <input aria-label="Cliente da coleta" className={inp} placeholder="Cliente da coleta (dono da carga)" value={f.clienteColetaNome} onChange={(e) => setF({ ...f, clienteColetaNome: e.target.value })} />
-            <LocalSelect label="Local de coleta padrão (NFs sem local)" value={f.localColetaId} clienteId={f.clienteColetaId} onChange={(id) => setF({ ...f, localColetaId: id })} />
             <label className="text-xs block">Data e hora da coleta<input aria-label="Data e hora da coleta" type="datetime-local" className={inp} value={f.dataHoraColeta} onChange={(e) => setF({ ...f, dataHoraColeta: e.target.value })} /></label>
           </fieldset>
           <fieldset className="space-y-2" disabled={!editavel}><legend className="text-xs font-semibold text-primary">Descarga</legend>
@@ -238,7 +237,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
           <div className="space-y-1 text-xs">
             {nfs.map((n) => <div key={n.id} className="flex gap-2 items-center flex-wrap border-t border-border pt-1"><span className="num">NF {n.numeroNFe}</span><span className="text-muted-foreground">{n.remetente} → {n.destinatario}</span><span className="num text-muted-foreground">{(n.peso || 0).toLocaleString("pt-BR")} kg</span>
               <fieldset disabled={!editavel} className="min-w-[220px]"><LocalSelect label={`Local de coleta da NF ${n.numeroNFe}`} value={f.coletaPorNf[n.id] ?? ""} clienteId={n.clienteId} onChange={(id) => setF({ ...f, coletaPorNf: { ...f.coletaPorNf, [n.id]: id } })} /></fieldset>
-              {!f.coletaPorNf[n.id] && f.localColetaId && <span className="text-[11px] text-muted-foreground">usa o padrão</span>}{editavel && oc.status === "rascunho" && <button className="text-danger ml-auto" onClick={() => setF({ ...f, orderIds: f.orderIds.filter((x) => x !== n.id) })}>remover</button>}</div>)}
+              {editavel && oc.status === "rascunho" && <button className="text-danger ml-auto" onClick={() => setF({ ...f, orderIds: f.orderIds.filter((x) => x !== n.id) })}>remover</button>}</div>)}
           </div>
           {editavel && oc.status === "rascunho" && livres.length > 0 && <select aria-label="Adicionar NF" className={inp + " mt-2"} value="" onChange={(e) => e.target.value && setF({ ...f, orderIds: [...f.orderIds, e.target.value] })}>
             <option value="">+ Adicionar NF sem OC…</option>{livres.slice(0, 300).map((n) => <option key={n.id} value={n.id}>NF {n.numeroNFe} · {n.remetente} → {n.destinatario}</option>)}
