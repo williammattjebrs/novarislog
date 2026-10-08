@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Filter, X, Search, Mail } from "lucide-react";
 import { BulkClientUpdate } from "@/components/BulkClientUpdate";
 import { useOrders, useConfig, useOrdensColeta, useMotoristas, useVeiculos } from "@/lib/mock-store";
-import { stageLabel, statusTone, toneClass, OC_STATUS, type OCStatus } from "@/lib/mock-data";
+import { stageLabel, statusTone, toneClass, OC_STATUS, ORDER_STAGES, type OCStatus, type Order } from "@/lib/mock-data";
 import { Timeline } from "@/components/Timeline";
 import { CostPanel } from "@/components/CostPanel";
 import { TrackingPanel } from "@/components/TrackingPanel";
@@ -36,6 +36,8 @@ function MonitoramentoPage() {
   const orders = useOrders(); const ocs = useOrdensColeta(); const mot = useMotoristas(); const vei = useVeiculos();
   const [cfg] = useConfig(); const { user } = useAuth(); const canSeeCosts = financialAccess(user);
   const [busca, setBusca] = useState(""); const [st, setSt] = useState<OCStatus | "">("");
+  const [cteFiltro, setCteFiltro] = useState<"" | "com" | "sem" | "divergente" | "ocorrencia">("");
+  const [nfStage, setNfStage] = useState("");
   const { registro } = Route.useSearch();
   const [selected, setSelected] = useState<string | null>(registro ?? null);
   useEffect(() => { if (registro) setSelected(registro); }, [registro]);
@@ -44,7 +46,18 @@ function MonitoramentoPage() {
   const emitidas = ocs.list.filter((o) => isEmitida(o) || (isV2(o) && o.status === "rascunho"));
   const q = busca.trim().toLowerCase();
   const nfById = useMemo(() => new Map(orders.list.map((o) => [o.id, o])), [orders.list]);
-  const filtered = emitidas.filter((oc) => (!st || oc.status === st) && (!q || [oc.numero, oc.clienteColetaNome, oc.clienteDescargaNome, oc.localColeta, oc.localEntrega, mot.list.find((m) => m.id === oc.motoristaId)?.nome, vei.list.find((v) => v.id === oc.veiculoId)?.placa, ...oc.orderIds.map((id) => nfById.get(id)?.numeroNFe)].join(" ").toLowerCase().includes(q)));
+  const temCte = (n: Order | undefined) => !!n && (!!n.cteValor || !!n.cteNumero || !!n.cteChave || !!(n.cteChaves?.length));
+  const filtered = emitidas.filter((oc) => {
+    if (st && oc.status !== st) return false;
+    const nfs = oc.orderIds.map((id) => nfById.get(id)).filter(Boolean) as Order[];
+    if (cteFiltro === "com" && !nfs.some(temCte)) return false;
+    if (cteFiltro === "sem" && nfs.some(temCte)) return false;
+    if (cteFiltro === "divergente" && !nfs.some((n) => n.stage === "cte_divergente")) return false;
+    if (cteFiltro === "ocorrencia" && !(oc.status === "ocorrencia" || nfs.some((n) => n.stage === "ocorrencia"))) return false;
+    if (nfStage && !nfs.some((n) => n.stage === nfStage)) return false;
+    if (!q) return true;
+    return [oc.numero, oc.clienteColetaNome, oc.clienteDescargaNome, oc.localColeta, oc.localEntrega, mot.list.find((m) => m.id === oc.motoristaId)?.nome, vei.list.find((v) => v.id === oc.veiculoId)?.placa, ...oc.orderIds.map((id) => nfById.get(id)?.numeroNFe)].join(" ").toLowerCase().includes(q);
+  });
   const legados = ocs.list.filter((o) => !isV2(o) && o.status !== "cancelada").length;
   const sel = selected ? emitidas.find((o) => o.id === selected || o.orderIds.includes(selected)) : undefined;
   const nfsMonitoradas = orders.list.filter((n) => emitidas.some((oc) => oc.orderIds.includes(n.id)));
@@ -62,6 +75,17 @@ function MonitoramentoPage() {
           <Filter className="h-3.5 w-3.5 text-muted-foreground" />
           <select aria-label="Status" value={st} onChange={(e) => setSt(e.target.value as OCStatus | "")} className="input max-w-[200px]">
             <option value="">Todos os status</option>{OC_EXECUCAO.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+          </select>
+          <select aria-label="CT-e e ocorrências" value={cteFiltro} onChange={(e) => setCteFiltro(e.target.value as typeof cteFiltro)} className="input max-w-[220px]">
+            <option value="">Todas as notas</option>
+            <option value="sem">Somente sem CT-e</option>
+            <option value="com">Somente com CT-e</option>
+            <option value="divergente">Somente divergências de CT-e</option>
+            <option value="ocorrencia">Somente ocorrências</option>
+          </select>
+          <select aria-label="Situação das notas" value={nfStage} onChange={(e) => setNfStage(e.target.value)} className="input max-w-[220px]">
+            <option value="">Todas as situações</option>
+            {ORDER_STAGES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
           <div className="relative flex-1 min-w-[220px]">
             <Search className="h-3.5 w-3.5 absolute left-2 top-2.5 text-muted-foreground" />
