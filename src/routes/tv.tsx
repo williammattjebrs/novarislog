@@ -1,7 +1,8 @@
 // Painel de indicadores para TV — tela cheia, sem menu, atualização automática.
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useOrders, useConfig, useInvoices, useExpenses } from "@/lib/mock-store";
+import { useOrders, useConfig, useInvoices, useExpenses, useOrdensColeta } from "@/lib/mock-store";
+import { isEmitida } from "@/lib/oc-model";
 import { useAuth } from "@/lib/auth";
 import { RoleGate } from "@/components/RoleGate";
 import { financeSummary } from "@/lib/finance-summary";
@@ -38,6 +39,7 @@ const fmtK = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 0
 
 function TvPage() {
   const orders = useOrders();
+  const ocs = useOrdensColeta();
   const invoices=useInvoices(), expenses=useExpenses();
   const { user } = useAuth();
   const canSeeFinance = financialAccess(user);
@@ -150,7 +152,8 @@ function TvPage() {
       </section>
 
       <section className="grid grid-cols-3 xl:grid-cols-6 gap-4">
-        <Mid l="Em trânsito" v={k.transito.length} tone="text-primary" />
+        <Mid l="OCs em execução" v={ocs.list.filter((o) => isEmitida(o) && o.status !== "entregue").length} tone="text-primary" />
+        <Mid l="NFs em trânsito" v={k.transito.length} tone="text-primary" />
         <Mid l="Atrasadas" v={k.atrasadas.length} tone={k.atrasadas.length ? "text-danger" : "text-success"} />
         <Mid l="Ocorrências" v={k.ocorr.length} tone={k.ocorr.length ? "text-danger" : "text-success"} />
         <Mid l="Aguardando CT-e" v={k.aguardCte.length} tone="text-warning" />

@@ -101,6 +101,6 @@ export async function renderOcPdf(s: OcSnapshot & { versao?: number }) {
 }
 
 export async function sha256Hex(bytes: Uint8Array) {
-  const h = await crypto.subtle.digest("SHA-256", bytes);
+  const h = await crypto.subtle.digest("SHA-256", new Uint8Array(bytes));
   return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }

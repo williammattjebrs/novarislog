@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { BrazilMap } from "@/components/BrazilMap";
-import { useOrders, useInvoices, useExpenses } from "@/lib/mock-store";
+import { useOrders, useInvoices, useExpenses, useOrdensColeta } from "@/lib/mock-store";
+import { isEmitida, ocAtivaDaNf } from "@/lib/oc-model";
 import { useAuth, ROLE_LABEL } from "@/lib/auth";
 import { fmtBRL, stageLabel, statusTone, toneClass } from "@/lib/mock-data";
 import {
@@ -37,6 +38,7 @@ function Dashboard() {
   const canSeeFinance = financialAccess(user);
   const month = new Date().toISOString().slice(0,7);
   const orders = useOrders();
+  const ocs = useOrdensColeta();
   const invoices = useInvoices();
   const expenses = useExpenses();
   const [cfg]=useConfig();
@@ -48,8 +50,14 @@ function Dashboard() {
   const receitaMes = invoices.list.filter(i => monthKey(i.competencia ?? i.emissao) === month).reduce((s, i) => s + i.valor, 0);
   const despesaMes = summary.custo;
 
+  const ocMonit = ocs.list.filter((o) => isEmitida(o) && o.status !== "entregue");
+  const ocRasc = ocs.list.filter((o) => o.modelo === "v2" && o.status === "rascunho");
+  const nfSemOc = orders.list.filter((o) => o.stage !== "entregue" && !ocAtivaDaNf(ocs.list, o.id));
   const kpis = [
-    { l: "Entregas ativas", v: String(ativos.length), icon: PackageCheck, tone: "text-primary" },
+    { l: "OCs em execução", v: String(ocMonit.length), icon: PackageCheck, tone: "text-primary" },
+    { l: "OCs em rascunho", v: String(ocRasc.length), icon: Timer, tone: "text-warning" },
+    { l: "NFs sem OC", v: String(nfSemOc.length), icon: AlertTriangle, tone: "text-warning" },
+    { l: "NFs ativas", v: String(ativos.length), icon: PackageCheck, tone: "text-primary" },
     { l: "Entregas concluídas", v: String(entregues.length), icon: Timer, tone: "text-success" },
     { l: "Ocorrências/divergências", v: String(ocorrencias.length), icon: AlertTriangle, tone: "text-danger" },
     ...(canSeeFinance ? [{ l: "Receita faturada (mês)", v: fmtBRL(receitaMes), icon: DollarSign, tone: "text-success" }] : []),
@@ -65,7 +73,7 @@ function Dashboard() {
               <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Torre de controle · tempo real</div>
               <h1 className="mt-1 text-2xl md:text-3xl font-semibold">
                 Olá, {user?.nome ?? "operador"}.{" "}
-                <span className="text-muted-foreground">{ativos.length} ordens ativas agora.</span>
+                <span className="text-muted-foreground">{ocMonit.length} OCs em execução · {ativos.length} NFs ativas.</span>
               </h1>
               <div className="text-xs text-muted-foreground mt-1">Perfil: {user ? ROLE_LABEL[user.role] : "—"}</div>
             </div>
@@ -75,7 +83,7 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7 gap-4">
             {kpis.map((k) => {
               const Icon = k.icon;
               return (
@@ -107,7 +115,7 @@ function Dashboard() {
               <BrazilMap orders={orders.list} />
               {orders.list.length === 0 && (
                 <div className="p-4 text-xs text-muted-foreground border-t border-border">
-                  Nenhuma ordem cadastrada. Vá em <Link to="/coletas" className="text-primary hover:underline">Coletas & Ordens</Link> para importar XMLs e criar as primeiras ordens.
+                  Nenhuma ordem cadastrada. Vá em <Link to="/rotas" className="text-primary hover:underline">Rotas</Link> para importar XMLs e montar as primeiras ordens de coleta.
                 </div>
               )}
             </div>
@@ -144,7 +152,7 @@ function Dashboard() {
                 <div className="text-xs uppercase tracking-widest text-muted-foreground">Últimas ordens</div>
                 <div className="font-display text-lg">Fluxo geral</div>
               </div>
-              <Link to="/coletas" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+              <Link to="/rotas" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
                 ver todas <ArrowRight className="h-3 w-3" />
               </Link>
             </div>

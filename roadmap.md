@@ -33,9 +33,12 @@
 - [x] Cadastros de Motoristas e Veículos
 - [x] Ordem de Coleta com local/horário de coleta e entrega, base do monitoramento
 - [x] Espelho de coleta exportável (PDF/impressão) e envio ao motorista
-- [x] Fluxo automático NF-e → rota → OC; coletada aguarda CT-e; vínculo manual de CT-e
+- [x] Separação Rotas (fila NF) / Ordens de coleta (rascunho→emissão PDF) / Monitoramento (só OCs emitidas); locais operacionais; fila de e-mail durável
 
 ## Pendente
+- [ ] Ativar envio real das OCs: depende de ligar o agendador do servidor (desligado na validação)
+- [ ] Confirmar conversão das OCs legadas pela prévia (ação do administrador)
+- [ ] Teste de emissão simultânea em dois dispositivos reais (garantido por bloqueio/versão no banco, validado em transação)
 - [ ] Rateio manual sem base/peso e regularização fiscal de CT-e histórico — não implementados nesta revisão; exigem fluxo autorizado e confirmação operacional
 - [ ] Teste de importação simultânea em dois dispositivos e confirmação de restauração pela tela em ambiente isolado — validações transacionais já passaram, testes completos não executados
 - [x] Multi-NF e multi-CT-e: rota/OC já agrupam várias NFs; CT-e vincula por todas as chaves de NF referenciadas; mesmo veículo/motorista reutilizável em várias OCs

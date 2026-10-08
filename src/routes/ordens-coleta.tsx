@@ -33,7 +33,7 @@ export const Route = createFileRoute("/ordens-coleta")({
 
 const inp = "w-full bg-input/40 border border-border rounded px-2 py-1.5 text-sm";
 const toLocal = (iso?: string) => (iso ? new Date(new Date(iso).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "");
-const label = (oc: OrdemColeta) => (isV2(oc) ? OC_STATUS.find((s) => s.id === oc.status)?.label ?? oc.status : `Legado · ${OC_STATUS.find((s) => s.id === oc.status)?.label ?? oc.status}`);
+const label = (oc: OrdemColeta) => { const l = OC_STATUS.find((s) => s.id === oc.status)?.label ?? oc.status; return isV2(oc) || l.startsWith("Legado") ? l : `Legado · ${l}`; };
 
 function Page() {
   const ocs = useOrdensColeta(); const { registro } = Route.useSearch();

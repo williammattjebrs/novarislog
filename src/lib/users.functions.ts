@@ -144,7 +144,7 @@ export const deleteUser = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-const MODULES = MODULE_PATHS;
+const MODULES = [...MODULE_PATHS, "/coletas"] as const; // "/coletas" = concessão legada, equivale a Rotas
 
 export const setUserModules = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
