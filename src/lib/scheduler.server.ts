@@ -16,7 +16,8 @@ export async function runScheduler(dryRun: boolean) {
   const list=<T,>(key:string)=>(records??[]).filter(r=>r.collection===key).map(r=>r.data as T);
   const {data:inbox}=await db.from('email_inbox_config').select('ativo,intervalo_min').eq('id',1).maybeSingle();
   const groups=list<{id:string;automatic:boolean;emails:string[];intervalMin:number}>('trackingGroups').filter(g=>g.automatic&&g.emails.length);
-  if(dryRun)return {dryRun:true,inboxEnabled:!!inbox?.ativo,trackingGroups:groups.length};
+  const {count:ocPending}=await db.from('tms_oc_email_outbox').select('id',{count:'exact',head:true}).in('status',['pendente','falha']);
+  if(dryRun)return {dryRun:true,inboxEnabled:!!inbox?.ativo,trackingGroups:groups.length,ocEmailsPendentes:ocPending??0};
   const actor=process.env['SCHEDULER_ACTOR_ID'];
   if(!actor)throw new Error('Responsável da automação não configurado.');
   const [{data:profile},{data:roles}]=await Promise.all([db.from('profiles').select('ativo').eq('id',actor).maybeSingle(),db.from('user_roles').select('role').eq('user_id',actor)]);
@@ -49,7 +50,7 @@ export async function runScheduler(dryRun: boolean) {
           const rate=rates.find(r=>!!r.clienteId)??rates.find(r=>!r.clienteId);
           const calc=table?calcFreight(table,{peso:p.pesoBruto,valorNF:p.valorTotal}):null;
           const value=quote?.valorCalculado??(calc?calc.error?0:calc.total:rate?.valorFrete??0);
-          const payload={...args,clienteNome:client?.nome??`(sem cliente) ${p.emitente.nome}`,chaveNFe:p.chave,xmlOriginal:row.xml,numeroNFe:p.numero,remetente:p.emitente.nome,remetenteCnpj:p.emitente.cnpj,destinatario:p.destinatario.nome,destinatarioCnpj:p.destinatario.cnpj,peso:p.pesoBruto,volumes:p.volumes,valorNF:p.valorTotal,valorFrete:value,origemValor:value>0?quote?'cotacao':table?'tabela':rate?.clienteId?'rota_cliente':'rota_padrao':'',refValor:quote?.id??table?.id??rate?.id,stage:value>0?'valorizada':'aguarda_vinculacao',transportType:'',costs:{execMode:''},timeline:[{quando:new Date().toISOString(),autor:'automacao',tipo:'sistema',texto:'NF-e captada por rotina autorizada'}]};
+          const payload={...args,clienteNome:client?.nome??`(sem cliente) ${p.emitente.nome}`,chaveNFe:p.chave,xmlOriginal:row.xml,numeroNFe:p.numero,remetente:p.emitente.nome,remetenteCnpj:p.emitente.cnpj,destinatario:p.destinatario.nome,destinatarioCnpj:p.destinatario.cnpj,peso:p.pesoBruto,volumes:p.volumes,valorNF:p.valorTotal,valorFrete:value,origemValor:value>0?quote?'cotacao':table?'tabela':rate?.clienteId?'rota_cliente':'rota_padrao':'',refValor:quote?.id??table?.id??rate?.id,stage:value>0?'valorizada':'aguarda_vinculacao',transportType:'',costs:{execMode:''},timeline:[{quando:new Date().toISOString(),autor:'automacao',tipo:'sistema',texto:'NF-e captada por rotina autorizada · aguarda programação em Rotas'}]};
           const {error}=await db.rpc('tms_import_nfe_worker',{payload:payload as any});if(error)throw error;
           imported++;
         } else {
@@ -73,5 +74,9 @@ export async function runScheduler(dryRun: boolean) {
       accepted++;await finish(id,'accepted',{provider:'Microsoft',delivered:false});
     }catch(e){await finish(id,'uncertain',{},e instanceof Error?e.message:'Resultado de envio desconhecido; revisão manual necessária');}
   }
-  return {dryRun:false,imported,accepted};
+  let ocEmails={reservados:0,aceitos:0,falhas:0,incertos:0};
+  const ocJob=await claim('oc-email',5);
+  if(ocJob)try{const {processOcOutbox,graphSender}=await import('./oc.server');ocEmails=await processOcOutbox(db,null,graphSender);await finish(ocJob,'success',{...ocEmails,delivered:false});}
+  catch(e){await finish(ocJob,'failed',ocEmails,e instanceof Error?e.message:'Falha no envio de OCs');}
+  return {dryRun:false,imported,accepted,ocEmails};
 }

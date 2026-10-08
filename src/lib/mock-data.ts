@@ -159,6 +159,7 @@ export interface OrderCosts {
 
 export interface Order {
   id: string;
+  ocId?: string;                        // OC v2 emitida (definido no servidor)
   clienteId: string;
   clienteNome: string;
 
@@ -212,7 +213,7 @@ export interface Order {
 }
 
 // ---------- Rotas, Ordens de Coleta, Motoristas, Veículos ----------
-export interface Motorista { id: string; nome: string; cpf: string; telefone: string; cnh?: string; observacao?: string; ativo: boolean; criadoEm: string; }
+export interface Motorista { id: string; nome: string; cpf: string; telefone: string; email?: string; cnh?: string; observacao?: string; ativo: boolean; criadoEm: string; }
 export interface Veiculo { id: string; placa: string; tipo: string; modelo?: string; proprietario: "frota" | "terceiro"; capacidadeKg?: number; ativo: boolean; criadoEm: string; }
 export type RotaStatus = "aberta" | "programada" | "encerrada";
 /** Rota = agrupamento de NF-e com mesmo remetente e destinatário. */
@@ -223,15 +224,17 @@ export interface Rota {
   orderIds: string[]; motoristaId?: string; veiculoId?: string;
   status: RotaStatus; criadoEm: string; atualizadoEm: string;
 }
-export type OCStatus = "aguardando_programacao" | "emitida" | "enviada_motorista" | "em_coleta" | "coletada" | "em_viagem" | "entregue" | "cancelada";
+export type OCStatus = "rascunho" | "aguardando_programacao" | "emitida" | "enviada_motorista" | "em_coleta" | "coletada" | "em_viagem" | "entregue" | "ocorrencia" | "cancelada";
 export const OC_STATUS: { id: OCStatus; label: string; stage?: OrderStage }[] = [
-  { id: "aguardando_programacao", label: "Aguardando motorista/veículo" },
+  { id: "rascunho", label: "Rascunho" },
+  { id: "aguardando_programacao", label: "Legado · aguardando programação" },
   { id: "emitida", label: "Programada", stage: "coleta_agendada" },
   { id: "enviada_motorista", label: "Enviada ao motorista", stage: "coleta_agendada" },
   { id: "em_coleta", label: "Em coleta", stage: "em_coleta" },
   { id: "coletada", label: "Coletada · aguardando CT-e", stage: "aguardando_cte" },
   { id: "em_viagem", label: "Em viagem", stage: "em_viagem" },
   { id: "entregue", label: "Entregue", stage: "entregue" },
+  { id: "ocorrencia", label: "Ocorrência", stage: "ocorrencia" },
   { id: "cancelada", label: "Cancelada" },
 ];
 /** Ordem de Coleta = documento operacional gerado a partir da rota, enviado ao motorista. */
@@ -241,6 +244,21 @@ export interface OrdemColeta {
   localColeta: string; cidadeColeta: string; ufColeta: string; dataHoraColeta: string;
   localEntrega: string; cidadeEntrega: string; ufEntrega: string; dataHoraEntrega: string;
   observacao?: string; status: OCStatus; criadoPor: string; criadoEm: string; atualizadoEm: string;
+  // Modelo v2 (OC independente da rota). Ausente = registro legado aguardando conversão.
+  modelo?: "v2";
+  clienteColetaId?: string; clienteColetaNome?: string; localColetaId?: string;
+  clienteDescargaId?: string; clienteDescargaNome?: string; localDescargaId?: string;
+  contratanteId?: string; contratanteNome?: string;
+  instrucoes?: string; historico?: TimelineEntry[];
+  docVersion?: number; emitidaEm?: string;
+  documentoEstado?: "sem_documento" | "emitido" | "legado_sem_snapshot";
+  conteudoPendenteRevisao?: boolean;
+  legado?: { statusOriginal: string; rotaId?: string; convertidoEm: string; convertidoPor: string };
+}
+/** Local operacional (armazém/estabelecimento físico). Pode atender vários donos de carga. */
+export interface LocalOperacional {
+  id: string; nome: string; endereco: string; numero?: string; complemento?: string; bairro?: string; cep?: string;
+  cidade: string; uf: string; contatos?: string; emails: string[]; clienteIds: string[]; ativo: boolean; criadoEm: string; atualizadoEm?: string;
 }
 
 // ---------- Armazém ----------

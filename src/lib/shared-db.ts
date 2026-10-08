@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 type Row = { collection: string; id: string; data: any; version: number; atualizado_em?: string };
 type Change = { collection: string; id: string; data?: any; version: number; remove?: boolean };
-export const SHARED_KEYS = new Set(['clients','freightTables','routeRates','quotations','crmDeals','orders','invoices','expenses','clientGroups','expenseGroups','config','trackingGroups','rotas','ordensColeta','motoristas','veiculos','cteDocuments']);
+export const SHARED_KEYS = new Set(['clients','freightTables','routeRates','quotations','crmDeals','orders','invoices','expenses','clientGroups','expenseGroups','config','trackingGroups','rotas','ordensColeta','motoristas','veiculos','cteDocuments','locais']);
 const listeners: Record<string, Set<() => void>> = {};
 export function notify(key: string) { listeners[key]?.forEach(cb => cb()); }
 export function subscribe(key: string, cb: () => void) { (listeners[key] ??= new Set()).add(cb); return () => { listeners[key]?.delete(cb); }; }
@@ -19,6 +19,7 @@ export function syncSnapshot() { return state; }
 export function syncServerSnapshot() { return serverState; }
 const serverState: SyncState = { status: 'carregando', message: 'Carregando dados autorizados', pending: 0 };
 function status(next: Partial<SyncState>) { state = { ...state, ...next, pending: pending.length }; notify('__sync'); }
+export function getVersion(key: string, id: string) { return versions[key + ':' + id] ?? 0; }
 export function getList<T>(key: string): T[] | undefined { return cache[key]; }
 export function getDoc<T>(key: string): T | undefined { return getList<any>(key)?.[0]?.value; }
 export function setDoc(key: string, value: any) { return setList(key, [{ id: '__doc', value }]); }

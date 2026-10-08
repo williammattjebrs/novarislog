@@ -14,10 +14,12 @@ import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as ColetasRouteImport } from './routes/coletas'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as LocaisOperacionaisRouteImport } from './routes/locais-operacionais'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ManualRouteImport } from './routes/manual'
 import { Route as MonitoramentoRouteImport } from './routes/monitoramento'
 import { Route as MotoristasRouteImport } from './routes/motoristas'
+import { Route as OrdensColetaRouteImport } from './routes/ordens-coleta'
 import { Route as RotasRouteImport } from './routes/rotas'
 import { Route as TvRouteImport } from './routes/tv'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
@@ -51,6 +53,11 @@ const FinanceiroRoute = FinanceiroRouteImport.update({
   path: '/financeiro',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LocaisOperacionaisRoute = LocaisOperacionaisRouteImport.update({
+  id: '/locais-operacionais',
+  path: '/locais-operacionais',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -69,6 +76,11 @@ const MonitoramentoRoute = MonitoramentoRouteImport.update({
 const MotoristasRoute = MotoristasRouteImport.update({
   id: '/motoristas',
   path: '/motoristas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrdensColetaRoute = OrdensColetaRouteImport.update({
+  id: '/ordens-coleta',
+  path: '/ordens-coleta',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RotasRoute = RotasRouteImport.update({
@@ -113,10 +125,12 @@ export interface FileRoutesByFullPath {
   '/coletas': typeof ColetasRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
+  '/locais-operacionais': typeof LocaisOperacionaisRoute
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
   '/monitoramento': typeof MonitoramentoRoute
   '/motoristas': typeof MotoristasRoute
+  '/ordens-coleta': typeof OrdensColetaRoute
   '/rotas': typeof RotasRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
@@ -131,10 +145,12 @@ export interface FileRoutesByTo {
   '/coletas': typeof ColetasRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
+  '/locais-operacionais': typeof LocaisOperacionaisRoute
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
   '/monitoramento': typeof MonitoramentoRoute
   '/motoristas': typeof MotoristasRoute
+  '/ordens-coleta': typeof OrdensColetaRoute
   '/rotas': typeof RotasRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
@@ -150,10 +166,12 @@ export interface FileRoutesById {
   '/coletas': typeof ColetasRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
+  '/locais-operacionais': typeof LocaisOperacionaisRoute
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
   '/monitoramento': typeof MonitoramentoRoute
   '/motoristas': typeof MotoristasRoute
+  '/ordens-coleta': typeof OrdensColetaRoute
   '/rotas': typeof RotasRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
@@ -170,10 +188,12 @@ export interface FileRouteTypes {
     | '/coletas'
     | '/configuracoes'
     | '/financeiro'
+    | '/locais-operacionais'
     | '/login'
     | '/manual'
     | '/monitoramento'
     | '/motoristas'
+    | '/ordens-coleta'
     | '/rotas'
     | '/tv'
     | '/usuarios'
@@ -188,10 +208,12 @@ export interface FileRouteTypes {
     | '/coletas'
     | '/configuracoes'
     | '/financeiro'
+    | '/locais-operacionais'
     | '/login'
     | '/manual'
     | '/monitoramento'
     | '/motoristas'
+    | '/ordens-coleta'
     | '/rotas'
     | '/tv'
     | '/usuarios'
@@ -206,10 +228,12 @@ export interface FileRouteTypes {
     | '/coletas'
     | '/configuracoes'
     | '/financeiro'
+    | '/locais-operacionais'
     | '/login'
     | '/manual'
     | '/monitoramento'
     | '/motoristas'
+    | '/ordens-coleta'
     | '/rotas'
     | '/tv'
     | '/usuarios'
@@ -225,10 +249,12 @@ export interface RootRouteChildren {
   ColetasRoute: typeof ColetasRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   FinanceiroRoute: typeof FinanceiroRoute
+  LocaisOperacionaisRoute: typeof LocaisOperacionaisRoute
   LoginRoute: typeof LoginRoute
   ManualRoute: typeof ManualRoute
   MonitoramentoRoute: typeof MonitoramentoRoute
   MotoristasRoute: typeof MotoristasRoute
+  OrdensColetaRoute: typeof OrdensColetaRoute
   RotasRoute: typeof RotasRoute
   TvRoute: typeof TvRoute
   UsuariosRoute: typeof UsuariosRoute
@@ -274,6 +300,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FinanceiroRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/locais-operacionais': {
+      id: '/locais-operacionais'
+      path: '/locais-operacionais'
+      fullPath: '/locais-operacionais'
+      preLoaderRoute: typeof LocaisOperacionaisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -300,6 +333,13 @@ declare module '@tanstack/react-router' {
       path: '/motoristas'
       fullPath: '/motoristas'
       preLoaderRoute: typeof MotoristasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ordens-coleta': {
+      id: '/ordens-coleta'
+      path: '/ordens-coleta'
+      fullPath: '/ordens-coleta'
+      preLoaderRoute: typeof OrdensColetaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rotas': {
@@ -372,10 +412,12 @@ const rootRouteChildren: RootRouteChildren = {
   ColetasRoute: ColetasRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   FinanceiroRoute: FinanceiroRoute,
+  LocaisOperacionaisRoute: LocaisOperacionaisRoute,
   LoginRoute: LoginRoute,
   ManualRoute: ManualRoute,
   MonitoramentoRoute: MonitoramentoRoute,
   MotoristasRoute: MotoristasRoute,
+  OrdensColetaRoute: OrdensColetaRoute,
   RotasRoute: RotasRoute,
   TvRoute: TvRoute,
   UsuariosRoute: UsuariosRoute,

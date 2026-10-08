@@ -1,0 +1,74 @@
+// Criação de OC rascunho a partir de NFs selecionadas em Rotas. Um local de coleta e um de descarga.
+import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useClients, useLocais, newId } from "@/lib/mock-store";
+import { commitLists, getList } from "@/lib/shared-db";
+import { novaOcRascunho, ocAtivaDaNf } from "@/lib/oc-model";
+import { useAuth } from "@/lib/auth";
+import type { OrdemColeta, Order } from "@/lib/mock-data";
+
+const inp = "w-full bg-input/40 border border-border rounded px-2 py-1.5 text-sm";
+export const numeroOc = () => { const d = new Date(); return `OC-${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`; };
+
+export function LocalSelect({ value, onChange, clienteId, label }: { value: string; onChange: (id: string) => void; clienteId?: string; label: string }) {
+  const locais = useLocais();
+  const ativos = locais.list.filter((l) => l.ativo || l.id === value);
+  const sorted = [...ativos].sort((a, b) => Number(b.clienteIds.includes(clienteId ?? "")) - Number(a.clienteIds.includes(clienteId ?? "")) || a.nome.localeCompare(b.nome));
+  return (
+    <select aria-label={label} className={inp} value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{label}…</option>
+      {sorted.map((l) => <option key={l.id} value={l.id}>{l.nome} · {l.cidade}/{l.uf}{l.emails.length ? "" : " · sem e-mail"}</option>)}
+    </select>
+  );
+}
+
+export function CriarOcPanel({ nfs, onClose }: { nfs: Order[]; onClose: (ok?: boolean) => void }) {
+  const clients = useClients(); const locais = useLocais(); const { user } = useAuth(); const navigate = useNavigate();
+  const n0 = nfs[0];
+  const [f, setF] = useState({ clienteColetaId: n0?.clienteId ?? "", clienteColetaNome: n0?.clienteNome.replace(/^\(sem cliente\)\s*/, "") ?? "", localColetaId: "", clienteDescargaNome: n0?.destinatario ?? "", localDescargaId: "", contratanteNome: n0?.clienteNome.replace(/^\(sem cliente\)\s*/, "") ?? "" });
+  const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const pares = new Set(nfs.map((n) => `${n.remetente} → ${n.destinatario}`));
+  async function criar() {
+    if (!nfs.length) return setErr("Selecione NFs.");
+    const ocupadas = nfs.filter((n) => ocAtivaDaNf(getList<OrdemColeta>("ordensColeta") ?? [], n.id));
+    if (ocupadas.length) return setErr(`NF já em OC ativa: ${ocupadas.map((n) => n.numeroNFe).join(", ")}`);
+    if (!f.clienteColetaNome.trim() || !f.clienteDescargaNome.trim()) return setErr("Informe cliente da coleta e cliente da descarga.");
+    const id = newId("OC");
+    const oc = novaOcRascunho(nfs, { id, numero: numeroOc(), autor: user?.nome ?? "usuário", ...f, clienteColetaId: f.clienteColetaId || undefined, localColetaId: f.localColetaId || undefined, localDescargaId: f.localDescargaId || undefined, locais: locais.list });
+    setBusy(true);
+    try {
+      await commitLists({ ordensColeta: [oc, ...(getList<OrdemColeta>("ordensColeta") ?? [])] }, `Rascunho ${oc.numero} criado em Rotas`);
+      onClose(true);
+      void navigate({ to: "/ordens-coleta", search: { registro: id } });
+    } catch (e) { setErr(e instanceof Error ? e.message : "Falha ao criar OC."); }
+    finally { setBusy(false); }
+  }
+  return (
+    <div className="fixed inset-0 z-50 bg-background/80 grid place-items-center p-4" role="dialog" aria-label="Criar ordem de coleta">
+      <div className="panel p-5 w-full max-w-2xl max-h-[90vh] overflow-auto space-y-3">
+        <div className="flex items-center"><h2 className="font-display text-lg">Nova OC (rascunho) · {nfs.length} NF</h2><button className="ml-auto" aria-label="Fechar" onClick={() => onClose()}><X className="h-4 w-4" /></button></div>
+        <div className="text-xs text-muted-foreground">NFs: {nfs.map((n) => n.numeroNFe).join(", ")} · {nfs.reduce((s, n) => s + (n.peso || 0), 0).toLocaleString("pt-BR")} kg</div>
+        {pares.size > 1 && <div className="text-xs text-warning">Atenção: NFs com remetentes/destinatários diferentes. A OC terá um único local de coleta e um único local de descarga.</div>}
+        <div className="grid md:grid-cols-2 gap-3">
+          <fieldset className="space-y-2"><legend className="text-xs font-semibold text-primary">Coleta</legend>
+            <select aria-label="Cliente da coleta" className={inp} value={f.clienteColetaId} onChange={(e) => { const c = clients.list.find((x) => x.id === e.target.value); setF({ ...f, clienteColetaId: e.target.value, clienteColetaNome: c?.nome ?? f.clienteColetaNome }); }}>
+              <option value="">Cliente cadastrado (opcional)…</option>{clients.list.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+            <input aria-label="Nome do cliente da coleta" className={inp} placeholder="Cliente da coleta (dono da carga)" value={f.clienteColetaNome} onChange={(e) => setF({ ...f, clienteColetaNome: e.target.value })} />
+            <LocalSelect label="Local da coleta" value={f.localColetaId} clienteId={f.clienteColetaId} onChange={(id) => setF({ ...f, localColetaId: id })} />
+          </fieldset>
+          <fieldset className="space-y-2"><legend className="text-xs font-semibold text-primary">Descarga</legend>
+            <input aria-label="Cliente da descarga" className={inp} placeholder="Cliente da descarga" value={f.clienteDescargaNome} onChange={(e) => setF({ ...f, clienteDescargaNome: e.target.value })} />
+            <LocalSelect label="Local da descarga" value={f.localDescargaId} onChange={(id) => setF({ ...f, localDescargaId: id })} />
+          </fieldset>
+        </div>
+        <input aria-label="Contratante do frete" className={inp} placeholder="Contratante do frete" value={f.contratanteNome} onChange={(e) => setF({ ...f, contratanteNome: e.target.value })} />
+        <p className="text-xs text-muted-foreground">O rascunho não aparece no Monitoramento e não envia e-mail. Motorista, veículo e horários são definidos em Ordens de coleta antes da emissão.</p>
+        {err && <div className="text-xs text-danger" role="alert">{err}</div>}
+        <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => onClose()}>Cancelar</Button><Button disabled={busy} onClick={criar}>{busy ? "Gravando…" : "Criar rascunho"}</Button></div>
+      </div>
+    </div>
+  );
+}

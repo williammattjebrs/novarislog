@@ -38,36 +38,39 @@ function Page() {
 
 function Motoristas() {
   const m = useMotoristas();
-  const [f, setF] = useState({ nome: "", cpf: "", telefone: "", cnh: "" });
+  const [f, setF] = useState({ nome: "", cpf: "", telefone: "", cnh: "", email: "" });
   const [err, setErr] = useState("");
-  function salvar() {
+  async function salvar() {
     const cpf = f.cpf.replace(/\D/g, "");
     if (!f.nome.trim() || cpf.length !== 11 || f.telefone.replace(/\D/g, "").length < 10) return setErr("Informe nome, CPF (11 dígitos) e telefone com DDD.");
+    if (f.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) return setErr("E-mail inválido.");
     if (m.list.some((x) => x.cpf.replace(/\D/g, "") === cpf)) return setErr("CPF já cadastrado.");
-    m.add({ id: newId("MOT"), nome: f.nome.trim(), cpf: fmtCpf(cpf), telefone: f.telefone.trim(), cnh: f.cnh.trim(), ativo: true, criadoEm: new Date().toISOString() });
-    setF({ nome: "", cpf: "", telefone: "", cnh: "" }); setErr("");
+    try { await m.add({ id: newId("MOT"), nome: f.nome.trim(), cpf: fmtCpf(cpf), telefone: f.telefone.trim(), email: f.email.trim() || undefined, cnh: f.cnh.trim(), ativo: true, criadoEm: new Date().toISOString() }); }
+    catch (e) { return setErr(e instanceof Error ? e.message : "Falha ao salvar."); }
+    setF({ nome: "", cpf: "", telefone: "", cnh: "", email: "" }); setErr("");
   }
   return (
     <div className="panel p-4 space-y-3">
-      <div className="grid md:grid-cols-5 gap-2">
+      <div className="grid md:grid-cols-6 gap-2">
         <input className={inp} placeholder="Nome completo" value={f.nome} onChange={(e) => setF({ ...f, nome: e.target.value })} />
         <input className={inp} placeholder="CPF" value={f.cpf} onChange={(e) => setF({ ...f, cpf: fmtCpf(e.target.value) })} />
         <input className={inp} placeholder="Telefone (DDD)" value={f.telefone} onChange={(e) => setF({ ...f, telefone: e.target.value })} />
+        <input className={inp} type="email" placeholder="E-mail (opcional)" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
         <input className={inp} placeholder="CNH (opcional)" value={f.cnh} onChange={(e) => setF({ ...f, cnh: e.target.value })} />
         <Button onClick={salvar}>Adicionar</Button>
       </div>
       {err && <div className="text-xs text-danger">{err}</div>}
       <table className="w-full text-sm">
-        <thead className="text-xs text-muted-foreground text-left"><tr><th className="py-1">Nome</th><th>CPF</th><th>Telefone</th><th>CNH</th><th>Ativo</th><th /></tr></thead>
+        <thead className="text-xs text-muted-foreground text-left"><tr><th className="py-1">Nome</th><th>CPF</th><th>Telefone</th><th>E-mail</th><th>CNH</th><th>Ativo</th><th /></tr></thead>
         <tbody>
           {m.list.map((x) => (
             <tr key={x.id} className="border-t border-border">
-              <td className="py-1.5">{x.nome}</td><td className="num">{x.cpf}</td><td className="num">{x.telefone}</td><td>{x.cnh || "—"}</td>
+              <td className="py-1.5">{x.nome}</td><td className="num">{x.cpf}</td><td className="num">{x.telefone}</td><td className="text-xs">{x.email || "—"}</td><td>{x.cnh || "—"}</td>
               <td><input type="checkbox" checked={x.ativo} onChange={(e) => m.update(x.id, { ativo: e.target.checked })} /></td>
               <td className="text-right"><button onClick={() => confirm(`Excluir ${x.nome}?`) && m.remove(x.id)} className="text-danger"><Trash2 className="h-4 w-4" /></button></td>
             </tr>
           ))}
-          {!m.list.length && <tr><td colSpan={6} className="py-4 text-center text-muted-foreground text-xs">Nenhum motorista cadastrado.</td></tr>}
+          {!m.list.length && <tr><td colSpan={7} className="py-4 text-center text-muted-foreground text-xs">Nenhum motorista cadastrado.</td></tr>}
         </tbody>
       </table>
     </div>

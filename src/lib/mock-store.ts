@@ -6,7 +6,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import type {
   Client, FreightTable, RouteRate, Quotation, CRMDeal, Order,
   WarehouseInbound, WarehouseOutbound, StockItem, Invoice, Expense,
-  AppConfig, ClientGroup, ExpenseGroup, Rota, OrdemColeta, Motorista, Veiculo,
+  AppConfig, ClientGroup, ExpenseGroup, Rota, OrdemColeta, Motorista, Veiculo, LocalOperacional,
 } from "./mock-data";
 import { DEFAULT_CONFIG } from "./mock-data";
 import { getDoc, getList, notify, setDoc, setList, startSharedSync, subscribe, sharedReady } from "./shared-db";
@@ -33,6 +33,7 @@ type StoreKey =
   | "ordensColeta"
   | "motoristas"
   | "veiculos"
+  | "locais"
   | "config";
 
 // Dados compartilhados no banco (app_records) com cache local e realtime.
@@ -99,6 +100,7 @@ export const useRotas = () => useCollection<Rota>("rotas");
 export const useOrdensColeta = () => useCollection<OrdemColeta>("ordensColeta");
 export const useMotoristas = () => useCollection<Motorista>("motoristas");
 export const useVeiculos = () => useCollection<Veiculo>("veiculos");
+export const useLocais = () => useCollection<LocalOperacional>("locais");
 export const useClientGroups = () => useCollection<ClientGroup>("clientGroups");
 export const DEFAULT_EXPENSE_GROUPS: ExpenseGroup[] = [
   { id: "EG-OPER", nome: "Operação" },
