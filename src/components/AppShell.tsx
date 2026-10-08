@@ -19,8 +19,8 @@ type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?
 const NAV: NavItem[] = [
   { to: "/", label: "Torre de controle", icon: LayoutDashboard, exact: true },
   { to: "/clientes", label: "Clientes & CRM", icon: Users },
-  { to: "/rotas", label: "Rotas · NF-e", icon: RouteIcon },
   { to: "/ordens-coleta", label: "Ordens de coleta", icon: PackageSearch },
+  { to: "/rotas", label: "Rotas · NF-e", icon: RouteIcon },
   { to: "/locais-operacionais", label: "Locais operacionais", icon: MapPin },
   { to: "/motoristas", label: "Motoristas & Veículos", icon: Truck },
   { to: "/monitoramento", label: "Monitoramento", icon: Radar },
