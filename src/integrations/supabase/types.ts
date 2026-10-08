@@ -462,6 +462,7 @@ export type Database = {
         }
         Returns: Json
       }
+      tms_oc_selftest: { Args: never; Returns: Json }
       tms_records_commit: {
         Args: { changes: Json; reason?: string }
         Returns: Json
