@@ -70,7 +70,7 @@ function Motoristas() {
               <td className="text-right"><button onClick={() => confirm(`Excluir ${x.nome}?`) && m.remove(x.id)} className="text-danger"><Trash2 className="h-4 w-4" /></button></td>
             </tr>
           ))}
-          {!m.list.length && <tr><td colSpan={6} className="py-4 text-center text-muted-foreground text-xs">Nenhum motorista cadastrado.</td></tr>}
+          {!m.list.length && <tr><td colSpan={7} className="py-4 text-center text-muted-foreground text-xs">Nenhum motorista cadastrado.</td></tr>}
         </tbody>
       </table>
     </div>
