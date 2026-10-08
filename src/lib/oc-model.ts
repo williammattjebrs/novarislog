@@ -1,5 +1,5 @@
 // Modelo da Ordem de Coleta independente (v2). Código puro: usado no navegador, no servidor e nos testes.
-import type { LocalOperacional, Motorista, OCStatus, OrdemColeta, Order, OrderStage, Veiculo, Client } from "./mock-data";
+import type { Empresa, LocalOperacional, Motorista, OCStatus, OrdemColeta, Order, OrderStage, Veiculo, Client } from "./mock-data";
 
 export const OC_EMITIDAS: OCStatus[] = ["emitida", "em_coleta", "coletada", "em_viagem", "entregue", "ocorrencia"];
 export const OC_EXECUCAO: { id: OCStatus; label: string }[] = [
@@ -53,7 +53,10 @@ export function destinatariosOc(coletas: (LocalOperacional | undefined)[]) {
   return { destinatarios, pendencias };
 }
 
+export type SnapEmpresa = { id: string; nome: string; razaoSocial: string; cnpj: string; endereco: string; telefone: string; email: string; logoDataUrl?: string };
 export type OcSnapshot = {
+  empresa?: SnapEmpresa;
+  contratacao?: { tipo: "terceiro" | "frota"; custo: number };
   ocId: string; numero: string; emitidoEm: string; emitidoPor: string;
   clienteColeta: { nome: string }; clienteDescarga: { nome: string }; contratante: { nome: string };
   coleta: { local: SnapLocal; dataHora: string }; descarga: { local: SnapLocal; dataHora: string };
@@ -67,8 +70,12 @@ export type OcSnapshot = {
 export type SnapLocal = { id: string; nome: string; endereco: string; cidade: string; uf: string; contatos: string; emails: string[] };
 const snapLocal = (l: LocalOperacional): SnapLocal => ({ id: l.id, nome: l.nome, endereco: enderecoCompleto(l), cidade: l.cidade, uf: l.uf, contatos: l.contatos ?? "", emails: l.emails ?? [] });
 
-export function validarEmissao(oc: OrdemColeta, ctx: { nfs: Order[]; locais: LocalOperacional[]; motoristas: Motorista[]; veiculos: Veiculo[] }) {
+export function validarEmissao(oc: OrdemColeta, ctx: { nfs: Order[]; locais: LocalOperacional[]; motoristas: Motorista[]; veiculos: Veiculo[]; empresas?: Empresa[] }) {
   const erros: string[] = [];
+  const empresa = ctx.empresas?.find((e) => e.id === oc.empresaId);
+  if (ctx.empresas && !empresa) erros.push("Escolha a empresa emissora da OC.");
+  if (!oc.contratacao) erros.push("Informe a contratação: terceiro ou frota própria.");
+  else if (!(Number(oc.custoMotorista) > 0)) erros.push(oc.contratacao === "terceiro" ? "Informe o valor fechado com o motorista." : "Informe o custo da frota própria.");
   if (!isV2(oc)) erros.push("OC legada: converta antes de emitir.");
   if (["cancelada", "entregue"].includes(oc.status)) erros.push("OC cancelada ou entregue não pode ser emitida.");
   if (!oc.orderIds.length) erros.push("Selecione ao menos uma NF.");
@@ -90,17 +97,19 @@ export function validarEmissao(oc: OrdemColeta, ctx: { nfs: Order[]; locais: Loc
   // Local de entrega é opcional; se informado, precisa de endereço completo.
   if (ld && (!ld.endereco?.trim() || !ld.cidade)) erros.push(`Local de descarga ${ld.nome} sem endereço completo.`);
   if (!oc.dataHoraColeta) erros.push("Informe data e hora da coleta.");
-  return { erros, m, v, lc, ld, lcs };
+  return { erros, m, v, lc, ld, lcs, empresa };
 }
 
-export function buildSnapshot(oc: OrdemColeta, ctx: { nfs: Order[]; locais: LocalOperacional[]; motoristas: Motorista[]; veiculos: Veiculo[]; emitidoPor: string; agora?: string }) {
-  const { erros, m, v, lc, ld, lcs } = validarEmissao(oc, ctx);
+export function buildSnapshot(oc: OrdemColeta, ctx: { nfs: Order[]; locais: LocalOperacional[]; motoristas: Motorista[]; veiculos: Veiculo[]; empresas?: Empresa[]; emitidoPor: string; agora?: string }) {
+  const { erros, m, v, lc, ld, lcs, empresa } = validarEmissao(oc, ctx);
   if (erros.length || !m || !v || !lc) return { erros, snapshot: null };
   const nfs = oc.orderIds.map((id) => ctx.nfs.find((n) => n.id === id)!).map((n) => ({
     id: n.id, numero: String(n.numeroNFe), chave: n.chaveNFe ?? "", remetente: n.remetente, destinatario: n.destinatario, peso: Number(n.peso) || 0, volumes: Number(n.volumes) || 0, coletaLocalId: localColetaDaNf(oc, n.id),
   }));
   const { destinatarios, pendencias } = destinatariosOc(lcs);
   const snapshot: OcSnapshot = {
+    ...(empresa ? { empresa: { id: empresa.id, nome: empresa.nome, razaoSocial: empresa.razaoSocial ?? "", cnpj: empresa.cnpj ?? "", endereco: [empresa.endereco, empresa.cidade && `${empresa.cidade}/${empresa.uf ?? ""}`].filter(Boolean).join(" · "), telefone: empresa.telefone ?? "", email: empresa.email ?? "", logoDataUrl: empresa.logoDataUrl } } : {}),
+    ...(oc.contratacao ? { contratacao: { tipo: oc.contratacao, custo: Number(oc.custoMotorista) || 0 } } : {}),
     ocId: oc.id, numero: oc.numero, emitidoEm: ctx.agora ?? new Date().toISOString(), emitidoPor: ctx.emitidoPor,
     clienteColeta: { nome: oc.clienteColetaNome ?? "" }, clienteDescarga: { nome: oc.clienteDescargaNome ?? "" }, contratante: { nome: oc.contratanteNome || oc.clienteColetaNome || "" },
     coleta: { local: snapLocal(lc), dataHora: oc.dataHoraColeta }, coletas: lcs.map(snapLocal), descarga: { local: ld ? snapLocal(ld) : { id: "", nome: "A definir", endereco: "", cidade: "A definir", uf: "-", contatos: "", emails: [] }, dataHora: oc.dataHoraEntrega ?? "" },
