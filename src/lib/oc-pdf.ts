@@ -46,21 +46,29 @@ export async function renderOcPdf(s: OcSnapshot & { versao?: number }) {
   header();
 
   // Bloco de destaque obrigatório: dono da carga x local físico x cidade.
-  ensure(130);
-  const boxTop = y; const half = (CW - 10) / 2;
-  const box = (x: number, titulo: string, cliente: string, local: string, cidade: string) => {
-    page.drawRectangle({ x, y: boxTop - 112, width: half, height: 112, borderColor: ORANGE, borderWidth: 1.5 });
-    let yy = boxTop - 16;
-    page.drawText(clean(titulo), { x: x + 8, y: yy, size: 10, font: bold, color: ORANGE }); yy -= 18;
-    for (const [k, v] of [["Cliente da " + (titulo.includes("COLETA") ? "coleta" : "descarga"), cliente], ["Local da " + (titulo.includes("COLETA") ? "coleta" : "descarga"), local], ["Cidade", cidade]] as const) {
-      page.drawText(clean(`${k}:`), { x: x + 8, y: yy, size: 8, font, color: GRAY }); yy -= 12;
-      for (const l of wrap(v, bold, 11, half - 16).slice(0, 2)) { page.drawText(l, { x: x + 8, y: yy, size: 11, font: bold }); yy -= 13; }
-      yy -= 2;
+  const half = (CW - 10) / 2;
+  const boxRows = (titulo: string, cliente: string, local: string, cidade: string) => {
+    const k = titulo === "COLETA" ? "coleta" : "descarga";
+    return ([[`Cliente da ${k}`, cliente], [`Local da ${k}`, local], ["Cidade", cidade]] as const).map(([r, v]) => [r, wrap(v, bold, 11, half - 20).slice(0, 2)] as const);
+  };
+  const bc = boxRows("COLETA", s.clienteColeta.nome, s.coleta.local.nome, `${s.coleta.local.cidade}/${s.coleta.local.uf}`);
+  const bd = boxRows("DESCARGA", s.clienteDescarga.nome, s.descarga.local.nome, `${s.descarga.local.cidade}/${s.descarga.local.uf}`);
+  const boxH = (rows: typeof bc) => 34 + rows.reduce((t, [, ls]) => t + 12 + ls.length * 13 + 4, 0);
+  const bh = Math.max(boxH(bc), boxH(bd));
+  ensure(bh + 10);
+  const boxTop = y;
+  const box = (x: number, titulo: string, rows: typeof bc) => {
+    page.drawRectangle({ x, y: boxTop - bh, width: half, height: bh, borderColor: ORANGE, borderWidth: 1.5 });
+    let yy = boxTop - 18;
+    page.drawText(titulo, { x: x + 10, y: yy, size: 10, font: bold, color: ORANGE }); yy -= 18;
+    for (const [k, ls] of rows) {
+      page.drawText(clean(`${k}:`), { x: x + 10, y: yy, size: 8, font, color: GRAY }); yy -= 13;
+      for (const l of ls) { page.drawText(l, { x: x + 10, y: yy, size: 11, font: bold }); yy -= 13; }
+      yy -= 4;
     }
   };
-  box(M, "COLETA", s.clienteColeta.nome, s.coleta.local.nome, `${s.coleta.local.cidade}/${s.coleta.local.uf}`);
-  box(M + half + 10, "DESCARGA", s.clienteDescarga.nome, s.descarga.local.nome, `${s.descarga.local.cidade}/${s.descarga.local.uf}`);
-  y = boxTop - 122;
+  box(M, "COLETA", bc); box(M + half + 10, "DESCARGA", bd);
+  y = boxTop - bh - 14;
   text(`Contratante do frete: ${s.contratante.nome}`, { size: 9, color: GRAY });
 
   section("Endereços e horários");
@@ -76,11 +84,13 @@ export async function renderOcPdf(s: OcSnapshot & { versao?: number }) {
   text(`Veículo: placa ${s.veiculo.placa} · ${s.veiculo.tipo}`);
 
   section(`Notas fiscais (${s.nfs.length}) · ${s.totais.peso.toLocaleString("pt-BR")} kg · ${s.totais.volumes} volumes`);
-  const cols = [{ t: "NF", w: 55 }, { t: "Remetente", w: 165 }, { t: "Destinatário", w: 165 }, { t: "Volumes", w: 55 }, { t: "Peso (kg)", w: CW - 440 }];
+  const cols = [{ t: "NF", w: 55 }, { t: "Remetente", w: 165 }, { t: "Destinatário", w: 165 }, { t: "Volumes", w: 50 }, { t: "Peso (kg)", w: CW - 435 }];
   const row = (vals: string[], b = false) => {
     const lines = vals.map((v, i) => wrap(v, b ? bold : font, 8, cols[i].w - 6));
-    const h = Math.max(...lines.map((l) => l.length)) * 10 + 4; ensure(h);
-    let x = M; lines.forEach((ls, i) => { ls.forEach((l, j) => page.drawText(l, { x: x + 3, y: y - 9 - j * 10, size: 8, font: b ? bold : font })); x += cols[i].w; });
+    const h = Math.max(...lines.map((l) => l.length)) * 10 + 6; ensure(h);
+    if (b) page.drawRectangle({ x: M, y: y - h, width: CW, height: h, color: rgb(0.93, 0.93, 0.93) });
+    const f = b ? bold : font;
+    let x = M; lines.forEach((ls, i) => { ls.forEach((l, j) => { const lx = i >= 3 ? x + cols[i].w - 4 - f.widthOfTextAtSize(l, 8) : x + 4; page.drawText(l, { x: lx, y: y - 10 - j * 10, size: 8, font: f }); }); x += cols[i].w; });
     y -= h; page.drawLine({ start: { x: M, y }, end: { x: M + CW, y }, thickness: 0.4, color: rgb(0.8, 0.8, 0.8) });
   };
   row(cols.map((c) => c.t), true);
