@@ -65,7 +65,10 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
   const cteInput = useRef<HTMLInputElement>(null);
 
   const POS_COLETA: OrderStage[] = ["coletado", "aguardando_cte", "cte_ok", "cte_divergente", "em_viagem", "entregue", "ocorrencia"];
-  const naRota = (o: Order) => POS_COLETA.includes(o.stage) || !!o.cteValor || !!o.cteChave || !!o.cteNumero || !!(o.cteChaves?.length);
+  void POS_COLETA;
+  // Rotas: somente cargas coletadas aguardando emissão de CT-e; com CT-e emitido a NF segue para o Monitoramento.
+  const temCte = (o: Order) => !!o.cteChave || !!o.cteNumero || !!(o.cteChaves?.length);
+  const naRota = (o: Order) => (o.stage === "coletado" || o.stage === "aguardando_cte") && !temCte(o);
   const listaAba = orders.list.filter((o) => (isImp ? !naRota(o) : naRota(o)));
   const stagesAba = ORDER_STAGES.filter((s) => (isImp ? !POS_COLETA.includes(s.id) : POS_COLETA.includes(s.id)));
   const porStage = useMemo(() => {
@@ -290,8 +293,8 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
         <div className="flex items-end justify-between flex-wrap gap-3">
           <div>
             <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{isImp ? "Entrada de documentos" : "Viagem"}</div>
-            <h1 className="mt-1 text-2xl md:text-3xl font-semibold">{isImp ? "Importação · XML NF-e e CT-e" : "Rotas · coletadas e com CT-e"}</h1>
-            <p className="text-sm text-muted-foreground mt-1">{isImp ? <>Importe XML manualmente ou pela integração de e-mail. NFs ainda não coletadas ficam aqui para montar a ordem de coleta. CT-e tolerância ±{cfg.toleranciaDivergenciaPercent}%.</> : <>Somente NFs com status a partir de "Coletado" ou com CT-e emitido. A importação de XML fica na aba <Link to="/importacao" className="text-primary">Importação</Link>.</>}</p>
+            <h1 className="mt-1 text-2xl md:text-3xl font-semibold">{isImp ? "Importação · XML NF-e e CT-e" : "Rotas · aguardando emissão de CT-e"}</h1>
+            <p className="text-sm text-muted-foreground mt-1">{isImp ? <>Importe XML manualmente ou pela integração de e-mail. NFs ainda não coletadas ficam aqui para montar a ordem de coleta. CT-e tolerância ±{cfg.toleranciaDivergenciaPercent}%.</> : <>Somente cargas coletadas aguardando emissão de CT-e. Ao receber o CT-e, a NF segue para o Monitoramento. A importação de XML fica na aba <Link to="/importacao" className="text-primary">Importação</Link>.</>}</p>
           </div>
           {isImp && <div className="flex gap-2">
             <label className="inline-flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 text-primary px-3 py-2 text-sm hover:bg-primary/20 cursor-pointer">
@@ -436,7 +439,7 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
                 ))}
                 {filtered.length === 0 && (
                   <tr><td colSpan={10} className="py-8 text-center text-xs text-muted-foreground">
-                    {isImp ? "Nenhuma NF aguardando coleta. Importe um XML de NF-e para começar." : "Nenhuma NF coletada ou com CT-e emitido."}
+                    {isImp ? "Nenhuma NF aguardando coleta. Importe um XML de NF-e para começar." : "Nenhuma carga coletada aguardando CT-e."}
                   </td></tr>
                 )}
               </tbody>
