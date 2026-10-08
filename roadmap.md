@@ -43,3 +43,4 @@
 - [ ] Teste de importação simultânea em dois dispositivos e confirmação de restauração pela tela em ambiente isolado — validações transacionais já passaram, testes completos não executados
 - [x] Multi-NF e multi-CT-e: rota/OC já agrupam várias NFs; CT-e vincula por todas as chaves de NF referenciadas; mesmo veículo/motorista reutilizável em várias OCs
 - [ ] Envio automático do PDF da OC pelo WhatsApp Business (aguarda conectar conta WhatsApp Business e aprovação do modelo pela Meta); hoje abre o WhatsApp com link do PDF.
+- [ ] Local de entrega (descarga) opcional na OC
