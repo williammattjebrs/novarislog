@@ -198,6 +198,14 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
       else { const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove(); }
     } catch (e) { w?.close(); setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao abrir PDF." }); }
   }
+  /** Baixa o PDF da OC para anexar manualmente na conversa do WhatsApp (o WhatsApp não aceita anexo via link). */
+  async function baixarPdf(version: number) {
+    try {
+      const { url } = await pdfLink({ data: { ocId: oc.id, version } });
+      const a = document.createElement("a"); a.href = url; a.download = `${oc.numero}.pdf`; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove();
+      setMsg({ tipo: "ok", texto: "PDF baixado. Na conversa do WhatsApp, toque no clipe/anexo e escolha este arquivo." });
+    } catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao baixar PDF." }); }
+  }
   return (
     <div ref={painel} className="panel p-4 space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
