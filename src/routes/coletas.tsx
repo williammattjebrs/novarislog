@@ -3,7 +3,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/coletas")({
   validateSearch: (s: Record<string, unknown>): { registro?: string } => ({ registro: typeof s.registro === "string" ? s.registro : undefined }),
-  beforeLoad: ({ search }) => { throw redirect({ to: "/rotas", search, replace: true }); },
+  beforeLoad: ({ search }) => { throw redirect({ to: "/importacao", search, replace: true }); },
   head: () => ({ meta: [
     { title: "Coletas mudou para Rotas | Novaris" },
     { name: "description", content: "A importação de XML e a fila de NF-e agora ficam em Rotas." },
