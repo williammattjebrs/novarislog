@@ -1,6 +1,6 @@
 // Ordens de coleta: rascunho → programação → emissão no servidor (PDF + fila de envio) → execução no Monitoramento.
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { FileText, Send, X, RefreshCw, Ban } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -99,6 +99,9 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
   const [busy, setBusy] = useState(false); const [enviarRev, setEnviarRev] = useState(false);
   const [docs, setDocs] = useState<{ version: number; created_at: string; pdf_sha256: string; send_requested: boolean; snapshot: any }[]>([]);
   const [envios, setEnvios] = useState<{ id: string; doc_version: number; email: string; papeis: string[]; status: string; attempts: number; last_error: string | null; accepted_at: string | null }[]>([]);
+  const painel = useRef<HTMLDivElement>(null);
+  // Ao abrir a edição, garante que o painel fique visível na tela (abre logo abaixo da OC clicada).
+  useEffect(() => { painel.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, []);
   const editavel = isV2(oc) && !["cancelada", "entregue"].includes(oc.status);
   const emitida = isV2(oc) && OC_EMITIDAS.includes(oc.status);
   async function loadDocs() {
