@@ -113,6 +113,13 @@
       "when": 1791482348098,
       "tag": "0015_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791484264561,
+      "tag": "0016_reset_imports_incluir_financeiro",
+      "breakpoints": true
     }
   ]
 }
