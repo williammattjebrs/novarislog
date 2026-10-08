@@ -295,7 +295,14 @@ function ResetImportsSection() {
   const [txt, setTxt] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
-  if (user?.email?.toLowerCase() !== "wtmattje@gmail.com") return null;
+  // Somente o administrador master (validado no backend) vê e pode usar esta ação.
+  const [master, setMaster] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    void import("@/integrations/supabase/client").then(({ supabase }) => supabase.rpc("tms_is_master")).then(({ data }) => { if (vivo) setMaster(data === true); });
+    return () => { vivo = false; };
+  }, [user?.email]);
+  if (!master) return null;
   async function zerar() {
     if (!window.confirm("Apagar TODO o sistema: XMLs, notas, CT-e, ordens de coleta, rotas, PDFs, envios, financeiro, clientes, tabelas de frete, cotações, motoristas, veículos e locais? Esta ação não pode ser desfeita.")) return;
     setBusy(true); setMsg("");
