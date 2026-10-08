@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { writeFileSync } from "node:fs";
-import { buildSnapshot, conteudoSnapshot, destinatariosOc, novaOcRascunho, ocAtivaDaNf, previewConversao, stageFromOc, isEmitida } from "./oc-model";
+import { buildSnapshot, conteudoSnapshot, destinatariosOc, novaOcRascunho, ocAtivaDaNf, previewConversao, stageFromOc, isEmitida, validarEmissao } from "./oc-model";
 import { renderOcPdf } from "./oc-pdf";
 import type { LocalOperacional, Motorista, Order, OrdemColeta, Veiculo } from "./mock-data";
 
