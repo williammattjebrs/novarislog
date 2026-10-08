@@ -51,7 +51,10 @@ export async function renderOcPdf(s: OcSnapshot & { versao?: number }) {
     const k = titulo === "COLETA" ? "coleta" : "descarga";
     return ([[`Cliente da ${k}`, cliente], [`Local da ${k}`, local], ["Cidade", cidade]] as const).map(([r, v]) => [r, wrap(v, bold, 11, half - 20).slice(0, 2)] as const);
   };
-  const bc = boxRows("COLETA", s.clienteColeta.nome, s.coleta.local.nome, `${s.coleta.local.cidade}/${s.coleta.local.uf}`);
+  const coletas = s.coletas?.length ? s.coletas : [s.coleta.local];
+  const nomeLocal = new Map(coletas.map((l) => [l.id, l.nome]));
+  const uniq = (xs: string[]) => [...new Set(xs)].join(" + ");
+  const bc = boxRows("COLETA", s.clienteColeta.nome, coletas.length > 1 ? `${coletas.length} locais: ${uniq(coletas.map((l) => l.nome))}` : coletas[0].nome, uniq(coletas.map((l) => `${l.cidade}/${l.uf}`)));
   const bd = boxRows("DESCARGA", s.clienteDescarga.nome, s.descarga.local.nome, `${s.descarga.local.cidade}/${s.descarga.local.uf}`);
   const boxH = (rows: typeof bc) => 34 + rows.reduce((t, [, ls]) => t + 12 + ls.length * 13 + 4, 0);
   const bh = Math.max(boxH(bc), boxH(bd));
@@ -72,8 +75,11 @@ export async function renderOcPdf(s: OcSnapshot & { versao?: number }) {
   text(`Contratante do frete: ${s.contratante.nome}`, { size: 9, color: GRAY });
 
   section("Endereços e horários");
-  text(`Coleta - ${s.coleta.local.nome}`, { b: true }); text(s.coleta.local.endereco, { size: 9 });
-  if (s.coleta.local.contatos) text(`Contato: ${s.coleta.local.contatos}`, { size: 9, color: GRAY });
+  for (const l of coletas) {
+    const qtd = s.nfs.filter((n) => (n.coletaLocalId ?? s.coleta.local.id) === l.id).length;
+    text(`Coleta - ${l.nome} (${qtd} NF)`, { b: true }); text(l.endereco, { size: 9 });
+    if (l.contatos) text(`Contato: ${l.contatos}`, { size: 9, color: GRAY });
+  }
   text(`Data/hora da coleta: ${fmtDataHora(s.coleta.dataHora)}`, { size: 10, b: true }); y -= 4;
   text(`Descarga - ${s.descarga.local.nome}`, { b: true }); text(s.descarga.local.endereco, { size: 9 });
   if (s.descarga.local.contatos) text(`Contato: ${s.descarga.local.contatos}`, { size: 9, color: GRAY });
@@ -84,19 +90,19 @@ export async function renderOcPdf(s: OcSnapshot & { versao?: number }) {
   text(`Veículo: placa ${s.veiculo.placa} · ${s.veiculo.tipo}`);
 
   section(`Notas fiscais (${s.nfs.length}) · ${s.totais.peso.toLocaleString("pt-BR")} kg · ${s.totais.volumes} volumes`);
-  const cols = [{ t: "NF", w: 55 }, { t: "Remetente", w: 165 }, { t: "Destinatário", w: 165 }, { t: "Volumes", w: 50 }, { t: "Peso (kg)", w: CW - 435 }];
+  const cols = [{ t: "NF", w: 50 }, { t: "Local de coleta", w: 115 }, { t: "Remetente", w: 120 }, { t: "Destinatário", w: 120 }, { t: "Volumes", w: 45 }, { t: "Peso (kg)", w: CW - 450 }];
   const row = (vals: string[], b = false) => {
     const lines = vals.map((v, i) => wrap(v, b ? bold : font, 8, cols[i].w - 6));
     const h = Math.max(...lines.map((l) => l.length)) * 10 + 6; ensure(h);
     if (b) page.drawRectangle({ x: M, y: y - h, width: CW, height: h, color: rgb(0.93, 0.93, 0.93) });
     const f = b ? bold : font;
-    let x = M; lines.forEach((ls, i) => { ls.forEach((l, j) => { const lx = i >= 3 ? x + cols[i].w - 4 - f.widthOfTextAtSize(l, 8) : x + 4; page.drawText(l, { x: lx, y: y - 10 - j * 10, size: 8, font: f }); }); x += cols[i].w; });
+    let x = M; lines.forEach((ls, i) => { ls.forEach((l, j) => { const lx = i >= 4 ? x + cols[i].w - 4 - f.widthOfTextAtSize(l, 8) : x + 4; page.drawText(l, { x: lx, y: y - 10 - j * 10, size: 8, font: f }); }); x += cols[i].w; });
     y -= h; page.drawLine({ start: { x: M, y }, end: { x: M + CW, y }, thickness: 0.4, color: rgb(0.8, 0.8, 0.8) });
   };
   row(cols.map((c) => c.t), true);
   onNewPage = () => { onNewPage = null; row(cols.map((c) => c.t), true); onNewPage = repeat; };
   const repeat = onNewPage;
-  for (const n of s.nfs) row([n.numero, n.remetente, n.destinatario, String(n.volumes), n.peso.toLocaleString("pt-BR")]);
+  for (const n of s.nfs) row([n.numero, nomeLocal.get(n.coletaLocalId ?? s.coleta.local.id) ?? s.coleta.local.nome, n.remetente, n.destinatario, String(n.volumes), n.peso.toLocaleString("pt-BR")]);
   onNewPage = null;
 
   if (s.instrucoes) { section("Instruções"); text(s.instrucoes, { size: 9 }); }
