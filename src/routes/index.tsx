@@ -37,6 +37,7 @@ function Dashboard() {
   const canSeeFinance = financialAccess(user);
   const month = new Date().toISOString().slice(0,7);
   const orders = useOrders();
+  const ocs = useOrdensColeta();
   const invoices = useInvoices();
   const expenses = useExpenses();
   const [cfg]=useConfig();
@@ -48,8 +49,14 @@ function Dashboard() {
   const receitaMes = invoices.list.filter(i => monthKey(i.competencia ?? i.emissao) === month).reduce((s, i) => s + i.valor, 0);
   const despesaMes = summary.custo;
 
+  const ocMonit = ocs.list.filter((o) => isEmitida(o) && o.status !== "entregue");
+  const ocRasc = ocs.list.filter((o) => o.modelo === "v2" && o.status === "rascunho");
+  const nfSemOc = orders.list.filter((o) => o.stage !== "entregue" && !ocAtivaDaNf(ocs.list, o.id));
   const kpis = [
-    { l: "Entregas ativas", v: String(ativos.length), icon: PackageCheck, tone: "text-primary" },
+    { l: "OCs em execução", v: String(ocMonit.length), icon: PackageCheck, tone: "text-primary" },
+    { l: "OCs em rascunho", v: String(ocRasc.length), icon: Timer, tone: "text-warning" },
+    { l: "NFs sem OC", v: String(nfSemOc.length), icon: AlertTriangle, tone: "text-warning" },
+    { l: "NFs ativas", v: String(ativos.length), icon: PackageCheck, tone: "text-primary" },
     { l: "Entregas concluídas", v: String(entregues.length), icon: Timer, tone: "text-success" },
     { l: "Ocorrências/divergências", v: String(ocorrencias.length), icon: AlertTriangle, tone: "text-danger" },
     ...(canSeeFinance ? [{ l: "Receita faturada (mês)", v: fmtBRL(receitaMes), icon: DollarSign, tone: "text-success" }] : []),
@@ -65,7 +72,7 @@ function Dashboard() {
               <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Torre de controle · tempo real</div>
               <h1 className="mt-1 text-2xl md:text-3xl font-semibold">
                 Olá, {user?.nome ?? "operador"}.{" "}
-                <span className="text-muted-foreground">{ativos.length} ordens ativas agora.</span>
+                <span className="text-muted-foreground">{ocMonit.length} OCs em execução · {ativos.length} NFs ativas.</span>
               </h1>
               <div className="text-xs text-muted-foreground mt-1">Perfil: {user ? ROLE_LABEL[user.role] : "—"}</div>
             </div>
