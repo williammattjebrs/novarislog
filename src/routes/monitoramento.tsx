@@ -68,7 +68,12 @@ function MonitoramentoPage() {
   useEffect(() => { if (registro) setSelected(registro); }, [registro]);
   const [bulkOpen, setBulkOpen] = useState(false);
   // Rascunhos v2 também aparecem (aguardando programação); somente emitidas enviam e-mail.
-  const emitidas = useMemo(() => ocs.list.filter((o) => isEmitida(o) || (isV2(o) && o.status === "rascunho")), [ocs.list]);
+  // OC coletada sem CT-e fica em Rotas (aguardando emissão de CT-e); volta a aparecer aqui quando o CT-e é emitido.
+  const emitidas = useMemo(() => ocs.list.filter((o) => {
+    if (!(isEmitida(o) || (isV2(o) && o.status === "rascunho"))) return false;
+    if (o.status !== "coletada") return true;
+    return o.orderIds.some((id) => { const n = orders.list.find((x) => x.id === id); return !!n && (!!n.cteNumero || !!n.cteChave || !!(n.cteChaves?.length)); });
+  }), [ocs.list, orders.list]);
   const q = busca.trim().toLowerCase();
   const nfById = useMemo(() => new Map(orders.list.map((o) => [o.id, o])), [orders.list]);
   const temCte = (n: Order | undefined) => !!n && (!!n.cteValor || !!n.cteNumero || !!n.cteChave || !!(n.cteChaves?.length));

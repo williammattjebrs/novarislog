@@ -10,8 +10,8 @@ import { Timeline } from "@/components/Timeline";
 import { MotoristaSelect, VeiculoSelect, CapacidadeAlerta } from "@/components/FleetSelects";
 import { LocalSelect } from "@/components/CriarOcPanel";
 import { useClients, useLocais, useMotoristas, useOrders, useOrdensColeta, useVeiculos } from "@/lib/mock-store";
-import { OC_STATUS, type OrdemColeta, type Order } from "@/lib/mock-data";
-import { destinatariosOc, localColetaDaNf, isV2, ocAtivaDaNf, previewConversao, validarEmissao, OC_EMITIDAS } from "@/lib/oc-model";
+import { OC_STATUS, type OCStatus, type OrdemColeta, type Order } from "@/lib/mock-data";
+import { destinatariosOc, localColetaDaNf, isV2, ocAtivaDaNf, previewConversao, validarEmissao, OC_EMITIDAS, OC_EXECUCAO } from "@/lib/oc-model";
 import { aplicarStatusOc, salvarOc } from "@/lib/oc-actions";
 import { commitLists, getList, getVersion, refreshShared } from "@/lib/shared-db";
 import { emitirOC, enviarAgoraOC, linkPdfOC, reenfileirarEnvios } from "@/lib/oc.functions";
@@ -43,7 +43,7 @@ function Page() {
   const [busca, setBusca] = useState("");
   const q = busca.trim().toLowerCase();
   const lista = ocs.list.filter((o) => {
-    const f = filtro === "todas" || (filtro === "ativas" && o.status !== "cancelada" && o.status !== "entregue") || (filtro === "rascunho" && isV2(o) && o.status === "rascunho") || (filtro === "emitidas" && isV2(o) && OC_EMITIDAS.includes(o.status)) || (filtro === "legado" && !isV2(o));
+    const f = filtro === "todas" || (filtro === "ativas" && !["cancelada", "entregue", "coletada", "em_viagem", "ocorrencia"].includes(o.status)) || (filtro === "rascunho" && isV2(o) && o.status === "rascunho") || (filtro === "emitidas" && isV2(o) && OC_EMITIDAS.includes(o.status)) || (filtro === "legado" && !isV2(o));
     return f && (!q || [o.numero, o.clienteNome, o.clienteColetaNome, o.clienteDescargaNome, o.localColeta, o.localEntrega].join(" ").toLowerCase().includes(q));
   });
   const legados = ocs.list.filter((o) => !isV2(o)).length;
@@ -184,6 +184,18 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
       window.open(link, "_blank", "noopener,noreferrer");
     } catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao gerar link do PDF." }); }
   }
+  async function mudarStatus(novo: OCStatus) {
+    if (novo === oc.status) return;
+    const label = OC_STATUS.find((s) => s.id === novo)?.label ?? novo;
+    const obs = prompt(`Alterar ${oc.numero} para "${label}"? Observação (opcional):`, "");
+    if (obs === null) return;
+    setBusy(true);
+    try {
+      await aplicarStatusOc(oc, novo, `${label}${obs.trim() ? ` · ${obs.trim()}` : ""}`, autor);
+      setMsg({ tipo: "ok", texto: novo === "coletada" ? "OC coletada: as NFs seguem para Rotas aguardando emissão de CT-e." : `Status alterado para ${label}.` });
+    } catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao alterar status." }); }
+    finally { setBusy(false); }
+  }
   async function cancelar() {
     const motivo = prompt(`Motivo do cancelamento da ${oc.numero}? As NFs voltam para a fila de Rotas.`);
     if (!motivo?.trim()) return;
@@ -269,6 +281,10 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
             <Button disabled={busy || dirty || val.erros.length > 0 || (!!oc.docVersion && !oc.conteudoPendenteRevisao)} onClick={doEmitir}><FileText className="h-4 w-4" /> {oc.docVersion ? "Gerar nova versão" : "Gerar documento"}</Button>
             {!!oc.docVersion && <label className="text-xs flex items-center gap-1"><input type="checkbox" checked={enviarRev} onChange={(e) => setEnviarRev(e.target.checked)} /> enviar a revisão aos destinatários</label>}
           </>}
+          {editavel && emitida && <label className="flex items-center gap-2 text-sm">Status
+            <select aria-label="Alterar status da OC" className={inp + " w-auto"} value={oc.status} disabled={busy} onChange={(e) => mudarStatus(e.target.value as OCStatus)}>
+              {OC_EXECUCAO.map((s) => <option key={s.id} value={s.id}>{OC_STATUS.find((x) => x.id === s.id)?.label ?? s.label}</option>)}
+            </select></label>}
           {editavel && <Button variant="outline" disabled={busy} onClick={cancelar}><Ban className="h-4 w-4" /> Cancelar OC</Button>}
           {emitida && <Link to="/monitoramento" search={{ registro: oc.id }} className="text-xs text-primary self-center">ver no Monitoramento →</Link>}
         </div>
