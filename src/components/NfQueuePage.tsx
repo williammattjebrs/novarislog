@@ -1,7 +1,6 @@
 // Fila de NF-e compartilhada por Importação (pré-coleta, sugestões de OC) e Rotas (coletadas ou com CT-e).
 // Rotas: fila individual de NF-e/XML para o programador. Importar NF não cria OC; a OC nasce da seleção de NFs.
 import { Link } from "@tanstack/react-router";
-import { Upload } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useState, useRef, useMemo, useEffect } from "react";
@@ -41,6 +40,13 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
   const [semOc, setSemOc] = useState(false);
   const [agrupar, setAgrupar] = useState(false);
   const [criarOc, setCriarOc] = useState(false);
+  const [splits, setSplits] = useState<Record<string, string>>({});
+  useEffect(() => { try { setSplits(JSON.parse(localStorage.getItem("novaris.ocSplits") ?? "{}")); } catch { /* ignora */ } }, []);
+  function removerDaSugestao(nfId: string, tag?: string) {
+    const next = { ...splits, [nfId]: `${tag ?? "g"}x` };
+    setSplits(next); setMarcadas((m) => m.filter((x) => x !== nfId));
+    try { localStorage.setItem("novaris.ocSplits", JSON.stringify(next)); } catch { /* ignora */ }
+  }
   const orders = useOrders();
   const clients = useClients();
   const tables = useFreightTables();
@@ -58,15 +64,19 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
   const nfeInput = useRef<HTMLInputElement>(null);
   const cteInput = useRef<HTMLInputElement>(null);
 
+  const POS_COLETA: OrderStage[] = ["coletado", "aguardando_cte", "cte_ok", "cte_divergente", "em_viagem", "entregue", "ocorrencia"];
+  const naRota = (o: Order) => POS_COLETA.includes(o.stage) || !!o.cteValor || !!o.cteChave || !!o.cteNumero || !!(o.cteChaves?.length);
+  const listaAba = orders.list.filter((o) => (isImp ? !naRota(o) : naRota(o)));
+  const stagesAba = ORDER_STAGES.filter((s) => (isImp ? !POS_COLETA.includes(s.id) : POS_COLETA.includes(s.id)));
   const porStage = useMemo(() => {
     const m: Record<string, number> = {};
     ORDER_STAGES.forEach((s) => (m[s.id] = 0));
-    orders.list.forEach((o) => (m[o.stage] = (m[o.stage] ?? 0) + 1));
+    listaAba.forEach((o) => (m[o.stage] = (m[o.stage] ?? 0) + 1));
     return m;
-  }, [orders.list]);
+  }, [orders.list, isImp]);
 
   const [busca, setBusca] = useState("");
-  const base0 = filtro === "todos" ? orders.list : orders.list.filter((o) => o.stage === filtro);
+  const base0 = filtro === "todos" ? listaAba : listaAba.filter((o) => o.stage === filtro);
   const base1 = semOc ? base0.filter((o) => !ocAtivaDaNf(ocs.list, o.id)) : base0;
   const base = agrupar ? [...base1].sort((a, b) => `${a.remetente}|${a.destinatario}|${a.criadoEm}`.localeCompare(`${b.remetente}|${b.destinatario}|${b.criadoEm}`)) : base1;
   const q = busca.trim().toLowerCase();
@@ -279,11 +289,11 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
       <div className="p-4 md:p-6 space-y-5">
         <div className="flex items-end justify-between flex-wrap gap-3">
           <div>
-            <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Programação</div>
-            <h1 className="mt-1 text-2xl md:text-3xl font-semibold">Rotas · fila de NF-e</h1>
-            <p className="text-sm text-muted-foreground mt-1">Cada NF-e importada aparece aqui individualmente. Selecione uma ou mais notas para criar a ordem de coleta (rascunho). CT-e tolerância ±{cfg.toleranciaDivergenciaPercent}%.</p>
+            <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{isImp ? "Entrada de documentos" : "Viagem"}</div>
+            <h1 className="mt-1 text-2xl md:text-3xl font-semibold">{isImp ? "Importação · XML NF-e e CT-e" : "Rotas · coletadas e com CT-e"}</h1>
+            <p className="text-sm text-muted-foreground mt-1">{isImp ? <>Importe XML manualmente ou pela integração de e-mail. NFs ainda não coletadas ficam aqui para montar a ordem de coleta. CT-e tolerância ±{cfg.toleranciaDivergenciaPercent}%.</> : <>Somente NFs com status a partir de "Coletado" ou com CT-e emitido. A importação de XML fica na aba <Link to="/importacao" className="text-primary">Importação</Link>.</>}</p>
           </div>
-          <div className="flex gap-2">
+          {isImp && <div className="flex gap-2">
             <label className="inline-flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 text-primary px-3 py-2 text-sm hover:bg-primary/20 cursor-pointer">
               <FileUp className="h-4 w-4" /> Importar XML NF-e
               <input ref={nfeInput} type="file" multiple accept=".xml" className="hidden" onChange={(e) => e.target.files && importNFe(e.target.files)} />
@@ -292,10 +302,10 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
               <FileCheck2 className="h-4 w-4" /> Importar XML CT-e
               <input ref={cteInput} type="file" multiple accept=".xml" className="hidden" onChange={(e) => e.target.files && importCTe(e.target.files)} />
             </label>
-          </div>
+          </div>}
         </div>
 
-        <ColetasTriage
+        {isImp && <ColetasTriage
           orders={orders.list}
           onImportEmail={importFromEmail}
           onSelect={setSelected}
@@ -307,11 +317,11 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
               atualizadoEm: new Date().toISOString(),
             });
           }}
-        />
+        />}
 
         {/* Pipeline */}
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-11 gap-1.5">
-          {ORDER_STAGES.map((s, i) => {
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-1.5">
+          {stagesAba.map((s, i) => {
             const count = porStage[s.id] ?? 0;
             const active = filtro === s.id;
             return (
@@ -342,7 +352,7 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
           </div>
           <label className="text-xs flex items-center gap-1"><input type="checkbox" checked={semOc} onChange={(e) => setSemOc(e.target.checked)} /> Somente sem OC</label>
           <label className="text-xs flex items-center gap-1"><input type="checkbox" checked={agrupar} onChange={(e) => setAgrupar(e.target.checked)} /> Agrupar por remetente → destinatário</label>
-          <Button disabled={!marcadas.length} onClick={() => setCriarOc(true)}><Package className="h-4 w-4" /> Criar OC com {marcadas.length} NF</Button>
+          {isImp && <Button disabled={!marcadas.length} onClick={() => setCriarOc(true)}><Package className="h-4 w-4" /> Criar OC com {marcadas.length} NF</Button>}
           <button onClick={exportOrdensExcel} className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-elevated">
             <Download className="h-4 w-4" /> Excel
           </button>
@@ -351,10 +361,13 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
           </button>
         </div>
 
-        {(() => { const g = new Map<string, Order[]>(); orders.list.filter((o) => !ocAtivaDaNf(ocs.list, o.id)).forEach((o) => { const k = `${o.remetente} → ${o.destinatario}`; g.set(k, [...(g.get(k) ?? []), o]); }); const grupos = [...g.entries()]; return grupos.length ? (
+        {isImp && (() => { const g = new Map<string, Order[]>(); listaAba.filter((o) => !ocAtivaDaNf(ocs.list, o.id)).forEach((o) => { const k = `${o.remetente} → ${o.destinatario}${splits[o.id] ? `|${splits[o.id]}` : ""}`; g.set(k, [...(g.get(k) ?? []), o]); }); const grupos = [...g.entries()]; return grupos.length ? (
           <div className="panel p-3 space-y-2"><div className="text-xs font-semibold text-primary">Sugestões de OC (mesmo remetente e destinatário)</div>
-            {grupos.map(([k, ns]) => <div key={k} className="flex items-center gap-2 text-xs border-t border-border pt-2"><span className="flex-1 truncate">{k}</span><span className="text-muted-foreground">{ns.length} NF · {ns.map((n) => n.numeroNFe).join(", ")}</span><Button size="sm" variant="outline" onClick={() => setMarcadas(ns.map((n) => n.id))}>Marcar grupo</Button></div>)}
-            <p className="text-[11px] text-muted-foreground">Marque o grupo inteiro ou desmarque notas na lista. O número da OC só é gerado ao salvar.</p></div>) : null; })()}
+            {grupos.map(([k, ns]) => { const [par, tag] = k.split("|"); return <div key={k} className="text-xs border-t border-border pt-2 space-y-1">
+              <div className="flex items-center gap-2"><span className="flex-1 truncate font-medium">{par}{tag && <span className="ml-2 text-[10px] text-warning">· separada</span>}</span><span className="text-muted-foreground">{ns.length} NF · {ns.reduce((t, n) => t + (n.peso || 0), 0).toLocaleString("pt-BR")} kg · {fmtBRL(ns.reduce((t, n) => t + (n.valorNF || 0), 0))}</span><Button size="sm" variant="outline" onClick={() => setMarcadas(ns.map((n) => n.id))}>Marcar grupo</Button></div>
+              {ns.map((n) => <div key={n.id} className="flex items-center gap-3 pl-3 text-muted-foreground"><span className="num w-24 text-foreground">NF {n.numeroNFe}</span><span className="num w-28">{(n.peso || 0).toLocaleString("pt-BR")} kg</span><span className="num w-32">{fmtBRL(n.valorNF || 0)}</span>{ns.length > 1 && <button className="ml-auto text-danger hover:underline" onClick={() => removerDaSugestao(n.id, tag)}>Remover da sugestão</button>}</div>)}
+            </div>; })}
+            <p className="text-[11px] text-muted-foreground">Ao remover uma NF, ela forma uma nova sugestão junto com as outras removidas do mesmo grupo. O número da OC só é gerado ao salvar.</p></div>) : null; })()}
         <RegularizationPreview />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Lista */}
@@ -423,7 +436,7 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
                 ))}
                 {filtered.length === 0 && (
                   <tr><td colSpan={10} className="py-8 text-center text-xs text-muted-foreground">
-                    Nenhuma NF na fila. Importe um XML de NF-e para começar.
+                    {isImp ? "Nenhuma NF aguardando coleta. Importe um XML de NF-e para começar." : "Nenhuma NF coletada ou com CT-e emitido."}
                   </td></tr>
                 )}
               </tbody>
