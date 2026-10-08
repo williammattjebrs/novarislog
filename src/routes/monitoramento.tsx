@@ -16,6 +16,7 @@ import { isEmitida, isV2, OC_EXECUCAO } from "@/lib/oc-model";
 import { aplicarStatusOc } from "@/lib/oc-actions";
 import { fmtDataHora } from "@/lib/oc-pdf";
 import { Button } from "@/components/ui/button";
+import { useEmpresaFiltro, filtrarOcs } from "@/lib/empresa-filter";
 
 export const Route = createFileRoute("/monitoramento")({
   validateSearch: (search: Record<string, unknown>): { registro?: string } => ({ registro: typeof search.registro === "string" ? search.registro : undefined }),
@@ -33,7 +34,7 @@ export const Route = createFileRoute("/monitoramento")({
 });
 
 function MonitoramentoPage() {
-  const orders = useOrders(); const ocs = useOrdensColeta(); const mot = useMotoristas(); const vei = useVeiculos();
+  const orders = useOrders(); const ocs0 = useOrdensColeta(); const [empresaF] = useEmpresaFiltro(); const ocs = { ...ocs0, list: filtrarOcs(empresaF, ocs0.list) }; const mot = useMotoristas(); const vei = useVeiculos();
   const [cfg] = useConfig(); const { user } = useAuth(); const canSeeCosts = financialAccess(user);
   const [busca, setBusca] = useState(""); const [st, setSt] = useState<OCStatus | "">("");
   const [cteFiltro, setCteFiltro] = useState<"" | "com" | "sem" | "divergente" | "ocorrencia">("");

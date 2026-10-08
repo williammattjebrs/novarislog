@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEmpresaFiltro, filtrarOcs } from "@/lib/empresa-filter";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { BrazilMap } from "@/components/BrazilMap";
@@ -38,7 +39,7 @@ function Dashboard() {
   const canSeeFinance = financialAccess(user);
   const month = new Date().toISOString().slice(0,7);
   const orders = useOrders();
-  const ocs = useOrdensColeta();
+  const ocs0 = useOrdensColeta(); const [empresaF] = useEmpresaFiltro(); const ocs = { ...ocs0, list: filtrarOcs(empresaF, ocs0.list) };
   const invoices = useInvoices();
   const expenses = useExpenses();
   const [cfg]=useConfig();
