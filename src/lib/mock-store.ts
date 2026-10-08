@@ -35,6 +35,7 @@ type StoreKey =
   | "veiculos"
   | "locais"
   | "companies"
+  | "cteDocuments"
   | "config";
 
 // Dados compartilhados no banco (app_records) com cache local e realtime.
@@ -103,6 +104,7 @@ export const useMotoristas = () => useCollection<Motorista>("motoristas");
 export const useVeiculos = () => useCollection<Veiculo>("veiculos");
 export const useLocais = () => useCollection<LocalOperacional>("locais");
 export const useEmpresas = () => useCollection<Empresa>("companies");
+export const useCteDocuments = () => useCollection<import("./cte-profit").CteDoc>("cteDocuments");
 export const useClientGroups = () => useCollection<ClientGroup>("clientGroups");
 export const DEFAULT_EXPENSE_GROUPS: ExpenseGroup[] = [
   { id: "EG-OPER", nome: "Operação" },

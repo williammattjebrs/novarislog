@@ -4,12 +4,14 @@ import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useState } from "react";
 import { Wallet, TrendingUp, TrendingDown, Plus, AlertTriangle, Search, Download, Printer, FileWarning } from "lucide-react";
-import { useInvoices, useExpenses, useExpenseGroups, useOrders, useConfig, newId } from "@/lib/mock-store";
+import { useInvoices, useExpenses, useExpenseGroups, useOrders, useConfig, newId, useOrdensColeta, useCteDocuments } from "@/lib/mock-store";
 import { exportCsv, printReport } from "@/lib/export-utils";
 import { calcOrderCost } from "@/lib/cost-calc";
 import { Conciliacao, DreBalancete } from "@/components/FinanceReports";
 import { QuickBaixa } from "@/components/QuickBaixa";
-import { useEmpresaFiltro, filtrarFin } from "@/lib/empresa-filter";
+import { useEmpresaFiltro, filtrarFin, casaEmpresa } from "@/lib/empresa-filter";
+import { CteProfitTable } from "@/components/CteProfitTable";
+import { buildCteProfit } from "@/lib/cte-profit";
 import { fmtBRL, statusTone, toneClass, type Expense, type ExpenseType, type ExpenseArea } from "@/lib/mock-data";
 
 import { financeSummary, costKnown } from "@/lib/finance-summary";
@@ -44,6 +46,8 @@ function FinanceiroPage() {
   const [novoGrupo, setNovoGrupo] = useState("");
   const orders = useOrders();
   const [cfg] = useConfig();
+  const ocsAll = useOrdensColeta(); const cteDocs = useCteDocuments();
+  const ctes = buildCteProfit(orders.list, ocsAll.list, cteDocs.list, cfg).filter((l) => casaEmpresa(empresaF, l.empresaId));
   const [tab, setTab] = useState<"receitas" | "despesas" | "conciliacao" | "dre" | "rentabilidade" | "divergencias">("receitas");
   const [showNew, setShowNew] = useState(false);
 
@@ -278,6 +282,7 @@ function FinanceiroPage() {
           <DreBalancete invoices={invoices.list} expenses={expenses.list} orders={orders.list} cfg={cfg} />
         )}
 
+        {tab === "rentabilidade" && <CteProfitTable linhas={ctes} />}
         {tab === "rentabilidade" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="panel p-4">

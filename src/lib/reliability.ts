@@ -12,10 +12,11 @@ export function compareCte(base: number, fiscal: number, tolerance: number) {
 }
 export function allocateCte(total: number, orders: Pick<Order, "id" | "valorFrete" | "origemValor" | "peso">[]) {
   if (!(total > 0) || !orders.length) return { method: "pendente" as const, allocations: [] as { orderId: string; value: number }[] };
-  const freight = orders.every((o) => o.valorFrete > 0 && !!o.origemValor);
+  // Regra: rateio pelo % do peso de cada NF sobre o total; frete previsto só como alternativa.
   const weight = orders.every((o) => Number.isFinite(o.peso) && o.peso > 0);
+  const freight = !weight && orders.every((o) => o.valorFrete > 0 && !!o.origemValor);
   if (!freight && !weight) return { method: "pendente" as const, allocations: [] as { orderId: string; value: number }[] };
-  const weights = orders.map((o) => freight ? o.valorFrete : o.peso);
+  const weights = orders.map((o) => weight ? o.peso : o.valorFrete);
   const sum = weights.reduce((a, b) => a + b, 0), cents = Math.round(total * 100);
   const shares = weights.map((w) => Math.floor(cents * w / sum));
   const ranked = weights.map((w, i) => ({ i, remainder: cents * w / sum - shares[i] })).sort((a, b) => b.remainder - a.remainder || a.i - b.i);

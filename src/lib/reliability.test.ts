@@ -34,16 +34,18 @@ describe('reliability', () => {
     expect(res.status).toBe('divergente');
   });
 
-  it('should allocate CTE by freight value', () => {
+  it('should allocate CTE by weight share', () => {
     const orders = [
-      { id: '1', valorFrete: 60, origemValor: 'manual' as const, peso: 10 },
-      { id: '2', valorFrete: 40, origemValor: 'manual' as const, peso: 20 },
+      { id: '1', valorFrete: 60, origemValor: 'manual' as const, peso: 6000 },
+      { id: '2', valorFrete: 40, origemValor: 'manual' as const, peso: 3600 },
+      { id: '3', valorFrete: 40, origemValor: 'manual' as const, peso: 2400 },
     ];
-    const res = allocateCte(100, orders);
-    expect(res.method).toBe('frete');
+    const res = allocateCte(5000, orders);
+    expect(res.method).toBe('peso');
     expect(res.allocations).toEqual([
-      { orderId: '1', value: 60 },
-      { orderId: '2', value: 40 },
+      { orderId: '1', value: 2500 },
+      { orderId: '2', value: 1500 },
+      { orderId: '3', value: 1000 },
     ]);
   });
 
