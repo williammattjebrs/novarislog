@@ -44,3 +44,11 @@
 - [x] Multi-NF e multi-CT-e: rota/OC já agrupam várias NFs; CT-e vincula por todas as chaves de NF referenciadas; mesmo veículo/motorista reutilizável em várias OCs
 - [ ] Envio automático do PDF da OC pelo WhatsApp Business (aguarda conectar conta WhatsApp Business e aprovação do modelo pela Meta); hoje abre o WhatsApp com link do PDF.
 - [x] Local de entrega (descarga) opcional na OC
+
+## OC automática, empresas e relatórios (08/10/2026)
+- [x] Importação de NF-e cria/atualiza rascunho de OC (mesmo remetente+destinatário)
+- [x] Empresa emissora, contratação e custo do motorista obrigatórios na emissão; custo vira despesa prevista
+- [x] Rotas renomeada para Acompanhamento de Coleta, com follow-up das OCs emitidas
+- [x] Financeiro: clicar na receita/despesa para marcar recebido/pago/parcial/estorno
+- [x] Cadastro de empresas do grupo com logo; filtro global por empresa
+- [x] Relatórios gerenciais com exportação
