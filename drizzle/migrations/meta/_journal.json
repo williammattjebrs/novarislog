@@ -134,6 +134,13 @@
       "when": 1791484828746,
       "tag": "0018_add_master_role",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791484863404,
+      "tag": "0019_perfil_master",
+      "breakpoints": true
     }
   ]
 }

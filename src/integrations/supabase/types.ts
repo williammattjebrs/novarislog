@@ -254,6 +254,21 @@ export type Database = {
         }
         Relationships: []
       }
+      tms_master_users: {
+        Row: {
+          criado_em: string
+          user_id: string
+        }
+        Insert: {
+          criado_em?: string
+          user_id: string
+        }
+        Update: {
+          criado_em?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tms_oc_documents: {
         Row: {
           created_at: string
@@ -418,6 +433,7 @@ export type Database = {
         Returns: Json
       }
       tms_import_nfe_worker: { Args: { payload: Json }; Returns: Json }
+      tms_is_master: { Args: never; Returns: boolean }
       tms_module: { Args: { module_name: string }; Returns: boolean }
       tms_oc_email_claim: {
         Args: { p_limit: number; p_oc_id: string }
