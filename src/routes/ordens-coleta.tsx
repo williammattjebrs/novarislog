@@ -129,7 +129,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
   const dirty = JSON.stringify(f) !== JSON.stringify(init());
   const nfs = f.orderIds.map((id) => orders.list.find((n) => n.id === id)).filter(Boolean) as Order[];
   const livres = orders.list.filter((n) => !f.orderIds.includes(n.id) && !ocAtivaDaNf(ocs.list, n.id));
-  const lc = locais.list.find((l) => l.id === f.localColetaId); const ld = locais.list.find((l) => l.id === f.localDescargaId); const m = mot.list.find((x) => x.id === f.motoristaId);
+  const lc = undefined as (typeof locais.list)[number] | undefined; const ld = locais.list.find((l) => l.id === f.localDescargaId); const m = mot.list.find((x) => x.id === f.motoristaId);
   const lcs = [...new Set(f.orderIds.map((id) => localColetaDaNf(draft, id)))].map((id) => locais.list.find((l) => l.id === id)).filter(Boolean) as typeof locais.list;
   const dest = destinatariosOc(lcs);
   const val = validarEmissao(draft, { nfs: orders.list, locais: locais.list, motoristas: mot.list, veiculos: vei.list });
