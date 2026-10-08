@@ -38,6 +38,30 @@ function MonitoramentoPage() {
   const [busca, setBusca] = useState(""); const [st, setSt] = useState<OCStatus | "">("");
   const [cteFiltro, setCteFiltro] = useState<"" | "com" | "sem" | "divergente" | "ocorrencia">("");
   const [nfStage, setNfStage] = useState("");
+  const filtroKey = user?.email ? `novaris:monitoramento:filtro:${user.email.toLowerCase()}` : null;
+  const [temPadrao, setTemPadrao] = useState(false);
+  const [msgFiltro, setMsgFiltro] = useState("");
+  useEffect(() => {
+    if (!filtroKey) return;
+    try {
+      const raw = window.localStorage.getItem(filtroKey);
+      if (!raw) { setTemPadrao(false); return; }
+      const f = JSON.parse(raw);
+      setSt(f.st ?? ""); setCteFiltro(f.cteFiltro ?? ""); setNfStage(f.nfStage ?? ""); setBusca(f.busca ?? "");
+      setTemPadrao(true);
+    } catch { /* ignora padrão inválido */ }
+  }, [filtroKey]);
+  const salvarPadrao = () => {
+    if (!filtroKey) return;
+    window.localStorage.setItem(filtroKey, JSON.stringify({ st, cteFiltro, nfStage, busca }));
+    setTemPadrao(true); setMsgFiltro("Filtro padrão salvo"); setTimeout(() => setMsgFiltro(""), 2500);
+  };
+  const limparPadrao = () => {
+    if (!filtroKey) return;
+    window.localStorage.removeItem(filtroKey);
+    setSt(""); setCteFiltro(""); setNfStage(""); setBusca("");
+    setTemPadrao(false); setMsgFiltro("Filtro padrão removido"); setTimeout(() => setMsgFiltro(""), 2500);
+  };
   const { registro } = Route.useSearch();
   const [selected, setSelected] = useState<string | null>(registro ?? null);
   useEffect(() => { if (registro) setSelected(registro); }, [registro]);
@@ -91,6 +115,9 @@ function MonitoramentoPage() {
             <Search className="h-3.5 w-3.5 absolute left-2 top-2.5 text-muted-foreground" />
             <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar OC, motorista, placa, cliente, local, NF" className="input pl-7" />
           </div>
+          <button onClick={salvarPadrao} disabled={!filtroKey} className="text-xs px-3 py-1.5 rounded border border-border hover:bg-muted">Salvar como padrão</button>
+          {temPadrao && <button onClick={limparPadrao} className="text-xs px-3 py-1.5 rounded border border-border hover:bg-muted text-muted-foreground">Remover padrão</button>}
+          {msgFiltro && <span className="text-xs text-success">{msgFiltro}</span>}
           <button onClick={() => setBulkOpen(true)} className="ml-auto text-xs px-3 py-1.5 rounded bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25 inline-flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> Atualizar cliente (por NF)</button>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
