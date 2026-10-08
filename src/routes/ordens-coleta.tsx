@@ -1,6 +1,6 @@
 // Ordens de coleta: rascunho → programação → emissão no servidor (PDF + fila de envio) → execução no Monitoramento.
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { FileText, Send, X, RefreshCw, Ban } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -66,15 +66,18 @@ function Page() {
           <thead className="text-xs text-muted-foreground text-left"><tr className="border-b border-border"><th className="p-2">OC</th><th>Cliente coleta → descarga</th><th>Locais</th><th>Coleta</th><th>NFs</th><th>Documento</th><th>Status</th></tr></thead>
           <tbody>
             {lista.map((oc) => (
-              <tr key={oc.id} onClick={() => setSel(oc.id)} className={`border-b border-border cursor-pointer hover:bg-elevated/50 ${sel === oc.id ? "bg-elevated/60" : ""}`}>
-                <td className="p-2 num text-primary">{oc.numero}</td>
-                <td className="text-xs">{oc.clienteColetaNome ?? oc.clienteNome} → {oc.clienteDescargaNome ?? "—"}</td>
-                <td className="text-xs">{oc.localColeta || "—"} ({oc.cidadeColeta}/{oc.ufColeta}) → {oc.localEntrega || "—"} ({oc.cidadeEntrega}/{oc.ufEntrega})</td>
-                <td className="text-xs">{fmtDataHora(oc.dataHoraColeta)}</td>
-                <td className="text-xs">{oc.orderIds.length}</td>
-                <td className="text-xs">{oc.docVersion ? `v${oc.docVersion}${oc.conteudoPendenteRevisao ? " · revisão pendente" : ""}` : oc.documentoEstado === "legado_sem_snapshot" ? "legado sem PDF" : "—"}</td>
-                <td className="text-xs">{label(oc)}</td>
-              </tr>
+              <Fragment key={oc.id}>
+                <tr onClick={() => setSel(oc.id)} className={`border-b border-border cursor-pointer hover:bg-elevated/50 ${sel === oc.id ? "bg-elevated/60" : ""}`}>
+                  <td className="p-2 num text-primary">{oc.numero}</td>
+                  <td className="text-xs">{oc.clienteColetaNome ?? oc.clienteNome} → {oc.clienteDescargaNome ?? "—"}</td>
+                  <td className="text-xs">{oc.localColeta || "—"} ({oc.cidadeColeta}/{oc.ufColeta}) → {oc.localEntrega || "—"} ({oc.cidadeEntrega}/{oc.ufEntrega})</td>
+                  <td className="text-xs">{fmtDataHora(oc.dataHoraColeta)}</td>
+                  <td className="text-xs">{oc.orderIds.length}</td>
+                  <td className="text-xs">{oc.docVersion ? `v${oc.docVersion}${oc.conteudoPendenteRevisao ? " · revisão pendente" : ""}` : oc.documentoEstado === "legado_sem_snapshot" ? "legado sem PDF" : "—"}</td>
+                  <td className="text-xs">{label(oc)}</td>
+                </tr>
+                {sel === oc.id && <tr aria-label={`Edição de ${oc.numero}`}><td colSpan={7} className="p-0 bg-elevated/20"><OcDetalhe key={oc.id} ocId={oc.id} onClose={() => setSel(null)} /></td></tr>}
+              </Fragment>
             ))}
             {!lista.length && <tr><td colSpan={7} className="p-6 text-center text-xs text-muted-foreground">Nenhuma OC. Selecione NFs em <Link to="/rotas" className="text-primary">Rotas</Link> para criar um rascunho.</td></tr>}
           </tbody>
