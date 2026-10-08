@@ -211,7 +211,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
       <div className="flex items-center gap-2 flex-wrap">
         <h2 className="font-display text-lg">{oc.numero}</h2>
         <span className="text-xs px-2 py-0.5 rounded border border-primary/40 text-primary">{label(oc)}</span>
-        {oc.docVersion ? <><span className="text-xs">Documento v{oc.docVersion}</span><Button size="sm" variant="outline" onClick={() => abrirPdf(oc.docVersion!)}><FileText className="h-3 w-3" /> Reimprimir OC</Button><Button size="sm" variant="outline" disabled={!m?.telefone} onClick={() => whatsMotorista(oc.docVersion!)}><Send className="h-3 w-3" /> WhatsApp do motorista</Button></> : null}
+        {oc.docVersion ? <><span className="text-xs">Documento v{oc.docVersion}</span><Button size="sm" variant="outline" onClick={() => abrirPdf(oc.docVersion!)}><FileText className="h-3 w-3" /> Reimprimir OC</Button><Button size="sm" variant="outline" disabled={!m?.telefone} title={m?.telefone ? "Abre a conversa com o motorista já com a mensagem e o link do PDF" : "Cadastre o telefone do motorista"} onClick={() => whatsMotorista(oc.docVersion!)}><MessageCircle className="h-3 w-3" /> WhatsApp do motorista</Button><Button size="sm" variant="outline" title="Baixa o PDF para anexar manualmente na conversa do WhatsApp" onClick={() => baixarPdf(oc.docVersion!)}><Download className="h-3 w-3" /> Baixar PDF</Button></> : null}
         {oc.conteudoPendenteRevisao && <span className="text-xs text-warning">Conteúdo alterado após a emissão</span>}
         <button className="ml-auto" aria-label="Fechar" onClick={onClose}><X className="h-4 w-4" /></button>
       </div>
