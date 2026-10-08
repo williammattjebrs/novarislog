@@ -2,7 +2,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { FileText, Send, X, RefreshCw, Ban } from "lucide-react";
+import { FileText, Send, X, RefreshCw, Ban, MessageCircle, Download } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { Button } from "@/components/ui/button";
