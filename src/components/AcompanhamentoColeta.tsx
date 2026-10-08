@@ -50,7 +50,7 @@ function Linha({ oc, empresa, motorista, placa, atrasada }: { oc: OrdemColeta; e
   const { user } = useAuth(); const autor = user?.nome ?? "usuário";
   const [obs, setObs] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const run = async (fn: () => Promise<void>) => { setBusy(true); setErr(""); try { await fn(); } catch (e) { setErr(e instanceof Error ? e.message : "Falha"); } finally { setBusy(false); } };
-  const ult = [...(oc.historico ?? [])].reverse().find((h) => h.tipo === "observacao" || h.tipo === "ocorrencia");
+  const ult = (oc.historico ?? []).at(-1);
   return (
     <tr className={`border-b border-border align-top ${atrasada ? "bg-danger/5" : ""}`}>
       <td className="p-2"><Link to="/ordens-coleta" search={{ registro: oc.id }} className="num text-primary">{oc.numero}</Link><div className="text-muted-foreground">{oc.orderIds.length} NF</div></td>
