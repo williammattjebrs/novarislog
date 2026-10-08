@@ -141,6 +141,13 @@
       "when": 1791484863404,
       "tag": "0019_perfil_master",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791484944412,
+      "tag": "0020_enable_cron_net",
+      "breakpoints": true
     }
   ]
 }
