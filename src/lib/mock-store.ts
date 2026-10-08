@@ -99,6 +99,7 @@ export const useRotas = () => useCollection<Rota>("rotas");
 export const useOrdensColeta = () => useCollection<OrdemColeta>("ordensColeta");
 export const useMotoristas = () => useCollection<Motorista>("motoristas");
 export const useVeiculos = () => useCollection<Veiculo>("veiculos");
+export const useLocais = () => useCollection<LocalOperacional>("locais");
 export const useClientGroups = () => useCollection<ClientGroup>("clientGroups");
 export const DEFAULT_EXPENSE_GROUPS: ExpenseGroup[] = [
   { id: "EG-OPER", nome: "Operação" },
