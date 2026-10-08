@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as ColetasRouteImport } from './routes/coletas'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
+import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as ImportacaoRouteImport } from './routes/importacao'
 import { Route as LocaisOperacionaisRouteImport } from './routes/locais-operacionais'
@@ -47,6 +48,11 @@ const ColetasRoute = ColetasRouteImport.update({
 const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
   id: '/configuracoes',
   path: '/configuracoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmpresasRoute = EmpresasRouteImport.update({
+  id: '/empresas',
+  path: '/empresas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FinanceiroRoute = FinanceiroRouteImport.update({
@@ -130,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/clientes': typeof ClientesRouteWithChildren
   '/coletas': typeof ColetasRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/empresas': typeof EmpresasRoute
   '/financeiro': typeof FinanceiroRoute
   '/importacao': typeof ImportacaoRoute
   '/locais-operacionais': typeof LocaisOperacionaisRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByTo {
   '/clientes': typeof ClientesRouteWithChildren
   '/coletas': typeof ColetasRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/empresas': typeof EmpresasRoute
   '/financeiro': typeof FinanceiroRoute
   '/importacao': typeof ImportacaoRoute
   '/locais-operacionais': typeof LocaisOperacionaisRoute
@@ -173,6 +181,7 @@ export interface FileRoutesById {
   '/clientes': typeof ClientesRouteWithChildren
   '/coletas': typeof ColetasRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/empresas': typeof EmpresasRoute
   '/financeiro': typeof FinanceiroRoute
   '/importacao': typeof ImportacaoRoute
   '/locais-operacionais': typeof LocaisOperacionaisRoute
@@ -196,6 +205,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/coletas'
     | '/configuracoes'
+    | '/empresas'
     | '/financeiro'
     | '/importacao'
     | '/locais-operacionais'
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/coletas'
     | '/configuracoes'
+    | '/empresas'
     | '/financeiro'
     | '/importacao'
     | '/locais-operacionais'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/coletas'
     | '/configuracoes'
+    | '/empresas'
     | '/financeiro'
     | '/importacao'
     | '/locais-operacionais'
@@ -260,6 +272,7 @@ export interface RootRouteChildren {
   ClientesRoute: typeof ClientesRouteWithChildren
   ColetasRoute: typeof ColetasRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
+  EmpresasRoute: typeof EmpresasRoute
   FinanceiroRoute: typeof FinanceiroRoute
   ImportacaoRoute: typeof ImportacaoRoute
   LocaisOperacionaisRoute: typeof LocaisOperacionaisRoute
@@ -304,6 +317,13 @@ declare module '@tanstack/react-router' {
       path: '/configuracoes'
       fullPath: '/configuracoes'
       preLoaderRoute: typeof ConfiguracoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/empresas': {
+      id: '/empresas'
+      path: '/empresas'
+      fullPath: '/empresas'
+      preLoaderRoute: typeof EmpresasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/financeiro': {
@@ -431,6 +451,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClientesRoute: ClientesRouteWithChildren,
   ColetasRoute: ColetasRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
+  EmpresasRoute: EmpresasRoute,
   FinanceiroRoute: FinanceiroRoute,
   ImportacaoRoute: ImportacaoRoute,
   LocaisOperacionaisRoute: LocaisOperacionaisRoute,

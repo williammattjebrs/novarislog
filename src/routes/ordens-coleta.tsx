@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Timeline } from "@/components/Timeline";
 import { MotoristaSelect, VeiculoSelect, CapacidadeAlerta } from "@/components/FleetSelects";
 import { LocalSelect } from "@/components/CriarOcPanel";
-import { useClients, useLocais, useMotoristas, useOrders, useOrdensColeta, useVeiculos } from "@/lib/mock-store";
+import { useClients, useLocais, useMotoristas, useOrders, useOrdensColeta, useVeiculos, useEmpresas } from "@/lib/mock-store";
+import { useEmpresaFiltro, filtrarOcs } from "@/lib/empresa-filter";
+import type { Expense } from "@/lib/mock-data";
 import { OC_STATUS, type OCStatus, type OrdemColeta, type Order } from "@/lib/mock-data";
 import { destinatariosOc, localColetaDaNf, isV2, ocAtivaDaNf, previewConversao, validarEmissao, OC_EMITIDAS, OC_EXECUCAO } from "@/lib/oc-model";
 import { aplicarStatusOc, salvarOc } from "@/lib/oc-actions";
@@ -36,14 +38,15 @@ const toLocal = (iso?: string) => (iso ? new Date(new Date(iso).getTime() - new 
 const label = (oc: OrdemColeta) => { const l = OC_STATUS.find((s) => s.id === oc.status)?.label ?? oc.status; return isV2(oc) || l.startsWith("Legado") ? l : `Legado · ${l}`; };
 
 function Page() {
-  const ocs = useOrdensColeta(); const { registro } = Route.useSearch();
+  const ocs0 = useOrdensColeta(); const { registro } = Route.useSearch(); const [empresaF] = useEmpresaFiltro();
+  const ocs = { ...ocs0, list: filtrarOcs(empresaF, ocs0.list) };
   const [sel, setSel] = useState<string | null>(registro ?? null);
   useEffect(() => { if (registro) setSel(registro); }, [registro]);
   const [filtro, setFiltro] = useState<"ativas" | "rascunho" | "emitidas" | "legado" | "todas">("ativas");
   const [busca, setBusca] = useState("");
   const q = busca.trim().toLowerCase();
   const lista = ocs.list.filter((o) => {
-    const f = filtro === "todas" || (filtro === "ativas" && !["cancelada", "entregue", "coletada", "em_viagem", "ocorrencia"].includes(o.status)) || (filtro === "rascunho" && isV2(o) && o.status === "rascunho") || (filtro === "emitidas" && isV2(o) && OC_EMITIDAS.includes(o.status)) || (filtro === "legado" && !isV2(o));
+    const f = filtro === "todas" || (filtro === "ativas" && o.status === "rascunho") || (filtro === "rascunho" && isV2(o) && o.status === "rascunho") || (filtro === "emitidas" && isV2(o) && OC_EMITIDAS.includes(o.status)) || (filtro === "legado" && !isV2(o));
     return f && (!q || [o.numero, o.clienteNome, o.clienteColetaNome, o.clienteDescargaNome, o.localColeta, o.localEntrega].join(" ").toLowerCase().includes(q));
   });
   const legados = ocs.list.filter((o) => !isV2(o)).length;
@@ -51,12 +54,12 @@ function Page() {
     <div className="p-6 space-y-4">
       <div>
         <h1 className="text-2xl font-display">Ordens de coleta</h1>
-        <p className="text-sm text-muted-foreground">Rascunhos criados em Rotas são programados aqui. Só a emissão gera o PDF, coloca a OC no Monitoramento e enfileira o envio aos locais e ao motorista.</p>
+        <p className="text-sm text-muted-foreground">Cada XML importado já vira um rascunho aqui (notas do mesmo remetente e destinatário entram no mesmo rascunho). Escolha a empresa, motorista, veículo e custo e emita: a OC segue para Acompanhamento de Coleta e o e-mail vai aos armazéns.</p>
       </div>
       {legados > 0 && <ConversaoLegado />}
       <div className="flex flex-wrap gap-2 items-center text-sm">
         <select aria-label="Filtro" className="bg-input/40 border border-border rounded px-2 py-1" value={filtro} onChange={(e) => setFiltro(e.target.value as typeof filtro)}>
-          <option value="ativas">Ativas</option><option value="rascunho">Rascunhos</option><option value="emitidas">Emitidas</option><option value="legado">Legadas (a converter)</option><option value="todas">Todas</option>
+          <option value="ativas">Em preparação (rascunhos)</option><option value="rascunho">Rascunhos</option><option value="emitidas">Emitidas</option><option value="legado">Legadas (a converter)</option><option value="todas">Todas</option>
         </select>
         <input className="input max-w-xs" placeholder="Buscar OC, cliente, local" value={busca} onChange={(e) => setBusca(e.target.value)} />
         <span className="text-xs text-muted-foreground">{lista.length} OC</span>
@@ -79,7 +82,7 @@ function Page() {
                 {sel === oc.id && <tr aria-label={`Edição de ${oc.numero}`}><td colSpan={7} className="p-0 bg-elevated/20"><OcDetalhe key={oc.id} ocId={oc.id} onClose={() => setSel(null)} /></td></tr>}
               </Fragment>
             ))}
-            {!lista.length && <tr><td colSpan={7} className="p-6 text-center text-xs text-muted-foreground">Nenhuma OC. Selecione NFs em <Link to="/rotas" className="text-primary">Rotas</Link> para criar um rascunho.</td></tr>}
+            {!lista.length && <tr><td colSpan={7} className="p-6 text-center text-xs text-muted-foreground">Nenhuma OC. Importe XML em <Link to="/importacao" className="text-primary">Importação</Link>: o rascunho é criado automaticamente.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -89,11 +92,11 @@ function Page() {
 }
 
 function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
-  const ocs = useOrdensColeta(); const orders = useOrders(); const locais = useLocais(); const mot = useMotoristas(); const vei = useVeiculos(); const clients = useClients();
+  const ocs = useOrdensColeta(); const orders = useOrders(); const locais = useLocais(); const empresas = useEmpresas(); const mot = useMotoristas(); const vei = useVeiculos(); const clients = useClients();
   const { user } = useAuth(); const autor = user?.nome ?? "usuário";
   const oc = ocs.list.find((o) => o.id === ocId)!;
   const emitir = useServerFn(emitirOC); const pdfLink = useServerFn(linkPdfOC); const requeue = useServerFn(reenfileirarEnvios); const enviarAgora = useServerFn(enviarAgoraOC);
-  const init = () => ({ motoristaId: oc.motoristaId ?? "", veiculoId: oc.veiculoId ?? "", clienteColetaId: oc.clienteColetaId ?? "", clienteColetaNome: oc.clienteColetaNome ?? oc.clienteNome, clienteDescargaNome: oc.clienteDescargaNome ?? "", localDescargaId: oc.localDescargaId ?? "", contratanteNome: oc.contratanteNome ?? "", dataHoraColeta: toLocal(oc.dataHoraColeta), dataHoraEntrega: toLocal(oc.dataHoraEntrega), instrucoes: oc.instrucoes ?? oc.observacao ?? "", orderIds: oc.orderIds, coletaPorNf: oc.coletaPorNf ?? {} as Record<string, string> });
+  const init = () => ({ motoristaId: oc.motoristaId ?? "", veiculoId: oc.veiculoId ?? "", clienteColetaId: oc.clienteColetaId ?? "", clienteColetaNome: oc.clienteColetaNome ?? oc.clienteNome, clienteDescargaNome: oc.clienteDescargaNome ?? "", localDescargaId: oc.localDescargaId ?? "", contratanteNome: oc.contratanteNome ?? "", dataHoraColeta: toLocal(oc.dataHoraColeta), dataHoraEntrega: toLocal(oc.dataHoraEntrega), instrucoes: oc.instrucoes ?? oc.observacao ?? "", orderIds: oc.orderIds, coletaPorNf: oc.coletaPorNf ?? {} as Record<string, string>, empresaId: oc.empresaId ?? (empresas.list.filter((e) => e.ativa).length === 1 ? empresas.list.find((e) => e.ativa)!.id : ""), contratacao: (oc.contratacao ?? "") as "" | "terceiro" | "frota", custoMotorista: oc.custoMotorista ? String(oc.custoMotorista) : "", custoObs: oc.custoObs ?? "" });
   const [f, setF] = useState(init);
   const [msg, setMsg] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
   const [zapLink, setZapLink] = useState<string | null>(null);
@@ -126,7 +129,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
     setDocs((d.data ?? []) as never); setEnvios((e.data ?? []) as never);
   }
   useEffect(() => { void loadDocs(); }, [ocId, oc.docVersion]);
-  const draft: OrdemColeta = { ...oc, ...f, clienteColetaId: f.clienteColetaId || undefined, motoristaId: f.motoristaId || undefined, veiculoId: f.veiculoId || undefined, localColetaId: undefined, localDescargaId: f.localDescargaId || undefined, dataHoraColeta: f.dataHoraColeta ? new Date(f.dataHoraColeta).toISOString() : "", dataHoraEntrega: f.dataHoraEntrega ? new Date(f.dataHoraEntrega).toISOString() : "" };
+  const draft: OrdemColeta = { ...oc, ...f, clienteColetaId: f.clienteColetaId || undefined, motoristaId: f.motoristaId || undefined, veiculoId: f.veiculoId || undefined, localColetaId: undefined, localDescargaId: f.localDescargaId || undefined, dataHoraColeta: f.dataHoraColeta ? new Date(f.dataHoraColeta).toISOString() : "", dataHoraEntrega: f.dataHoraEntrega ? new Date(f.dataHoraEntrega).toISOString() : "", empresaId: f.empresaId || undefined, contratacao: f.contratacao || undefined, custoMotorista: Number(String(f.custoMotorista).replace(/\./g, "").replace(",", ".")) || 0 };
   // Comparação estável: o banco reordena as chaves de coletaPorNf, o que deixava a OC sempre "com alterações" e bloqueava a emissão.
   const estavel = (x: ReturnType<typeof init>) => JSON.stringify({ ...x, coletaPorNf: Object.fromEntries(Object.entries(x.coletaPorNf).filter(([, v]) => v).sort(([a], [b]) => a.localeCompare(b))) });
   const dirty = estavel(f) !== estavel(init());
@@ -135,7 +138,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
   const lc = undefined as (typeof locais.list)[number] | undefined; const ld = locais.list.find((l) => l.id === f.localDescargaId); const m = mot.list.find((x) => x.id === f.motoristaId);
   const lcs = [...new Set(f.orderIds.map((id) => localColetaDaNf(draft, id)))].map((id) => locais.list.find((l) => l.id === id)).filter(Boolean) as typeof locais.list;
   const dest = destinatariosOc(lcs);
-  const val = validarEmissao(draft, { nfs: orders.list, locais: locais.list, motoristas: mot.list, veiculos: vei.list });
+  const val = validarEmissao(draft, { nfs: orders.list, locais: locais.list, motoristas: mot.list, veiculos: vei.list, empresas: empresas.list });
 
   async function salvar() {
     if (!f.orderIds.length) return setMsg({ tipo: "erro", texto: "A OC precisa de ao menos uma NF." });
@@ -157,6 +160,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
       if (!r.ok) { setMsg({ tipo: "erro", texto: r.erros.join(" ") }); }
       else {
         if (m?.telefone) void whatsMotorista(r.docVersion);
+        void lancarCusto();
         const pend = r.pendencias.length ? ` Pendência: ${r.pendencias.join("; ")}.` : "";
         if (r.enfileirados > 0) {
           setMsg({ tipo: "ok", texto: `Documento v${r.docVersion} emitido. Enviando e-mail aos cadastrados…` });
@@ -169,6 +173,15 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
       }
     } catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha na emissão." }); }
     finally { setBusy(false); }
+  }
+  /** Custo do motorista/frota vira despesa prevista vinculada à OC (uma por OC, atualizada se mudar). */
+  async function lancarCusto() {
+    const valor = Number(draft.custoMotorista) || 0; if (!valor) return;
+    const id = `EXP-OC-${oc.id}`; const lista = getList<Expense>("expenses") ?? []; const atual = lista.find((x) => x.id === id);
+    if (atual && atual.valor === valor) return;
+    const venc = (draft.dataHoraColeta || new Date().toISOString()).slice(0, 10);
+    const reg: Expense = { ...(atual ?? { status: "prevista", recorrente: false, area: "operacional" as Expense["area"], tipo: (draft.contratacao === "terceiro" ? "terceiro" : "combustivel") as Expense["tipo"] }), id, ocId: oc.id, empresaId: draft.empresaId, descricao: `${oc.numero} · ${draft.contratacao === "terceiro" ? "frete terceiro" : "custo frota própria"}`, fornecedor: m?.nome ?? "motorista", valor, vencimento: atual?.vencimento ?? venc, competencia: venc.slice(0, 7) } as Expense;
+    try { await commitLists({ expenses: atual ? lista.map((x) => (x.id === id ? reg : x)) : [reg, ...lista] }, `${oc.numero}: custo do transporte lançado no financeiro`); } catch { /* sem acesso ao financeiro: custo fica na OC */ }
   }
   /** Abre o WhatsApp do motorista com a mensagem e o link do PDF completo (link válido por 7 dias). */
   async function whatsMotorista(version: number) {
@@ -192,7 +205,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
     setBusy(true);
     try {
       await aplicarStatusOc(oc, novo, `${label}${obs.trim() ? ` · ${obs.trim()}` : ""}`, autor);
-      setMsg({ tipo: "ok", texto: novo === "coletada" ? "OC coletada: as NFs seguem para Rotas aguardando emissão de CT-e." : `Status alterado para ${label}.` });
+      setMsg({ tipo: "ok", texto: novo === "coletada" ? "OC coletada: segue em Acompanhamento de Coleta aguardando emissão de CT-e." : `Status alterado para ${label}.` });
     } catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao alterar status." }); }
     finally { setBusy(false); }
   }
@@ -249,6 +262,21 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
             <input aria-label="Contratante do frete" className={inp} placeholder="Contratante do frete" value={f.contratanteNome} onChange={(e) => setF({ ...f, contratanteNome: e.target.value })} />
           </fieldset>
         </div>
+        <fieldset disabled={!editavel} className="grid md:grid-cols-4 gap-2 rounded border border-border p-3">
+          <legend className="text-xs font-semibold text-primary px-1">Empresa emissora e custo do transporte</legend>
+          <label className="text-xs">Empresa que emite a OC
+            <select aria-label="Empresa emissora" className={inp} value={f.empresaId} onChange={(e) => setF({ ...f, empresaId: e.target.value })}>
+              <option value="">Escolha…</option>{empresas.list.filter((e) => e.ativa || e.id === f.empresaId).map((e) => <option key={e.id} value={e.id}>{e.nome}</option>)}
+            </select>{!empresas.list.length && <Link to="/empresas" className="text-primary">cadastrar empresa →</Link>}</label>
+          <label className="text-xs">Contratação
+            <select aria-label="Contratação" className={inp} value={f.contratacao} onChange={(e) => setF({ ...f, contratacao: e.target.value as typeof f.contratacao })}>
+              <option value="">Escolha…</option><option value="terceiro">Terceiro (agregado)</option><option value="frota">Frota própria</option>
+            </select></label>
+          <label className="text-xs">{f.contratacao === "frota" ? "Custo da frota (R$)" : "Valor fechado com o motorista (R$)"}
+            <input aria-label="Custo do transporte" inputMode="decimal" className={inp} placeholder="0,00" value={f.custoMotorista} onChange={(e) => setF({ ...f, custoMotorista: e.target.value })} /></label>
+          <label className="text-xs">Detalhe do custo
+            <input aria-label="Detalhe do custo" className={inp} placeholder={f.contratacao === "frota" ? "diesel, pedágio, comissão…" : "observação"} value={f.custoObs} onChange={(e) => setF({ ...f, custoObs: e.target.value })} /></label>
+        </fieldset>
         {editavel && <div className="grid md:grid-cols-2 gap-2">
           <MotoristaSelect value={f.motoristaId} onChange={(id) => setF({ ...f, motoristaId: id })} />
           <VeiculoSelect value={f.veiculoId} onChange={(id) => setF({ ...f, veiculoId: id })} />
