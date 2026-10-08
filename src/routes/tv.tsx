@@ -1,7 +1,8 @@
 // Painel de indicadores para TV — tela cheia, sem menu, atualização automática.
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useOrders, useConfig, useInvoices, useExpenses } from "@/lib/mock-store";
+import { useOrders, useConfig, useInvoices, useExpenses, useOrdensColeta } from "@/lib/mock-store";
+import { isEmitida } from "@/lib/oc-model";
 import { useAuth } from "@/lib/auth";
 import { RoleGate } from "@/components/RoleGate";
 import { financeSummary } from "@/lib/finance-summary";

@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { BrazilMap } from "@/components/BrazilMap";
-import { useOrders, useInvoices, useExpenses } from "@/lib/mock-store";
+import { useOrders, useInvoices, useExpenses, useOrdensColeta } from "@/lib/mock-store";
+import { isEmitida, ocAtivaDaNf } from "@/lib/oc-model";
 import { useAuth, ROLE_LABEL } from "@/lib/auth";
 import { fmtBRL, stageLabel, statusTone, toneClass } from "@/lib/mock-data";
 import {
