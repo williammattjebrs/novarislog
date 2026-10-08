@@ -8,6 +8,8 @@ import { useInvoices, useExpenses, useExpenseGroups, useOrders, useConfig, newId
 import { exportCsv, printReport } from "@/lib/export-utils";
 import { calcOrderCost } from "@/lib/cost-calc";
 import { Conciliacao, DreBalancete } from "@/components/FinanceReports";
+import { QuickBaixa } from "@/components/QuickBaixa";
+import { useEmpresaFiltro, filtrarFin } from "@/lib/empresa-filter";
 import { fmtBRL, statusTone, toneClass, type Expense, type ExpenseType, type ExpenseArea } from "@/lib/mock-data";
 
 import { financeSummary, costKnown } from "@/lib/finance-summary";
@@ -32,8 +34,12 @@ export const Route = createFileRoute("/financeiro")({
 });
 
 function FinanceiroPage() {
-  const invoices = useInvoices();
-  const expenses = useExpenses();
+  const invoices0 = useInvoices();
+  const expenses0 = useExpenses();
+  const [empresaF] = useEmpresaFiltro();
+  const invoices = { ...invoices0, list: filtrarFin(empresaF, invoices0.list) };
+  const expenses = { ...expenses0, list: filtrarFin(empresaF, expenses0.list) };
+  const [baixa, setBaixa] = useState<null | { kind: "rec"; id: string } | { kind: "pag"; id: string }>(null);
   const expGroups = useExpenseGroups();
   const [novoGrupo, setNovoGrupo] = useState("");
   const orders = useOrders();
@@ -163,7 +169,7 @@ function FinanceiroPage() {
               </thead>
               <tbody>
                 {receitasF.map((i) => (
-                  <tr key={i.numero} className="border-t border-border">
+                  <tr key={i.numero} className="border-t border-border cursor-pointer hover:bg-elevated/50" title="Clique para informar recebimento" onClick={() => i.id && setBaixa({ kind: "rec", id: i.id })}>
                     <td className="px-4 py-2.5 num text-primary text-xs">{i.numero}</td>
                     <td className="text-xs">{i.clienteNome}</td>
                     <td className="text-xs">{i.tipo}</td>
@@ -234,7 +240,7 @@ function FinanceiroPage() {
                 </thead>
                 <tbody>
                   {despesasF.map((e) => (
-                    <tr key={e.id} className="border-t border-border">
+                    <tr key={e.id} className="border-t border-border cursor-pointer hover:bg-elevated/50" title="Clique para informar pagamento" onClick={() => setBaixa({ kind: "pag", id: e.id })}>
                       <td className="px-4 py-2.5 text-xs">{e.descricao}</td>
                       <td className="text-xs">{e.grupo ?? "—"}</td>
                       <td className="text-xs">{e.tipo.replace("_", " ")}</td>
@@ -253,6 +259,16 @@ function FinanceiroPage() {
             </div>
           </>
         )}
+
+        {baixa && (() => {
+          const t = baixa.kind === "rec" ? invoices0.list.find((x) => x.id === baixa.id) : expenses0.list.find((x) => x.id === baixa.id);
+          if (!t) return null;
+          return <QuickBaixa titulo={baixa.kind === "rec" ? { kind: "rec", t: t as typeof invoices0.list[number] } : { kind: "pag", t: t as Expense }} onClose={() => setBaixa(null)}
+            onSave={async (movements, status, data) => {
+              if (baixa.kind === "rec") await invoices0.set(invoices0.list.map((i) => (i.id === baixa.id ? { ...i, movements, status: status as "paga" | "aberta", recebidoEm: data } : i)));
+              else await expenses0.update(baixa.id, { movements, status: status as "paga" | "prevista", pagoEm: data });
+            }} />;
+        })()}
 
         {tab === "conciliacao" && (
           <Conciliacao invoices={invoices.list} setInvoices={invoices.set} expenses={expenses.list} updateExpense={expenses.update} />
