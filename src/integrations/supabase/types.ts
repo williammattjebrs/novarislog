@@ -469,6 +469,7 @@ export type Database = {
       }
       tms_records_read: { Args: never; Returns: Json }
       tms_reliability_selftest: { Args: never; Returns: Json }
+      tms_reset_imports: { Args: { confirmacao: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "comercial" | "operacao" | "financeiro"
