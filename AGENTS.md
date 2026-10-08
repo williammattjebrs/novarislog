@@ -20,3 +20,4 @@
 - Backups read authorized persisted records, and versioned restoration requires a preview and confirmed transactional merge without deletion.
 - Parse headless NF-e through an injected XML parser and commit only the NF via the service-only transactional import; this supports scheduling without browser globals and never creates OCs.
 - Legacy OCs (no modelo v2) convert only through the preview + explicit admin confirmation in Ordens de coleta; they never enter Monitoramento or the outbox retroactively.
+- OC collection location is per NF (coletaPorNf, header local is only the default); emission emails go only to collection warehouses, body-only table with just that warehouse's NFs, while the full PDF goes to the driver via WhatsApp — each party receives only what it operates.

@@ -11,7 +11,7 @@ import { MotoristaSelect, VeiculoSelect, CapacidadeAlerta } from "@/components/F
 import { LocalSelect } from "@/components/CriarOcPanel";
 import { useClients, useLocais, useMotoristas, useOrders, useOrdensColeta, useVeiculos } from "@/lib/mock-store";
 import { OC_STATUS, type OrdemColeta, type Order } from "@/lib/mock-data";
-import { destinatariosOc, isV2, ocAtivaDaNf, previewConversao, validarEmissao, OC_EMITIDAS } from "@/lib/oc-model";
+import { destinatariosOc, localColetaDaNf, isV2, ocAtivaDaNf, previewConversao, validarEmissao, OC_EMITIDAS } from "@/lib/oc-model";
 import { aplicarStatusOc, salvarOc } from "@/lib/oc-actions";
 import { commitLists, getList, getVersion, refreshShared } from "@/lib/shared-db";
 import { emitirOC, enviarAgoraOC, linkPdfOC, reenfileirarEnvios } from "@/lib/oc.functions";
@@ -93,7 +93,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
   const { user } = useAuth(); const autor = user?.nome ?? "usuário";
   const oc = ocs.list.find((o) => o.id === ocId)!;
   const emitir = useServerFn(emitirOC); const pdfLink = useServerFn(linkPdfOC); const requeue = useServerFn(reenfileirarEnvios); const enviarAgora = useServerFn(enviarAgoraOC);
-  const init = () => ({ motoristaId: oc.motoristaId ?? "", veiculoId: oc.veiculoId ?? "", clienteColetaId: oc.clienteColetaId ?? "", clienteColetaNome: oc.clienteColetaNome ?? oc.clienteNome, localColetaId: oc.localColetaId ?? "", clienteDescargaNome: oc.clienteDescargaNome ?? "", localDescargaId: oc.localDescargaId ?? "", contratanteNome: oc.contratanteNome ?? "", dataHoraColeta: toLocal(oc.dataHoraColeta), dataHoraEntrega: toLocal(oc.dataHoraEntrega), instrucoes: oc.instrucoes ?? oc.observacao ?? "", orderIds: oc.orderIds });
+  const init = () => ({ motoristaId: oc.motoristaId ?? "", veiculoId: oc.veiculoId ?? "", clienteColetaId: oc.clienteColetaId ?? "", clienteColetaNome: oc.clienteColetaNome ?? oc.clienteNome, localColetaId: oc.localColetaId ?? "", clienteDescargaNome: oc.clienteDescargaNome ?? "", localDescargaId: oc.localDescargaId ?? "", contratanteNome: oc.contratanteNome ?? "", dataHoraColeta: toLocal(oc.dataHoraColeta), dataHoraEntrega: toLocal(oc.dataHoraEntrega), instrucoes: oc.instrucoes ?? oc.observacao ?? "", orderIds: oc.orderIds, coletaPorNf: oc.coletaPorNf ?? {} as Record<string, string> });
   const [f, setF] = useState(init);
   const [msg, setMsg] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
   const [busy, setBusy] = useState(false); const [enviarRev, setEnviarRev] = useState(false);
@@ -130,14 +130,15 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
   const nfs = f.orderIds.map((id) => orders.list.find((n) => n.id === id)).filter(Boolean) as Order[];
   const livres = orders.list.filter((n) => !f.orderIds.includes(n.id) && !ocAtivaDaNf(ocs.list, n.id));
   const lc = locais.list.find((l) => l.id === f.localColetaId); const ld = locais.list.find((l) => l.id === f.localDescargaId); const m = mot.list.find((x) => x.id === f.motoristaId);
-  const dest = destinatariosOc(lc, ld, m);
+  const lcs = [...new Set(f.orderIds.map((id) => localColetaDaNf(draft, id)))].map((id) => locais.list.find((l) => l.id === id)).filter(Boolean) as typeof locais.list;
+  const dest = destinatariosOc(lcs);
   const val = validarEmissao(draft, { nfs: orders.list, locais: locais.list, motoristas: mot.list, veiculos: vei.list });
 
   async function salvar() {
     if (!f.orderIds.length) return setMsg({ tipo: "erro", texto: "A OC precisa de ao menos uma NF." });
     setBusy(true); setMsg(null);
     try {
-      await salvarOc(oc, { ...draft, localColeta: lc?.nome ?? oc.localColeta, cidadeColeta: lc?.cidade ?? oc.cidadeColeta, ufColeta: lc?.uf ?? oc.ufColeta, localEntrega: ld?.nome ?? oc.localEntrega, cidadeEntrega: ld?.cidade ?? oc.cidadeEntrega, ufEntrega: ld?.uf ?? oc.ufEntrega, clienteNome: f.clienteColetaNome, conteudoPendenteRevisao: emitida ? true : oc.conteudoPendenteRevisao },
+      await salvarOc(oc, { ...draft, localColeta: lcs.length ? lcs.map((l) => l.nome).join(" + ") : oc.localColeta, cidadeColeta: lcs[0]?.cidade ?? lc?.cidade ?? oc.cidadeColeta, ufColeta: lcs[0]?.uf ?? lc?.uf ?? oc.ufColeta, localEntrega: ld?.nome ?? oc.localEntrega, cidadeEntrega: ld?.cidade ?? oc.cidadeEntrega, ufEntrega: ld?.uf ?? oc.ufEntrega, clienteNome: f.clienteColetaNome, conteudoPendenteRevisao: emitida ? true : oc.conteudoPendenteRevisao },
         autor, emitida ? "Conteúdo alterado após emissão · gere nova versão para atualizar o documento" : "Programação salva (rascunho)");
       setMsg({ tipo: "ok", texto: emitida ? "Alterações salvas. O documento emitido não mudou: gere uma nova versão quando quiser." : "Rascunho salvo." });
     } catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao salvar." }); }
@@ -145,13 +146,15 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
   }
   async function doEmitir() {
     if (dirty) return setMsg({ tipo: "erro", texto: "Salve as alterações antes de emitir." });
-    if (!oc.docVersion && !confirm(`Emitir ${oc.numero}?\n\nO e-mail será enfileirado para:\n${dest.destinatarios.map((d) => `• ${d.email} (${d.papeis.join(", ")})`).join("\n") || "(nenhum destinatário)"}${dest.pendencias.length ? `\n\nPendências: ${dest.pendencias.join("; ")}` : ""}`)) return;
+    if (!oc.docVersion && !confirm(`Emitir ${oc.numero}?\n\nO PDF completo abre no WhatsApp do motorista ${m?.nome ?? ""}.\nCada armazém de coleta recebe por e-mail só as notas dele:\n${dest.destinatarios.map((d) => `• ${d.email} (${d.papeis.join(", ")})`).join("\n") || "(nenhum destinatário)"}${dest.pendencias.length ? `\n\nPendências: ${dest.pendencias.join("; ")}` : ""}`)) return;
+    const zap = m?.telefone ? window.open("about:blank", "_blank") : null;
     setBusy(true); setMsg(null);
     try {
       const r = await emitir({ data: { ocId: oc.id, version: getVersion("ordensColeta", oc.id), enviarRevisao: !!oc.docVersion && enviarRev } });
       await refreshShared(); await loadDocs();
-      if (!r.ok) setMsg({ tipo: "erro", texto: r.erros.join(" ") });
+      if (!r.ok) { zap?.close(); setMsg({ tipo: "erro", texto: r.erros.join(" ") }); }
       else {
+        if (zap) void whatsMotorista(r.docVersion, zap);
         const pend = r.pendencias.length ? ` Pendência: ${r.pendencias.join("; ")}.` : "";
         if (r.enfileirados > 0) {
           setMsg({ tipo: "ok", texto: `Documento v${r.docVersion} emitido. Enviando e-mail aos cadastrados…` });
@@ -162,8 +165,21 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
           await loadDocs();
         } else setMsg({ tipo: "ok", texto: `Documento v${r.docVersion} emitido e gravado. Nenhum e-mail a enviar.${pend}` });
       }
-    } catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha na emissão." }); }
+    } catch (e) { zap?.close(); setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha na emissão." }); }
     finally { setBusy(false); }
+  }
+  /** Abre o WhatsApp do motorista com a mensagem e o link do PDF completo (link válido por 7 dias). */
+  async function whatsMotorista(version: number, w?: Window | null) {
+    const tel = (m?.telefone ?? "").replace(/\D/g, "");
+    if (!tel) return setMsg({ tipo: "erro", texto: "Motorista sem telefone cadastrado." });
+    const win = w ?? window.open("about:blank", "_blank");
+    try {
+      const { url } = await pdfLink({ data: { ocId: oc.id, version, longo: true } });
+      const v = vei.list.find((x) => x.id === f.veiculoId);
+      const texto = `Olá ${m?.nome ?? ""}, segue a Ordem de Coleta ${oc.numero}${v ? ` (placa ${v.placa})` : ""}.\nColetas: ${lcs.map((l) => `${l.nome} - ${l.cidade}/${l.uf}`).join("; ")}\nData/hora: ${fmtDataHora(oc.dataHoraColeta)}\nPDF completo: ${url}`;
+      const link = `https://wa.me/${tel.length <= 11 ? "55" + tel : tel}?text=${encodeURIComponent(texto)}`;
+      if (win) win.location.href = link; else window.location.href = link;
+    } catch (e) { win?.close(); setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao gerar link do PDF." }); }
   }
   async function cancelar() {
     const motivo = prompt(`Motivo do cancelamento da ${oc.numero}? As NFs voltam para a fila de Rotas.`);
@@ -187,7 +203,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
       <div className="flex items-center gap-2 flex-wrap">
         <h2 className="font-display text-lg">{oc.numero}</h2>
         <span className="text-xs px-2 py-0.5 rounded border border-primary/40 text-primary">{label(oc)}</span>
-        {oc.docVersion ? <><span className="text-xs">Documento v{oc.docVersion}</span><Button size="sm" variant="outline" onClick={() => abrirPdf(oc.docVersion!)}><FileText className="h-3 w-3" /> Reimprimir OC</Button></> : null}
+        {oc.docVersion ? <><span className="text-xs">Documento v{oc.docVersion}</span><Button size="sm" variant="outline" onClick={() => abrirPdf(oc.docVersion!)}><FileText className="h-3 w-3" /> Reimprimir OC</Button><Button size="sm" variant="outline" disabled={!m?.telefone} onClick={() => whatsMotorista(oc.docVersion!)}><Send className="h-3 w-3" /> WhatsApp do motorista</Button></> : null}
         {oc.conteudoPendenteRevisao && <span className="text-xs text-warning">Conteúdo alterado após a emissão</span>}
         <button className="ml-auto" aria-label="Fechar" onClick={onClose}><X className="h-4 w-4" /></button>
       </div>
@@ -201,7 +217,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
               <option value="">Cliente cadastrado (opcional)…</option>{clients.list.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
             <input aria-label="Cliente da coleta" className={inp} placeholder="Cliente da coleta (dono da carga)" value={f.clienteColetaNome} onChange={(e) => setF({ ...f, clienteColetaNome: e.target.value })} />
-            <LocalSelect label="Local da coleta" value={f.localColetaId} clienteId={f.clienteColetaId} onChange={(id) => setF({ ...f, localColetaId: id })} />
+            <LocalSelect label="Local de coleta padrão (NFs sem local)" value={f.localColetaId} clienteId={f.clienteColetaId} onChange={(id) => setF({ ...f, localColetaId: id })} />
             <label className="text-xs block">Data e hora da coleta<input aria-label="Data e hora da coleta" type="datetime-local" className={inp} value={f.dataHoraColeta} onChange={(e) => setF({ ...f, dataHoraColeta: e.target.value })} /></label>
           </fieldset>
           <fieldset className="space-y-2" disabled={!editavel}><legend className="text-xs font-semibold text-primary">Descarga</legend>
@@ -220,14 +236,16 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
         <div>
           <div className="text-xs font-semibold mb-1">NFs ({nfs.length}) · {nfs.reduce((s, n) => s + (n.peso || 0), 0).toLocaleString("pt-BR")} kg · {nfs.reduce((s, n) => s + (n.volumes || 0), 0)} vol</div>
           <div className="space-y-1 text-xs">
-            {nfs.map((n) => <div key={n.id} className="flex gap-2 items-center"><span className="num">NF {n.numeroNFe}</span><span className="text-muted-foreground">{n.remetente} → {n.destinatario}</span>{editavel && oc.status === "rascunho" && <button className="text-danger ml-auto" onClick={() => setF({ ...f, orderIds: f.orderIds.filter((x) => x !== n.id) })}>remover</button>}</div>)}
+            {nfs.map((n) => <div key={n.id} className="flex gap-2 items-center flex-wrap border-t border-border pt-1"><span className="num">NF {n.numeroNFe}</span><span className="text-muted-foreground">{n.remetente} → {n.destinatario}</span><span className="num text-muted-foreground">{(n.peso || 0).toLocaleString("pt-BR")} kg</span>
+              <fieldset disabled={!editavel} className="min-w-[220px]"><LocalSelect label={`Local de coleta da NF ${n.numeroNFe}`} value={f.coletaPorNf[n.id] ?? ""} clienteId={n.clienteId} onChange={(id) => setF({ ...f, coletaPorNf: { ...f.coletaPorNf, [n.id]: id } })} /></fieldset>
+              {!f.coletaPorNf[n.id] && f.localColetaId && <span className="text-[11px] text-muted-foreground">usa o padrão</span>}{editavel && oc.status === "rascunho" && <button className="text-danger ml-auto" onClick={() => setF({ ...f, orderIds: f.orderIds.filter((x) => x !== n.id) })}>remover</button>}</div>)}
           </div>
           {editavel && oc.status === "rascunho" && livres.length > 0 && <select aria-label="Adicionar NF" className={inp + " mt-2"} value="" onChange={(e) => e.target.value && setF({ ...f, orderIds: [...f.orderIds, e.target.value] })}>
             <option value="">+ Adicionar NF sem OC…</option>{livres.slice(0, 300).map((n) => <option key={n.id} value={n.id}>NF {n.numeroNFe} · {n.remetente} → {n.destinatario}</option>)}
           </select>}
         </div>
         <div className="rounded border border-border p-3 text-xs space-y-1">
-          <div className="font-semibold">Destinatários do envio {oc.docVersion ? "(somente se solicitar envio da revisão)" : "(enfileirados na primeira emissão)"}</div>
+          <div className="font-semibold">E-mail aos armazéns de coleta (sem anexo, cada um só com as notas dele) {oc.docVersion ? "· somente se solicitar envio da revisão" : "· enviado na primeira emissão"}</div>
           {dest.destinatarios.map((d) => <div key={d.email}>{d.email} · {d.papeis.join(", ")}</div>)}
           {!dest.destinatarios.length && <div className="text-warning">Nenhum destinatário com e-mail.</div>}
           {dest.pendencias.map((p) => <div key={p} className="text-warning">Pendência: {p} (a emissão não é bloqueada)</div>)}

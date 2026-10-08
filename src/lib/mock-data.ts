@@ -247,6 +247,8 @@ export interface OrdemColeta {
   // Modelo v2 (OC independente da rota). Ausente = registro legado aguardando conversão.
   modelo?: "v2";
   clienteColetaId?: string; clienteColetaNome?: string; localColetaId?: string;
+  /** Local de coleta por NF (id da NF -> id do local). Ausente usa localColetaId como padrão. */
+  coletaPorNf?: Record<string, string>;
   clienteDescargaId?: string; clienteDescargaNome?: string; localDescargaId?: string;
   contratanteId?: string; contratanteNome?: string;
   instrucoes?: string; historico?: TimelineEntry[];
