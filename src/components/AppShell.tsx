@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Users, PackageSearch, Radar, Wallet, Settings, UserCog,
-  Radio, Bell, Search, LogOut, BookOpen, Route as RouteIcon, Truck, Menu, X, MapPin,
+  Radio, Bell, Search, LogOut, BookOpen, Route as RouteIcon, Truck, Menu, X, MapPin, Upload,
 } from "lucide-react";
 import logo from "@/assets/novaris-logo.png.asset.json";
 import simbolo from "@/assets/novaris-simbolo.png.asset.json";
@@ -19,6 +19,7 @@ type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?
 const NAV: NavItem[] = [
   { to: "/", label: "Torre de controle", icon: LayoutDashboard, exact: true },
   { to: "/clientes", label: "Clientes & CRM", icon: Users },
+  { to: "/importacao", label: "Importação", icon: Upload },
   { to: "/ordens-coleta", label: "Ordens de coleta", icon: PackageSearch },
   { to: "/rotas", label: "Rotas · NF-e", icon: RouteIcon },
   { to: "/locais-operacionais", label: "Locais operacionais", icon: MapPin },
