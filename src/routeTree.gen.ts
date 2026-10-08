@@ -19,6 +19,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ManualRouteImport } from './routes/manual'
 import { Route as MonitoramentoRouteImport } from './routes/monitoramento'
 import { Route as MotoristasRouteImport } from './routes/motoristas'
+import { Route as OrdensColetaRouteImport } from './routes/ordens-coleta'
 import { Route as RotasRouteImport } from './routes/rotas'
 import { Route as TvRouteImport } from './routes/tv'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
@@ -77,6 +78,11 @@ const MotoristasRoute = MotoristasRouteImport.update({
   path: '/motoristas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrdensColetaRoute = OrdensColetaRouteImport.update({
+  id: '/ordens-coleta',
+  path: '/ordens-coleta',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RotasRoute = RotasRouteImport.update({
   id: '/rotas',
   path: '/rotas',
@@ -124,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/manual': typeof ManualRoute
   '/monitoramento': typeof MonitoramentoRoute
   '/motoristas': typeof MotoristasRoute
+  '/ordens-coleta': typeof OrdensColetaRoute
   '/rotas': typeof RotasRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
@@ -143,6 +150,7 @@ export interface FileRoutesByTo {
   '/manual': typeof ManualRoute
   '/monitoramento': typeof MonitoramentoRoute
   '/motoristas': typeof MotoristasRoute
+  '/ordens-coleta': typeof OrdensColetaRoute
   '/rotas': typeof RotasRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
@@ -163,6 +171,7 @@ export interface FileRoutesById {
   '/manual': typeof ManualRoute
   '/monitoramento': typeof MonitoramentoRoute
   '/motoristas': typeof MotoristasRoute
+  '/ordens-coleta': typeof OrdensColetaRoute
   '/rotas': typeof RotasRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
@@ -184,6 +193,7 @@ export interface FileRouteTypes {
     | '/manual'
     | '/monitoramento'
     | '/motoristas'
+    | '/ordens-coleta'
     | '/rotas'
     | '/tv'
     | '/usuarios'
@@ -203,6 +213,7 @@ export interface FileRouteTypes {
     | '/manual'
     | '/monitoramento'
     | '/motoristas'
+    | '/ordens-coleta'
     | '/rotas'
     | '/tv'
     | '/usuarios'
@@ -222,6 +233,7 @@ export interface FileRouteTypes {
     | '/manual'
     | '/monitoramento'
     | '/motoristas'
+    | '/ordens-coleta'
     | '/rotas'
     | '/tv'
     | '/usuarios'
@@ -242,6 +254,7 @@ export interface RootRouteChildren {
   ManualRoute: typeof ManualRoute
   MonitoramentoRoute: typeof MonitoramentoRoute
   MotoristasRoute: typeof MotoristasRoute
+  OrdensColetaRoute: typeof OrdensColetaRoute
   RotasRoute: typeof RotasRoute
   TvRoute: typeof TvRoute
   UsuariosRoute: typeof UsuariosRoute
@@ -322,6 +335,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MotoristasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ordens-coleta': {
+      id: '/ordens-coleta'
+      path: '/ordens-coleta'
+      fullPath: '/ordens-coleta'
+      preLoaderRoute: typeof OrdensColetaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rotas': {
       id: '/rotas'
       path: '/rotas'
@@ -397,6 +417,7 @@ const rootRouteChildren: RootRouteChildren = {
   ManualRoute: ManualRoute,
   MonitoramentoRoute: MonitoramentoRoute,
   MotoristasRoute: MotoristasRoute,
+  OrdensColetaRoute: OrdensColetaRoute,
   RotasRoute: RotasRoute,
   TvRoute: TvRoute,
   UsuariosRoute: UsuariosRoute,
