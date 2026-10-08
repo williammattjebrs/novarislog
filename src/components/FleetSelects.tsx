@@ -9,7 +9,7 @@ const fmtCpf = (v: string) => v.replace(/\D/g, "").slice(0, 11).replace(/(\d{3})
 export function MotoristaSelect({ value, onChange, disabled }: { value: string; onChange: (id: string) => void; disabled?: boolean }) {
   const mot = useMotoristas();
   const [novo, setNovo] = useState(false);
-  const [f, setF] = useState({ nome: "", cpf: "", telefone: "" });
+  const [f, setF] = useState({ nome: "", cpf: "", telefone: "", email: "" });
   const [err, setErr] = useState("");
   async function salvar() {
     const cpf = f.cpf.replace(/\D/g, "");
@@ -17,9 +17,9 @@ export function MotoristaSelect({ value, onChange, disabled }: { value: string; 
     const existente = mot.list.find((x) => x.cpf.replace(/\D/g, "") === cpf);
     if (existente) { onChange(existente.id); setNovo(false); setErr(""); return; }
     const id = newId("MOT");
-    try { await mot.add({ id, nome: f.nome.trim(), cpf: fmtCpf(cpf), telefone: f.telefone.trim(), cnh: "", ativo: true, criadoEm: new Date().toISOString() }); }
+    try { await mot.add({ id, nome: f.nome.trim(), cpf: fmtCpf(cpf), telefone: f.telefone.trim(), email: f.email.trim() || undefined, cnh: "", ativo: true, criadoEm: new Date().toISOString() }); }
     catch(e){setErr(e instanceof Error?e.message:'Falha ao salvar motorista.');return;}
-    onChange(id); setNovo(false); setF({ nome: "", cpf: "", telefone: "" }); setErr("");
+    onChange(id); setNovo(false); setF({ nome: "", cpf: "", telefone: "", email: "" }); setErr("");
   }
   if (novo) return (
     <div className="space-y-1 border border-primary/40 rounded p-2">
@@ -29,6 +29,7 @@ export function MotoristaSelect({ value, onChange, disabled }: { value: string; 
         <input className={inp} placeholder="CPF" value={f.cpf} onChange={(e) => setF({ ...f, cpf: fmtCpf(e.target.value) })} />
         <input className={inp} placeholder="Telefone (DDD)" value={f.telefone} onChange={(e) => setF({ ...f, telefone: e.target.value })} />
       </div>
+      <input className={inp} type="email" placeholder="E-mail (opcional)" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
       {err && <div className="text-xs text-danger">{err}</div>}
       <div className="flex gap-1"><Button size="sm" onClick={salvar}>Salvar e vincular</Button><Button size="sm" variant="outline" onClick={() => setNovo(false)}>Voltar</Button></div>
     </div>
