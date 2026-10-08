@@ -96,6 +96,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
   const init = () => ({ motoristaId: oc.motoristaId ?? "", veiculoId: oc.veiculoId ?? "", clienteColetaId: oc.clienteColetaId ?? "", clienteColetaNome: oc.clienteColetaNome ?? oc.clienteNome, clienteDescargaNome: oc.clienteDescargaNome ?? "", localDescargaId: oc.localDescargaId ?? "", contratanteNome: oc.contratanteNome ?? "", dataHoraColeta: toLocal(oc.dataHoraColeta), dataHoraEntrega: toLocal(oc.dataHoraEntrega), instrucoes: oc.instrucoes ?? oc.observacao ?? "", orderIds: oc.orderIds, coletaPorNf: oc.coletaPorNf ?? {} as Record<string, string> });
   const [f, setF] = useState(init);
   const [msg, setMsg] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
+  const [zapLink, setZapLink] = useState<string | null>(null);
   const [busy, setBusy] = useState(false); const [enviarRev, setEnviarRev] = useState(false);
   const [docs, setDocs] = useState<{ version: number; created_at: string; pdf_sha256: string; send_requested: boolean; snapshot: any }[]>([]);
   const [envios, setEnvios] = useState<{ id: string; doc_version: number; email: string; papeis: string[]; status: string; attempts: number; last_error: string | null; accepted_at: string | null }[]>([]);
@@ -149,14 +150,13 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
   async function doEmitir() {
     if (dirty) return setMsg({ tipo: "erro", texto: "Salve as alterações antes de emitir." });
     if (!oc.docVersion && !confirm(`Emitir ${oc.numero}?\n\nO PDF completo abre no WhatsApp do motorista ${m?.nome ?? ""}.\nCada armazém de coleta recebe por e-mail só as notas dele:\n${dest.destinatarios.map((d) => `• ${d.email} (${d.papeis.join(", ")})`).join("\n") || "(nenhum destinatário)"}${dest.pendencias.length ? `\n\nPendências: ${dest.pendencias.join("; ")}` : ""}`)) return;
-    const zap = m?.telefone ? window.open("about:blank", "_blank") : null;
     setBusy(true); setMsg(null);
     try {
       const r = await emitir({ data: { ocId: oc.id, version: getVersion("ordensColeta", oc.id), enviarRevisao: !!oc.docVersion && enviarRev } });
       await refreshShared(); await loadDocs();
-      if (!r.ok) { zap?.close(); setMsg({ tipo: "erro", texto: r.erros.join(" ") }); }
+      if (!r.ok) { setMsg({ tipo: "erro", texto: r.erros.join(" ") }); }
       else {
-        if (zap) void whatsMotorista(r.docVersion, zap);
+        if (m?.telefone) void whatsMotorista(r.docVersion);
         const pend = r.pendencias.length ? ` Pendência: ${r.pendencias.join("; ")}.` : "";
         if (r.enfileirados > 0) {
           setMsg({ tipo: "ok", texto: `Documento v${r.docVersion} emitido. Enviando e-mail aos cadastrados…` });
@@ -167,21 +167,22 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
           await loadDocs();
         } else setMsg({ tipo: "ok", texto: `Documento v${r.docVersion} emitido e gravado. Nenhum e-mail a enviar.${pend}` });
       }
-    } catch (e) { zap?.close(); setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha na emissão." }); }
+    } catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha na emissão." }); }
     finally { setBusy(false); }
   }
   /** Abre o WhatsApp do motorista com a mensagem e o link do PDF completo (link válido por 7 dias). */
-  async function whatsMotorista(version: number, w?: Window | null) {
+  async function whatsMotorista(version: number) {
     const tel = (m?.telefone ?? "").replace(/\D/g, "");
     if (!tel) return setMsg({ tipo: "erro", texto: "Motorista sem telefone cadastrado." });
-    const win = w ?? window.open("about:blank", "_blank");
     try {
       const { url } = await pdfLink({ data: { ocId: oc.id, version, longo: true } });
       const v = vei.list.find((x) => x.id === f.veiculoId);
       const texto = `Olá ${m?.nome ?? ""}, segue a Ordem de Coleta ${oc.numero}${v ? ` (placa ${v.placa})` : ""}.\nColetas: ${lcs.map((l) => `${l.nome} - ${l.cidade}/${l.uf}`).join("; ")}\nData/hora: ${fmtDataHora(oc.dataHoraColeta)}\nPDF completo: ${url}`;
       const link = `https://wa.me/${tel.length <= 11 ? "55" + tel : tel}?text=${encodeURIComponent(texto)}`;
-      if (win) win.location.href = link; else window.location.href = link;
-    } catch (e) { win?.close(); setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao gerar link do PDF." }); }
+      // Abre sem vínculo com esta página (noopener): o WhatsApp recusa abas abertas a partir de about:blank/iframe.
+      setZapLink(link);
+      window.open(link, "_blank", "noopener,noreferrer");
+    } catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao gerar link do PDF." }); }
   }
   async function cancelar() {
     const motivo = prompt(`Motivo do cancelamento da ${oc.numero}? As NFs voltam para a fila de Rotas.`);
@@ -213,7 +214,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
       <div className="flex items-center gap-2 flex-wrap">
         <h2 className="font-display text-lg">{oc.numero}</h2>
         <span className="text-xs px-2 py-0.5 rounded border border-primary/40 text-primary">{label(oc)}</span>
-        {oc.docVersion ? <><span className="text-xs">Documento v{oc.docVersion}</span><Button size="sm" variant="outline" onClick={() => abrirPdf(oc.docVersion!)}><FileText className="h-3 w-3" /> Reimprimir OC</Button><Button size="sm" variant="outline" disabled={!m?.telefone} title={m?.telefone ? "Abre a conversa com o motorista já com a mensagem e o link do PDF" : "Cadastre o telefone do motorista"} onClick={() => whatsMotorista(oc.docVersion!)}><MessageCircle className="h-3 w-3" /> WhatsApp do motorista</Button><Button size="sm" variant="outline" title="Baixa o PDF para anexar manualmente na conversa do WhatsApp" onClick={() => baixarPdf(oc.docVersion!)}><Download className="h-3 w-3" /> Baixar PDF</Button></> : null}
+        {oc.docVersion ? <><span className="text-xs">Documento v{oc.docVersion}</span><Button size="sm" variant="outline" onClick={() => abrirPdf(oc.docVersion!)}><FileText className="h-3 w-3" /> Reimprimir OC</Button><Button size="sm" variant="outline" disabled={!m?.telefone} title={m?.telefone ? "Abre a conversa com o motorista já com a mensagem e o link do PDF" : "Cadastre o telefone do motorista"} onClick={() => whatsMotorista(oc.docVersion!)}><MessageCircle className="h-3 w-3" /> WhatsApp do motorista</Button><Button size="sm" variant="outline" title="Baixa o PDF para anexar manualmente na conversa do WhatsApp" onClick={() => baixarPdf(oc.docVersion!)}><Download className="h-3 w-3" /> Baixar PDF</Button>{zapLink && <a className="text-xs text-primary underline" href={zapLink} target="_blank" rel="noopener noreferrer">Se o WhatsApp não abriu, clique aqui</a>}</> : null}
         {oc.conteudoPendenteRevisao && <span className="text-xs text-warning">Conteúdo alterado após a emissão</span>}
         <button className="ml-auto" aria-label="Fechar" onClick={onClose}><X className="h-4 w-4" /></button>
       </div>
