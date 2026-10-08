@@ -126,7 +126,9 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
   }
   useEffect(() => { void loadDocs(); }, [ocId, oc.docVersion]);
   const draft: OrdemColeta = { ...oc, ...f, clienteColetaId: f.clienteColetaId || undefined, motoristaId: f.motoristaId || undefined, veiculoId: f.veiculoId || undefined, localColetaId: undefined, localDescargaId: f.localDescargaId || undefined, dataHoraColeta: f.dataHoraColeta ? new Date(f.dataHoraColeta).toISOString() : "", dataHoraEntrega: f.dataHoraEntrega ? new Date(f.dataHoraEntrega).toISOString() : "" };
-  const dirty = JSON.stringify(f) !== JSON.stringify(init());
+  // Comparação estável: o banco reordena as chaves de coletaPorNf, o que deixava a OC sempre "com alterações" e bloqueava a emissão.
+  const estavel = (x: ReturnType<typeof init>) => JSON.stringify({ ...x, coletaPorNf: Object.fromEntries(Object.entries(x.coletaPorNf).filter(([, v]) => v).sort(([a], [b]) => a.localeCompare(b))) });
+  const dirty = estavel(f) !== estavel(init());
   const nfs = f.orderIds.map((id) => orders.list.find((n) => n.id === id)).filter(Boolean) as Order[];
   const livres = orders.list.filter((n) => !f.orderIds.includes(n.id) && !ocAtivaDaNf(ocs.list, n.id));
   const lc = undefined as (typeof locais.list)[number] | undefined; const ld = locais.list.find((l) => l.id === f.localDescargaId); const m = mot.list.find((x) => x.id === f.motoristaId);
