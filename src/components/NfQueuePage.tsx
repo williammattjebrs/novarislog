@@ -59,6 +59,7 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
   const canSeeFinance=financialAccess(user);
 
   const [filtro, setFiltro] = useState<OrderStage | "todos">("todos");
+  const [cteFiltro, setCteFiltro] = useState<"todos" | "com" | "sem" | "divergente" | "ocorrencia">("todos");
   const [selected, setSelected] = useState<string | null>(registro ?? null);
   useEffect(()=>{if(registro)setSelected(registro);},[registro]);
   const nfeInput = useRef<HTMLInputElement>(null);
@@ -77,7 +78,14 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
 
   const [busca, setBusca] = useState("");
   const base0 = filtro === "todos" ? listaAba : listaAba.filter((o) => o.stage === filtro);
-  const base1 = semOc ? base0.filter((o) => !ocAtivaDaNf(ocs.list, o.id)) : base0;
+  const temCte = (o: Order) => !!o.cteValor || !!o.cteNumero || !!o.cteChave || !!(o.cteChaves?.length);
+  const baseCte =
+    cteFiltro === "com" ? base0.filter(temCte) :
+    cteFiltro === "sem" ? base0.filter((o) => !temCte(o)) :
+    cteFiltro === "divergente" ? base0.filter((o) => o.stage === "cte_divergente") :
+    cteFiltro === "ocorrencia" ? base0.filter((o) => o.stage === "ocorrencia") :
+    base0;
+  const base1 = semOc ? baseCte.filter((o) => !ocAtivaDaNf(ocs.list, o.id)) : baseCte;
   const base = agrupar ? [...base1].sort((a, b) => `${a.remetente}|${a.destinatario}|${a.criadoEm}`.localeCompare(`${b.remetente}|${b.destinatario}|${b.criadoEm}`)) : base1;
   const q = busca.trim().toLowerCase();
   const filtered = q
