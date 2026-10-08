@@ -38,6 +38,7 @@ function MonitoramentoPage() {
   const [busca, setBusca] = useState(""); const [st, setSt] = useState<OCStatus | "">("");
   const [cteFiltro, setCteFiltro] = useState<"" | "com" | "sem" | "divergente" | "ocorrencia">("");
   const [nfStage, setNfStage] = useState("");
+  const [clienteFiltro, setClienteFiltro] = useState("");
   const filtroKey = user?.email ? `novaris:monitoramento:filtro:${user.email.toLowerCase()}` : null;
   const [temPadrao, setTemPadrao] = useState(false);
   const [msgFiltro, setMsgFiltro] = useState("");
@@ -47,19 +48,19 @@ function MonitoramentoPage() {
       const raw = window.localStorage.getItem(filtroKey);
       if (!raw) { setTemPadrao(false); return; }
       const f = JSON.parse(raw);
-      setSt(f.st ?? ""); setCteFiltro(f.cteFiltro ?? ""); setNfStage(f.nfStage ?? ""); setBusca(f.busca ?? "");
+      setSt(f.st ?? ""); setCteFiltro(f.cteFiltro ?? ""); setNfStage(f.nfStage ?? ""); setBusca(f.busca ?? ""); setClienteFiltro(f.clienteFiltro ?? "");
       setTemPadrao(true);
     } catch { /* ignora padrão inválido */ }
   }, [filtroKey]);
   const salvarPadrao = () => {
     if (!filtroKey) return;
-    window.localStorage.setItem(filtroKey, JSON.stringify({ st, cteFiltro, nfStage, busca }));
+    window.localStorage.setItem(filtroKey, JSON.stringify({ st, cteFiltro, nfStage, busca, clienteFiltro }));
     setTemPadrao(true); setMsgFiltro("Filtro padrão salvo"); setTimeout(() => setMsgFiltro(""), 2500);
   };
   const limparPadrao = () => {
     if (!filtroKey) return;
     window.localStorage.removeItem(filtroKey);
-    setSt(""); setCteFiltro(""); setNfStage(""); setBusca("");
+    setSt(""); setCteFiltro(""); setNfStage(""); setBusca(""); setClienteFiltro("");
     setTemPadrao(false); setMsgFiltro("Filtro padrão removido"); setTimeout(() => setMsgFiltro(""), 2500);
   };
   const { registro } = Route.useSearch();
@@ -67,12 +68,19 @@ function MonitoramentoPage() {
   useEffect(() => { if (registro) setSelected(registro); }, [registro]);
   const [bulkOpen, setBulkOpen] = useState(false);
   // Rascunhos v2 também aparecem (aguardando programação); somente emitidas enviam e-mail.
-  const emitidas = ocs.list.filter((o) => isEmitida(o) || (isV2(o) && o.status === "rascunho"));
+  const emitidas = useMemo(() => ocs.list.filter((o) => isEmitida(o) || (isV2(o) && o.status === "rascunho")), [ocs.list]);
   const q = busca.trim().toLowerCase();
   const nfById = useMemo(() => new Map(orders.list.map((o) => [o.id, o])), [orders.list]);
   const temCte = (n: Order | undefined) => !!n && (!!n.cteValor || !!n.cteNumero || !!n.cteChave || !!(n.cteChaves?.length));
+  // Clientes que realmente têm OC monitorada (como dono da coleta, da descarga ou contratante).
+  const clientesMon = useMemo(() => {
+    const nomes = new Set<string>();
+    emitidas.forEach((oc) => [oc.clienteColetaNome, oc.clienteDescargaNome, oc.contratanteNome].forEach((n) => { const t = (n ?? "").trim(); if (t) nomes.add(t); }));
+    return [...nomes].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [emitidas]);
   const filtered = emitidas.filter((oc) => {
     if (st && oc.status !== st) return false;
+    if (clienteFiltro && ![oc.clienteColetaNome, oc.clienteDescargaNome, oc.contratanteNome].some((n) => (n ?? "").trim().toLowerCase() === clienteFiltro.toLowerCase())) return false;
     const nfs = oc.orderIds.map((id) => nfById.get(id)).filter(Boolean) as Order[];
     if (cteFiltro === "com" && !nfs.some(temCte)) return false;
     if (cteFiltro === "sem" && nfs.some(temCte)) return false;
@@ -97,6 +105,10 @@ function MonitoramentoPage() {
         {legados > 0 && <div className="panel p-3 text-xs text-warning">{legados} OC(s) legadas aguardam conversão em <Link to="/ordens-coleta" className="underline">Ordens de coleta</Link> e não são monitoradas.</div>}
         <div className="panel p-3 flex flex-wrap items-center gap-2">
           <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+          <select aria-label="Cliente" value={clienteFiltro} onChange={(e) => setClienteFiltro(e.target.value)} className="input max-w-[240px]">
+            <option value="">Todos os clientes</option>
+            {clientesMon.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
           <select aria-label="Status" value={st} onChange={(e) => setSt(e.target.value as OCStatus | "")} className="input max-w-[200px]">
             <option value="">Todos os status</option>{OC_EXECUCAO.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
