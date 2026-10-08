@@ -22,12 +22,12 @@ export const emitirOC = createServerFn({ method: "POST" })
 
 export const linkPdfOC = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ ocId: z.string().max(120), version: z.number().int().min(1) }).parse(d))
+  .inputValidator((d: unknown) => z.object({ ocId: z.string().max(120), version: z.number().int().min(1), longo: z.boolean().optional() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: doc, error } = await context.supabase.from("tms_oc_documents").select("pdf_path").eq("oc_id", data.ocId).eq("version", data.version).maybeSingle();
     if (error || !doc) throw new Error("Documento não encontrado ou sem permissão.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: signed, error: e2 } = await supabaseAdmin.storage.from("oc-documentos").createSignedUrl(doc.pdf_path, 300, { download: `OC-${data.ocId}-v${data.version}.pdf` });
+    const { data: signed, error: e2 } = await supabaseAdmin.storage.from("oc-documentos").createSignedUrl(doc.pdf_path, data.longo ? 7 * 24 * 3600 : 300, { download: `OC-${data.ocId}-v${data.version}.pdf` });
     if (e2 || !signed) throw new Error("Falha ao gerar link do PDF.");
     return { url: signed.signedUrl };
   });
