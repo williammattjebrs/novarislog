@@ -297,22 +297,22 @@ function ResetImportsSection() {
   const [msg, setMsg] = useState("");
   if (user?.email?.toLowerCase() !== "wtmattje@gmail.com") return null;
   async function zerar() {
-    if (!window.confirm("Apagar TODOS os XMLs importados, notas, CT-e, ordens de coleta, rotas, PDFs, envios e TODO o financeiro (receitas e despesas)? Esta ação não pode ser desfeita.")) return;
+    if (!window.confirm("Apagar TODO o sistema: XMLs, notas, CT-e, ordens de coleta, rotas, PDFs, envios, financeiro, clientes, tabelas de frete, cotações, motoristas, veículos e locais? Esta ação não pode ser desfeita.")) return;
     setBusy(true); setMsg("");
     const { supabase } = await import("@/integrations/supabase/client");
     const { data, error } = await supabase.rpc("tms_reset_imports", { confirmacao: txt });
     setBusy(false);
     if (error) { setMsg(error.message); return; }
-    try { Object.keys(localStorage).filter((k) => /orders|cteDocuments|ordensColeta|rotas|invoices|expenses|shared/i.test(k)).forEach((k) => localStorage.removeItem(k)); } catch { /* ignore */ }
-    alert(`Importações apagadas: ${JSON.stringify(data)}`);
+    try { Object.keys(localStorage).filter((k) => !k.startsWith("sb-")).forEach((k) => localStorage.removeItem(k)); } catch { /* ignore */ }
+    alert(`Sistema zerado: ${JSON.stringify(data)}`);
     window.location.reload();
   }
   return (
     <section className="panel p-5 space-y-3 border border-danger/40">
-      <div className="flex items-center gap-2"><Trash2 className="h-4 w-4 text-danger" /><div className="font-display text-lg text-danger">Zerar importações</div></div>
-      <p className="text-sm text-muted-foreground">Apaga XMLs importados, notas, CT-e, ordens de coleta, rotas, PDFs, envios de e-mail e todo o financeiro (receitas, despesas e baixas). Clientes, tabelas, motoristas, veículos, locais, grupos de despesa e usuários são mantidos.</p>
+      <div className="flex items-center gap-2"><Trash2 className="h-4 w-4 text-danger" /><div className="font-display text-lg text-danger">Zerar todo o sistema</div></div>
+      <p className="text-sm text-muted-foreground">Apaga XMLs importados, notas, CT-e, ordens de coleta, rotas, PDFs, envios, financeiro, clientes, tabelas de frete, cotações, motoristas, veículos e locais. Somente usuários e configurações do sistema (e-mail, integrações) são mantidos.</p>
       <F label='Digite "ZERAR" para confirmar'><input value={txt} onChange={(e) => setTxt(e.target.value)} className="input max-w-xs" /></F>
-      <Button variant="destructive" disabled={busy || txt !== "ZERAR"} onClick={zerar}>{busy ? "Apagando…" : "Zerar importações"}</Button>
+      <Button variant="destructive" disabled={busy || txt !== "ZERAR"} onClick={zerar}>{busy ? "Apagando…" : "Zerar todo o sistema"}</Button>
       {msg && <p className="text-xs text-danger">{msg}</p>}
     </section>
   );
