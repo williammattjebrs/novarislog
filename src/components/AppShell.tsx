@@ -2,14 +2,15 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Users, PackageSearch, Radar, Wallet, Settings, UserCog,
-  Radio, Bell, Search, LogOut, BookOpen, Route as RouteIcon, Truck, Menu, X, MapPin, Upload,
+  Radio, Bell, Search, LogOut, BookOpen, Route as RouteIcon, Truck, Menu, X, MapPin, Upload, Building2, BarChart3,
 } from "lucide-react";
 import logo from "@/assets/novaris-logo.png.asset.json";
 import simbolo from "@/assets/novaris-simbolo.png.asset.json";
 import { useAuth, ROLE_LABEL, canAccess, type Role } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { useClients, useOrders, useOrdensColeta } from "@/lib/mock-store";
+import { useClients, useOrders, useOrdensColeta, useEmpresas } from "@/lib/mock-store";
+import { useEmpresaFiltro } from "@/lib/empresa-filter";
 import { ocAtivaDaNf, isEmitida } from "@/lib/oc-model";
 import { SyncStatus } from "./SyncStatus";
 import { financialState } from "@/lib/reliability";
@@ -21,11 +22,13 @@ const NAV: NavItem[] = [
   { to: "/clientes", label: "Clientes & CRM", icon: Users },
   { to: "/importacao", label: "Importação", icon: Upload },
   { to: "/ordens-coleta", label: "Ordens de coleta", icon: PackageSearch },
-  { to: "/rotas", label: "Rotas · NF-e", icon: RouteIcon },
+  { to: "/rotas", label: "Acompanhamento de Coleta", icon: RouteIcon },
   { to: "/locais-operacionais", label: "Locais operacionais", icon: MapPin },
   { to: "/motoristas", label: "Motoristas & Veículos", icon: Truck },
   { to: "/monitoramento", label: "Monitoramento", icon: Radar },
   { to: "/financeiro", label: "Financeiro", icon: Wallet },
+  { to: "/relatorios", label: "Relatórios gerenciais", icon: BarChart3 },
+  { to: "/empresas", label: "Empresas do grupo", icon: Building2 },
   { to: "/tv", label: "Indicadores (TV)", icon: Radio },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
   { to: "/usuarios", label: "Usuários & acessos", icon: UserCog },
@@ -42,6 +45,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const clients = useClients();
   const ocs = useOrdensColeta();
   const role: Role = user?.role ?? "operacao";
+  const empresas = useEmpresas();
+  const [empresaF, setEmpresaF] = useEmpresaFiltro();
 
   const items = NAV.filter((i) => user && canAccess(role, i.to, user?.modulos));
   const query = search.trim().toLocaleLowerCase("pt-BR");
@@ -109,6 +114,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Radio className="h-3.5 w-3.5 text-success" />
             <span>Perfil: <span className="text-foreground font-medium">{user ? ROLE_LABEL[role] : "—"}</span></span>
           </div>
+          <select aria-label="Filtrar por empresa" title="Empresa do grupo" value={empresaF} onChange={(e) => setEmpresaF(e.target.value)} className="ml-2 max-w-48 bg-panel border border-border rounded-md px-2 py-1.5 text-xs">
+            <option value="">Empresa: todas</option>
+            {empresas.list.map((e) => <option key={e.id} value={e.id}>{e.nome}</option>)}
+            <option value="__sem">Sem empresa vinculada</option>
+          </select>
           <div className="flex-1" />
           <Button variant="ghost" size="icon" asChild title="Manual de uso">
             <Link to="/manual" search={{ modulo: "torre" }} aria-label="Manual de uso"><BookOpen className="h-4 w-4" /></Link>
