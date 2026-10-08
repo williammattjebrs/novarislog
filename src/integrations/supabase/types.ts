@@ -254,6 +254,105 @@ export type Database = {
         }
         Relationships: []
       }
+      tms_oc_documents: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          oc_id: string
+          pdf_path: string
+          pdf_sha256: string
+          send_requested: boolean
+          snapshot: Json
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          oc_id: string
+          pdf_path: string
+          pdf_sha256: string
+          send_requested?: boolean
+          snapshot: Json
+          version: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          oc_id?: string
+          pdf_path?: string
+          pdf_sha256?: string
+          send_requested?: boolean
+          snapshot?: Json
+          version?: number
+        }
+        Relationships: []
+      }
+      tms_oc_email_outbox: {
+        Row: {
+          accepted_at: string | null
+          attempts: number
+          created_at: string
+          doc_version: number
+          email: string
+          id: string
+          last_error: string | null
+          locked_at: string | null
+          oc_id: string
+          papeis: string[]
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          attempts?: number
+          created_at?: string
+          doc_version: number
+          email: string
+          id?: string
+          last_error?: string | null
+          locked_at?: string | null
+          oc_id: string
+          papeis?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          attempts?: number
+          created_at?: string
+          doc_version?: number
+          email?: string
+          id?: string
+          last_error?: string | null
+          locked_at?: string | null
+          oc_id?: string
+          papeis?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tms_oc_nf_active: {
+        Row: {
+          created_at: string
+          nf_id: string
+          oc_id: string
+        }
+        Insert: {
+          created_at?: string
+          nf_id: string
+          oc_id: string
+        }
+        Update: {
+          created_at?: string
+          nf_id?: string
+          oc_id?: string
+        }
+        Relationships: []
+      }
       user_modules: {
         Row: {
           criado_em: string
@@ -320,6 +419,49 @@ export type Database = {
       }
       tms_import_nfe_worker: { Args: { payload: Json }; Returns: Json }
       tms_module: { Args: { module_name: string }; Returns: boolean }
+      tms_oc_email_claim: {
+        Args: { p_limit: number; p_oc_id: string }
+        Returns: {
+          accepted_at: string | null
+          attempts: number
+          created_at: string
+          doc_version: number
+          email: string
+          id: string
+          last_error: string | null
+          locked_at: string | null
+          oc_id: string
+          papeis: string[]
+          status: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "tms_oc_email_outbox"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      tms_oc_email_finish: {
+        Args: { p_error: string; p_id: string; p_status: string }
+        Returns: undefined
+      }
+      tms_oc_email_requeue: {
+        Args: { p_doc_version: number; p_oc_id: string }
+        Returns: number
+      }
+      tms_oc_emit_worker: {
+        Args: {
+          p_actor: string
+          p_expected_version: number
+          p_oc_id: string
+          p_pdf_path: string
+          p_pdf_sha: string
+          p_send: boolean
+          p_snapshot: Json
+        }
+        Returns: Json
+      }
       tms_records_commit: {
         Args: { changes: Json; reason?: string }
         Returns: Json
