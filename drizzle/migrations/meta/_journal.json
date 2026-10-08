@@ -127,6 +127,13 @@
       "when": 1791484701485,
       "tag": "0017_reset_total_sistema",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791484828746,
+      "tag": "0018_add_master_role",
+      "breakpoints": true
     }
   ]
 }

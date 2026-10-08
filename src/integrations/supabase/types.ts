@@ -472,7 +472,7 @@ export type Database = {
       tms_reset_imports: { Args: { confirmacao: string }; Returns: Json }
     }
     Enums: {
-      app_role: "admin" | "comercial" | "operacao" | "financeiro"
+      app_role: "admin" | "comercial" | "operacao" | "financeiro" | "master"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -600,7 +600,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "comercial", "operacao", "financeiro"],
+      app_role: ["admin", "comercial", "operacao", "financeiro", "master"],
     },
   },
 } as const
