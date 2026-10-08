@@ -303,7 +303,7 @@ function ResetImportsSection() {
     const { data, error } = await supabase.rpc("tms_reset_imports", { confirmacao: txt });
     setBusy(false);
     if (error) { setMsg(error.message); return; }
-    try { Object.keys(localStorage).filter((k) => /./.test(k)).forEach((k) => localStorage.removeItem(k)); } catch { /* ignore */ }
+    try { Object.keys(localStorage).filter((k) => !k.startsWith("sb-")).forEach((k) => localStorage.removeItem(k)); } catch { /* ignore */ }
     alert(`Sistema zerado: ${JSON.stringify(data)}`);
     window.location.reload();
   }
