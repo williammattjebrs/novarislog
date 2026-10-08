@@ -83,7 +83,7 @@ function Page() {
           </tbody>
         </table>
       </div>
-      {sel && ocs.list.some((o) => o.id === sel) && <OcDetalhe key={sel} ocId={sel} onClose={() => setSel(null)} />}
+      {sel && !lista.some((o) => o.id === sel) && ocs.list.some((o) => o.id === sel) && <OcDetalhe key={sel} ocId={sel} onClose={() => setSel(null)} />}
     </div>
   );
 }
