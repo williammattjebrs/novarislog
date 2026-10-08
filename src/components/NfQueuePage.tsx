@@ -216,9 +216,13 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
         atualizadoEm: new Date().toISOString(),
       };
       // Importação cria somente a NF na fila de Rotas; nenhuma OC é criada automaticamente.
-      await commitLists({ orders: [order, ...(getList<Order>("orders") ?? [])] }, "Importação NF-e (fila de Rotas, sem OC automática)");
+      await commitLists({ orders: [order, ...(getList<Order>("orders") ?? [])] }, "Importação NF-e");
+      // Já sugere a OC: entra no rascunho do mesmo remetente+destinatário ou cria um novo (no servidor, sem duplicar).
+      const { error: eOc } = await supabase.rpc("tms_oc_auto_draft", { p_nf_ids: [order.id] });
+      if (eOc) console.warn("Rascunho de OC não criado:", eOc.message);
       ok++;
     }
+    if (ok) await refreshShared();
     return { ok, fail, dup, corrigidas: [...new Set(corrigidas)] };
   }
 

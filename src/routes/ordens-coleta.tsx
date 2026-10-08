@@ -180,7 +180,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
     const id = `EXP-OC-${oc.id}`; const lista = getList<Expense>("expenses") ?? []; const atual = lista.find((x) => x.id === id);
     if (atual && atual.valor === valor) return;
     const venc = (draft.dataHoraColeta || new Date().toISOString()).slice(0, 10);
-    const reg: Expense = { ...(atual ?? { status: "prevista", recorrente: false, area: "operacional" as Expense["area"], tipo: (draft.contratacao === "terceiro" ? "terceiro" : "combustivel") as Expense["tipo"] }), id, ocId: oc.id, empresaId: draft.empresaId, descricao: `${oc.numero} · ${draft.contratacao === "terceiro" ? "frete terceiro" : "custo frota própria"}`, fornecedor: m?.nome ?? "motorista", valor, vencimento: atual?.vencimento ?? venc, competencia: venc.slice(0, 7) } as Expense;
+    const reg: Expense = { ...(atual ?? { status: "prevista", recorrente: false, area: (draft.contratacao === "terceiro" ? "operacao" : "frota") as Expense["area"], tipo: (draft.contratacao === "terceiro" ? "frete_terceiros" : "variavel") as Expense["tipo"] }), id, ocId: oc.id, empresaId: draft.empresaId, descricao: `${oc.numero} · ${draft.contratacao === "terceiro" ? "frete terceiro" : "custo frota própria"}`, fornecedor: m?.nome ?? "motorista", valor, vencimento: atual?.vencimento ?? venc, competencia: venc.slice(0, 7) } as Expense;
     try { await commitLists({ expenses: atual ? lista.map((x) => (x.id === id ? reg : x)) : [reg, ...lista] }, `${oc.numero}: custo do transporte lançado no financeiro`); } catch { /* sem acesso ao financeiro: custo fica na OC */ }
   }
   /** Abre o WhatsApp do motorista com a mensagem e o link do PDF completo (link válido por 7 dias). */
