@@ -287,3 +287,31 @@ function InboxSection() {
     </section>
   );
 }
+
+function ResetImportsSection() {
+  const { user } = useAuth();
+  const [txt, setTxt] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  if (user?.email?.toLowerCase() !== "wtmattje@gmail.com") return null;
+  async function zerar() {
+    if (!window.confirm("Apagar TODOS os XMLs importados, notas, CT-e, ordens de coleta, rotas, PDFs e envios? Esta ação não pode ser desfeita.")) return;
+    setBusy(true); setMsg("");
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data, error } = await supabase.rpc("tms_reset_imports", { confirmacao: txt });
+    setBusy(false);
+    if (error) { setMsg(error.message); return; }
+    try { Object.keys(localStorage).filter((k) => /orders|cteDocuments|ordensColeta|rotas|shared/i.test(k)).forEach((k) => localStorage.removeItem(k)); } catch { /* ignore */ }
+    alert(`Importações apagadas: ${JSON.stringify(data)}`);
+    window.location.reload();
+  }
+  return (
+    <section className="panel p-5 space-y-3 border border-danger/40">
+      <div className="flex items-center gap-2"><Trash2 className="h-4 w-4 text-danger" /><div className="font-display text-lg text-danger">Zerar importações</div></div>
+      <p className="text-sm text-muted-foreground">Apaga XMLs importados, notas, CT-e, ordens de coleta, rotas, PDFs e envios de e-mail. Clientes, tabelas, motoristas, veículos, locais, financeiro e usuários são mantidos.</p>
+      <F label='Digite "ZERAR" para confirmar'><input value={txt} onChange={(e) => setTxt(e.target.value)} className="input max-w-xs" /></F>
+      <Button variant="destructive" disabled={busy || txt !== "ZERAR"} onClick={zerar}>{busy ? "Apagando…" : "Zerar importações"}</Button>
+      {msg && <p className="text-xs text-danger">{msg}</p>}
+    </section>
+  );
+}
