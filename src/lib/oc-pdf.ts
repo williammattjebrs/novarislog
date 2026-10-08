@@ -36,7 +36,8 @@ export async function renderOcPdf(s: OcSnapshot & { versao?: number }) {
     page.drawText(v, { x: W - M - font.widthOfTextAtSize(v, 8), y: H - 52, size: 8, font, color: rgb(1, 1, 1) });
     y = H - 90;
   };
-  const ensure = (h: number) => { if (y - h < M + 20) { page = doc.addPage([W, H]); pageNo++; header(); } };
+  let onNewPage: (() => void) | null = null;
+  const ensure = (h: number) => { if (y - h < M + 20) { page = doc.addPage([W, H]); pageNo++; header(); onNewPage?.(); } };
   const text = (t: string, o: { size?: number; b?: boolean; color?: ReturnType<typeof rgb>; x?: number; w?: number } = {}) => {
     const size = o.size ?? 10; const f = o.b ? bold : font;
     for (const line of wrap(t, f, size, o.w ?? CW - ((o.x ?? M) - M))) { ensure(size + 4); page.drawText(line, { x: o.x ?? M, y: y - size, size, font: f, color: o.color ?? rgb(0, 0, 0) }); y -= size + 4; }
@@ -83,7 +84,10 @@ export async function renderOcPdf(s: OcSnapshot & { versao?: number }) {
     y -= h; page.drawLine({ start: { x: M, y }, end: { x: M + CW, y }, thickness: 0.4, color: rgb(0.8, 0.8, 0.8) });
   };
   row(cols.map((c) => c.t), true);
+  onNewPage = () => { onNewPage = null; row(cols.map((c) => c.t), true); onNewPage = repeat; };
+  const repeat = onNewPage;
   for (const n of s.nfs) row([n.numero, n.remetente, n.destinatario, String(n.volumes), n.peso.toLocaleString("pt-BR")]);
+  onNewPage = null;
 
   if (s.instrucoes) { section("Instruções"); text(s.instrucoes, { size: 9 }); }
   section("Assinaturas"); ensure(50); y -= 30;
