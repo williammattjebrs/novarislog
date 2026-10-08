@@ -14,6 +14,7 @@ import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as ColetasRouteImport } from './routes/coletas'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as LocaisOperacionaisRouteImport } from './routes/locais-operacionais'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ManualRouteImport } from './routes/manual'
 import { Route as MonitoramentoRouteImport } from './routes/monitoramento'
@@ -49,6 +50,11 @@ const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
 const FinanceiroRoute = FinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LocaisOperacionaisRoute = LocaisOperacionaisRouteImport.update({
+  id: '/locais-operacionais',
+  path: '/locais-operacionais',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/coletas': typeof ColetasRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
+  '/locais-operacionais': typeof LocaisOperacionaisRoute
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
   '/monitoramento': typeof MonitoramentoRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/coletas': typeof ColetasRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
+  '/locais-operacionais': typeof LocaisOperacionaisRoute
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
   '/monitoramento': typeof MonitoramentoRoute
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/coletas': typeof ColetasRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
+  '/locais-operacionais': typeof LocaisOperacionaisRoute
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
   '/monitoramento': typeof MonitoramentoRoute
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/coletas'
     | '/configuracoes'
     | '/financeiro'
+    | '/locais-operacionais'
     | '/login'
     | '/manual'
     | '/monitoramento'
@@ -188,6 +198,7 @@ export interface FileRouteTypes {
     | '/coletas'
     | '/configuracoes'
     | '/financeiro'
+    | '/locais-operacionais'
     | '/login'
     | '/manual'
     | '/monitoramento'
@@ -206,6 +217,7 @@ export interface FileRouteTypes {
     | '/coletas'
     | '/configuracoes'
     | '/financeiro'
+    | '/locais-operacionais'
     | '/login'
     | '/manual'
     | '/monitoramento'
@@ -225,6 +237,7 @@ export interface RootRouteChildren {
   ColetasRoute: typeof ColetasRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   FinanceiroRoute: typeof FinanceiroRoute
+  LocaisOperacionaisRoute: typeof LocaisOperacionaisRoute
   LoginRoute: typeof LoginRoute
   ManualRoute: typeof ManualRoute
   MonitoramentoRoute: typeof MonitoramentoRoute
@@ -272,6 +285,13 @@ declare module '@tanstack/react-router' {
       path: '/financeiro'
       fullPath: '/financeiro'
       preLoaderRoute: typeof FinanceiroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/locais-operacionais': {
+      id: '/locais-operacionais'
+      path: '/locais-operacionais'
+      fullPath: '/locais-operacionais'
+      preLoaderRoute: typeof LocaisOperacionaisRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -372,6 +392,7 @@ const rootRouteChildren: RootRouteChildren = {
   ColetasRoute: ColetasRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   FinanceiroRoute: FinanceiroRoute,
+  LocaisOperacionaisRoute: LocaisOperacionaisRoute,
   LoginRoute: LoginRoute,
   ManualRoute: ManualRoute,
   MonitoramentoRoute: MonitoramentoRoute,
