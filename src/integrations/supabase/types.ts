@@ -194,6 +194,39 @@ export type Database = {
         }
         Relationships: []
       }
+      tms_delivery_proofs: {
+        Row: {
+          content_type: string
+          created_at: string
+          created_by: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          nf_id: string
+        }
+        Insert: {
+          content_type: string
+          created_at?: string
+          created_by?: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id?: string
+          nf_id: string
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          created_by?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          nf_id?: string
+        }
+        Relationships: []
+      }
       tms_fiscal_keys: {
         Row: {
           created_at: string
@@ -426,6 +459,10 @@ export type Database = {
         Returns: string
       }
       tms_collection: { Args: { c: string; op?: string }; Returns: boolean }
+      tms_delivery_nf_access: {
+        Args: { p_nf_id: string; p_write?: boolean }
+        Returns: boolean
+      }
       tms_extended_selftest: { Args: never; Returns: Json }
       tms_import_cte: { Args: { xml_text: string }; Returns: Json }
       tms_import_cte_worker: {
