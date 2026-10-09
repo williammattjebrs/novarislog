@@ -201,7 +201,7 @@ function OcPainel({ ocId, onClose, canSeeCosts }: { ocId: string; onClose: () =>
   return (
     <div className="space-y-4">
       <div className="panel p-4 space-y-3">
-        <div className="flex items-center justify-between"><div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">Ordem de coleta</div><div className="font-display num text-primary">{oc.numero}</div></div>
+        <div className="flex items-center justify-between"><div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">Ordem de coleta</div><div className="font-display num text-primary">{oc.numero}</div>{(() => { const ctes = [...new Set(nfs.map((n) => n.cteNumero).filter(Boolean))] as string[]; return ctes.length ? <div className="num text-xs text-success">CT-e {ctes.join(" · ")}</div> : null; })()}</div>
           <button aria-label="Fechar" onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button></div>
         <div className="text-xs">{oc.clienteColetaNome} · {oc.localColeta} → {oc.clienteDescargaNome} · {oc.localEntrega}</div>
         <div className="flex gap-2">
