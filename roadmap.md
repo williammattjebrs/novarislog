@@ -62,3 +62,6 @@
 - [x] Anexar e consultar comprovantes de entrega vinculados à NF de OC emitida
 - [x] Registrar observação ou ocorrência diretamente na lista de monitoramento
 - [x] Validar gravação, anexos e prévia sem enviar e-mails reais; 18 testes aprovados e fluxo autenticado com dados descartáveis
+
+## WhatsApp Business (preparação)
+- [ ] Conectar número WhatsApp Business em produção quando o usuário tiver número e API (tela de preferências já preparada em Configurações)
