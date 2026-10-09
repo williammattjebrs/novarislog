@@ -97,7 +97,7 @@ function MonitoramentoPage() {
     if (cteFiltro === "ocorrencia" && !(oc.status === "ocorrencia" || nfs.some((n) => n.stage === "ocorrencia"))) return false;
     if (nfStage && !nfs.some((n) => n.stage === nfStage)) return false;
     if (!q) return true;
-    return [oc.numero, oc.clienteColetaNome, oc.clienteDescargaNome, oc.localColeta, oc.localEntrega, mot.list.find((m) => m.id === oc.motoristaId)?.nome, vei.list.find((v) => v.id === oc.veiculoId)?.placa, ...oc.orderIds.map((id) => nfById.get(id)?.numeroNFe)].join(" ").toLowerCase().includes(q);
+    return [oc.numero, oc.clienteColetaNome, oc.clienteDescargaNome, oc.localColeta, oc.localEntrega, mot.list.find((m) => m.id === oc.motoristaId)?.nome, vei.list.find((v) => v.id === oc.veiculoId)?.placa, ...oc.orderIds.flatMap((id) => { const n = nfById.get(id); return [n?.numeroNFe, n?.cteNumero, n?.cteChave]; })].join(" ").toLowerCase().includes(q);
   });
   const legados = ocs.list.filter((o) => !isV2(o) && o.status !== "cancelada").length;
   const sel = selected ? emitidas.find((o) => o.id === selected || o.orderIds.includes(selected)) : undefined;
@@ -153,7 +153,7 @@ function MonitoramentoPage() {
                   const m = mot.list.find((x) => x.id === oc.motoristaId); const v = vei.list.find((x) => x.id === oc.veiculoId);
                   return (
                     <tr key={oc.id} onClick={() => setSelected(oc.id)} className={`border-t border-border hover:bg-elevated/50 cursor-pointer ${sel?.id === oc.id ? "bg-elevated/60" : ""}`}>
-                      <td className="px-4 py-3 num text-primary text-xs align-top">{oc.numero}<div className="text-[10px] text-muted-foreground">{oc.orderIds.length} NF</div><div className="space-y-2 mt-3" onClick={(e) => e.stopPropagation()}>{oc.orderIds.map((id) => { const n = nfById.get(id); return n ? <DeliveryProofs key={id} nfId={id} numero={n.numeroNFe} /> : null; })}</div></td>
+                      <td className="px-4 py-3 num text-primary text-xs align-top">{(() => { const ctes = [...new Set(oc.orderIds.map((id) => nfById.get(id)?.cteNumero).filter(Boolean))] as string[]; return ctes.length ? (<><div className="text-sm">CT-e {ctes.join(" · ")}</div><div className="text-[10px] text-muted-foreground">OC {oc.numero}</div></>) : oc.numero; })()}<div className="text-[10px] text-muted-foreground">{oc.orderIds.length} NF</div><div className="space-y-2 mt-3" onClick={(e) => e.stopPropagation()}>{oc.orderIds.map((id) => { const n = nfById.get(id); return n ? <DeliveryProofs key={id} nfId={id} numero={n.numeroNFe} /> : null; })}</div></td>
                       <td className="text-xs">{m?.nome ?? "—"}<div className="num">{v?.placa ?? "—"}</div></td>
                       <td className="text-xs">{oc.clienteColetaNome} → {oc.clienteDescargaNome}</td>
                       <td className="text-xs">{oc.localColeta} ({oc.cidadeColeta}/{oc.ufColeta}) → {oc.localEntrega} ({oc.cidadeEntrega}/{oc.ufEntrega})</td>
@@ -201,7 +201,7 @@ function OcPainel({ ocId, onClose, canSeeCosts }: { ocId: string; onClose: () =>
   return (
     <div className="space-y-4">
       <div className="panel p-4 space-y-3">
-        <div className="flex items-center justify-between"><div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">Ordem de coleta</div><div className="font-display num text-primary">{oc.numero}</div></div>
+        <div className="flex items-center justify-between"><div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">Ordem de coleta</div><div className="font-display num text-primary">{oc.numero}</div>{(() => { const ctes = [...new Set(nfs.map((n) => n.cteNumero).filter(Boolean))] as string[]; return ctes.length ? <div className="num text-xs text-success">CT-e {ctes.join(" · ")}</div> : null; })()}</div>
           <button aria-label="Fechar" onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button></div>
         <div className="text-xs">{oc.clienteColetaNome} · {oc.localColeta} → {oc.clienteDescargaNome} · {oc.localEntrega}</div>
         <div className="flex gap-2">
