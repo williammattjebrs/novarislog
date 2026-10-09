@@ -11,7 +11,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getInboxConfig, saveInboxConfig, testInbox, syncInbox } from "@/lib/email-inbox.functions";
 import { useAuth } from "@/lib/auth";
-import { Settings, RotateCcw, Trash2, DatabaseBackup, Upload } from "lucide-react";
+import { Settings, RotateCcw, Trash2, DatabaseBackup, Upload, MessageCircle } from "lucide-react";
 import { downloadBackup, restoreBackup, validateBackup, type BackupPreview } from "@/lib/export-utils";
 import { SchedulerStatus } from '@/components/SchedulerStatus';
 
@@ -106,6 +106,7 @@ function ConfigPage() {
         </section>
 
         <InboxSection />
+        <WhatsappSection />
         <SchedulerStatus />
 
         <section className="panel p-5 space-y-3">
@@ -286,6 +287,45 @@ function InboxSection() {
       {data?.ultimaSync && (
         <div className="text-[11px] text-muted-foreground">Última leitura: {new Date(data.ultimaSync).toLocaleString("pt-BR")} — {data.ultimoStatus}</div>
       )}
+    </section>
+  );
+}
+
+function WhatsappSection() {
+  const [cfg, setCfg] = useConfig();
+  const wa = cfg.whatsapp ?? { enviarPdfAutomatico: true, receberComprovantes: true, mensagemPadrao: "Segue a ordem de coleta {{oc}}. Qualquer imprevisto, avise por aqui." };
+  const setWa = (p: Partial<typeof wa>) => setCfg({ ...cfg, whatsapp: { ...wa, ...p } });
+  return (
+    <section className="panel p-5 space-y-3">
+      <div className="flex items-center gap-2">
+        <MessageCircle className="h-4 w-4 text-primary" />
+        <div className="font-display text-lg">WhatsApp Business</div>
+        <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border border-warning/40 text-warning">Não conectado</span>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Quando o número WhatsApp Business da Novaris estiver conectado, esta integração passa a:
+      </p>
+      <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+        <li>Enviar automaticamente o PDF completo da OC ao motorista no momento da emissão (sem link).</li>
+        <li>Receber as fotos de comprovantes de entrega que os motoristas enviarem, ler o número da NF na imagem e anexar o comprovante à nota certa no Monitoramento.</li>
+      </ul>
+      <p className="text-xs text-muted-foreground">
+        Deixe abaixo as preferências prontas. Para ativar, peça no chat: <b>"conectar o WhatsApp Business"</b> — a conexão é feita com um número exclusivo da empresa e aprovação do WhatsApp/Meta.
+      </p>
+      <fieldset disabled className="space-y-3 opacity-70">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <F label="Mensagem padrão ao motorista">
+            <input value={wa.mensagemPadrao} onChange={(e) => setWa({ mensagemPadrao: e.target.value })} className="input" />
+          </F>
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={wa.enviarPdfAutomatico} onChange={(e) => setWa({ enviarPdfAutomatico: e.target.checked })} /> Enviar PDF da OC automaticamente ao emitir
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={wa.receberComprovantes} onChange={(e) => setWa({ receberComprovantes: e.target.checked })} /> Receber e anexar comprovantes de entrega enviados pelos motoristas
+        </label>
+      </fieldset>
+      <p className="text-[11px] text-muted-foreground">Os campos ficam bloqueados até a conexão ser feita; as preferências já ficam salvas.</p>
     </section>
   );
 }
