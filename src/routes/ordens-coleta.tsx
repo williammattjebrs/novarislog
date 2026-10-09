@@ -160,7 +160,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
       await refreshShared(); await loadDocs();
       if (!r.ok) { setMsg({ tipo: "erro", texto: r.erros.join(" ") }); }
       else {
-        if (m?.telefone) void whatsMotorista(r.docVersion);
+        if (m?.telefone) void whatsMotorista(r.docVersion, "imagem");
         void lancarCusto();
         const pend = r.pendencias.length ? ` Pendência: ${r.pendencias.join("; ")}.` : "";
         if (r.enfileirados > 0) {
