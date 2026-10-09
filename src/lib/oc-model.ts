@@ -75,7 +75,7 @@ export function validarEmissao(oc: OrdemColeta, ctx: { nfs: Order[]; locais: Loc
   const empresa = ctx.empresas?.find((e) => e.id === oc.empresaId);
   if (ctx.empresas && !empresa) erros.push("Escolha a empresa emissora da OC.");
   if (!oc.contratacao) erros.push("Informe a contratação: terceiro ou frota própria.");
-  else if (!(Number(oc.custoMotorista) > 0)) erros.push(oc.contratacao === "terceiro" ? "Informe o valor fechado com o motorista." : "Informe o custo da frota própria.");
+  if (!(Number(oc.custoMotorista) > 0)) erros.push(oc.contratacao === "frota" ? "Informe o custo da frota própria." : "Informe o valor fechado com o motorista.");
   if (!isV2(oc)) erros.push("OC legada: converta antes de emitir.");
   if (["cancelada", "entregue"].includes(oc.status)) erros.push("OC cancelada ou entregue não pode ser emitida.");
   if (!oc.orderIds.length) erros.push("Selecione ao menos uma NF.");
