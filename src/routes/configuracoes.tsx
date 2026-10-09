@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getInboxConfig, saveInboxConfig, testInbox, syncInbox } from "@/lib/email-inbox.functions";
+import { getWhatsappConfig, saveWhatsappConfig, testWhatsapp } from "@/lib/whatsapp.functions";
 import { useAuth } from "@/lib/auth";
 import { Settings, RotateCcw, Trash2, DatabaseBackup, Upload, MessageCircle } from "lucide-react";
 import { downloadBackup, restoreBackup, validateBackup, type BackupPreview } from "@/lib/export-utils";
