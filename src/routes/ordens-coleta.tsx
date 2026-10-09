@@ -144,7 +144,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
     if (!f.orderIds.length) return setMsg({ tipo: "erro", texto: "A OC precisa de ao menos uma NF." });
     setBusy(true); setMsg(null);
     try {
-      await salvarOc(oc, { ...draft, localColeta: lcs.length ? lcs.map((l) => l.nome).join(" + ") : oc.localColeta, cidadeColeta: lcs[0]?.cidade ?? lc?.cidade ?? oc.cidadeColeta, ufColeta: lcs[0]?.uf ?? lc?.uf ?? oc.ufColeta, localEntrega: ld?.nome ?? oc.localEntrega, cidadeEntrega: ld?.cidade ?? oc.cidadeEntrega, ufEntrega: ld?.uf ?? oc.ufEntrega, clienteNome: f.clienteColetaNome, conteudoPendenteRevisao: emitida ? true : oc.conteudoPendenteRevisao },
+      await salvarOc(oc, { ...draft, localColeta: lcs.length ? lcs.map((l) => l.nome).join(" + ") : oc.localColeta, cidadeColeta: lcs[0]?.cidade ?? lc?.cidade ?? oc.cidadeColeta, ufColeta: lcs[0]?.uf ?? lc?.uf ?? oc.ufColeta, localEntrega: ld?.nome ?? (draft.localEntrega || oc.localEntrega), cidadeEntrega: ld?.cidade ?? oc.cidadeEntrega, ufEntrega: ld?.uf ?? oc.ufEntrega, clienteNome: f.clienteColetaNome, conteudoPendenteRevisao: emitida ? true : oc.conteudoPendenteRevisao },
         autor, emitida ? "Conteúdo alterado após emissão · gere nova versão para atualizar o documento" : "Programação salva (rascunho)");
       setMsg({ tipo: "ok", texto: emitida ? "Alterações salvas. O documento emitido não mudou: gere uma nova versão quando quiser." : "Rascunho salvo." });
     } catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao salvar." }); }
@@ -258,7 +258,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
           <fieldset className="space-y-2" disabled={!editavel}><legend className="text-xs font-semibold text-primary">Descarga</legend>
             <input aria-label="Cliente da descarga" className={inp} placeholder="Cliente da descarga" value={f.clienteDescargaNome} onChange={(e) => setF({ ...f, clienteDescargaNome: e.target.value })} />
             <LocalSelect label="Local da descarga" value={f.localDescargaId} onChange={(id) => setF({ ...f, localDescargaId: id })} />
-            {!f.localDescargaId && <input aria-label="Local da descarga (texto livre)" className={inp} placeholder="Ou digite o local de descarga (ex.: Docas 3-5, Galpão B)" value={f.localEntrega} onChange={(e) => setF({ ...f, localEntrega: e.target.value })} />}
+            {!f.localDescargaId && <input aria-label="Local da descarga (texto livre)" className={inp} placeholder="Ou digite o local de descarga (ex.: Docas 3-5, Galpão B)" value={f.localEntrega ?? ""} onChange={(e) => setF({ ...f, localEntrega: e.target.value })} />}
             <label className="text-xs block">Previsão de descarga<input aria-label="Previsão de descarga" type="datetime-local" className={inp} value={f.dataHoraEntrega} onChange={(e) => setF({ ...f, dataHoraEntrega: e.target.value })} /></label>
             <input aria-label="Contratante do frete" className={inp} placeholder="Contratante do frete" value={f.contratanteNome} onChange={(e) => setF({ ...f, contratanteNome: e.target.value })} />
           </fieldset>
