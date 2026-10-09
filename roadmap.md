@@ -52,3 +52,7 @@
 - [x] Financeiro: clicar na receita/despesa para marcar recebido/pago/parcial/estorno
 - [x] Cadastro de empresas do grupo com logo; filtro global por empresa
 - [x] Relatórios gerenciais com exportação
+
+## Listas detalhadas nos relatórios
+- [ ] Substituir resumos por listas de NFs, OCs e títulos; manter filtros e exportar detalhes
+- [ ] Verificar as listas e filtros pela interface
