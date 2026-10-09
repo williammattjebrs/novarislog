@@ -225,7 +225,7 @@ export interface Rota {
   orderIds: string[]; motoristaId?: string; veiculoId?: string;
   status: RotaStatus; criadoEm: string; atualizadoEm: string;
 }
-export type OCStatus = "rascunho" | "aguardando_programacao" | "emitida" | "enviada_motorista" | "em_coleta" | "coletada" | "em_viagem" | "entregue" | "ocorrencia" | "cancelada";
+export type OCStatus = "rascunho" | "aguardando_programacao" | "emitida" | "enviada_motorista" | "em_coleta" | "coletada" | "aguardando_viagem" | "em_viagem" | "entregue" | "ocorrencia" | "cancelada";
 export const OC_STATUS: { id: OCStatus; label: string; stage?: OrderStage }[] = [
   { id: "rascunho", label: "Rascunho" },
   { id: "aguardando_programacao", label: "Legado · aguardando programação" },
