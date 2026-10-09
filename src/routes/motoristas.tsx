@@ -109,7 +109,7 @@ function Veiculos() {
         <tbody>
           {v.list.map((x) => (
             <tr key={x.id} className="border-t border-border">
-              <td className="py-1.5 num">{x.placa}</td><td className="num">{x.placaCarreta || "—"}</td><td>{x.tipo}</td><td>{x.modelo || "—"}</td><td>{x.proprietario === "frota" ? "Frota" : "Terceiro"}</td>
+              <td className="py-1.5 num">{x.placa}</td><td className="num"><input className={`${inp} w-28`} placeholder="Carreta" defaultValue={x.placaCarreta ?? ""} key={x.placaCarreta ?? "none"} onBlur={(e) => { const p = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); if (p && !/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(p)) { e.target.value = x.placaCarreta ?? ""; return; } if ((p || undefined) !== x.placaCarreta) v.update(x.id, { placaCarreta: p || undefined }); }} /></td><td>{x.tipo}</td><td>{x.modelo || "—"}</td><td>{x.proprietario === "frota" ? "Frota" : "Terceiro"}</td>
               <td className="num"><input className={`${inp} w-28`} inputMode="numeric" placeholder="kg" defaultValue={x.capacidadeKg ?? ""} key={x.capacidadeKg ?? "none"} onBlur={(e) => { const n = Number(e.target.value.replace(/\D/g, "")) || undefined; if (n !== x.capacidadeKg) v.update(x.id, { capacidadeKg: n }); }} /></td>
               <td><input type="checkbox" checked={x.ativo} onChange={(e) => v.update(x.id, { ativo: e.target.checked })} /></td>
               <td className="text-right"><button onClick={() => confirm(`Excluir ${x.placa}?`) && v.remove(x.id)} className="text-danger"><Trash2 className="h-4 w-4" /></button></td>
