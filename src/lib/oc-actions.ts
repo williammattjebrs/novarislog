@@ -10,7 +10,7 @@ export async function aplicarStatusOc(oc: OrdemColeta, status: OCStatus, texto: 
   const orders = (getList<Order>("orders") ?? []).map((n) => {
     if (!oc.orderIds.includes(n.id)) return n;
     const stage = status === oc.status ? n.stage : stageFromOc(status, n);
-    return { ...n, stage, ocId: status === "cancelada" ? undefined : n.ocId, entregueEm: status === "entregue" ? now : n.entregueEm, atualizadoEm: now, timeline: [...n.timeline, { ...entry, texto: `${oc.numero}: ${texto}` }] };
+    return { ...n, stage, ocId: status === "cancelada" ? undefined : n.ocId, coletadoEm: status === "coletada" && oc.status !== "coletada" ? now : n.coletadoEm, entregueEm: status === "entregue" ? now : n.entregueEm, atualizadoEm: now, timeline: [...n.timeline, { ...entry, texto: `${oc.numero}: ${texto}` }] };
   });
   await commitLists({ ordensColeta: ocs, orders }, `${oc.numero}: ${texto}`.slice(0, 200));
 }

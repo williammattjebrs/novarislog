@@ -192,6 +192,7 @@ export interface Order {
   conferencia?: { status: "pendente" | "divergente" | "conferido"; percent?: number; base: number; fiscal: number; tolerance: number };
   xmlOriginal?: string;
   entregueEm?: string;
+  coletadoEm?: string;
 
   // Transporte
   transportType: TransportType;
