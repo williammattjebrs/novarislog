@@ -16,7 +16,7 @@ export default defineConfig({
     resolve: {
       // pdf-lib imports tslib; the CJS build breaks ESM interop in the production bundle
       // ("Cannot destructure property '__extends'"). Force the ES module build.
-      alias: { tslib: "tslib/tslib.es6.js" },
+      alias: [{ find: /^tslib$/, replacement: new URL("./node_modules/tslib/tslib.es6.js", import.meta.url).pathname }],
     },
   },
 });
