@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Download, Printer } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
-import { useConfig, useCteDocuments, useEmpresas, useExpenses, useInvoices, useLocaisOperacionais, useMotoristas, useOrders, useOrdensColeta, useVeiculos } from "@/lib/mock-store";
+import { useConfig, useCteDocuments, useEmpresas, useExpenses, useInvoices, useLocais, useMotoristas, useOrders, useOrdensColeta, useVeiculos } from "@/lib/mock-store";
 import { buildCteProfit } from "@/lib/cte-profit";
 import { CteProfitTable } from "@/components/CteProfitTable";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,7 @@ function Page() {
   const noPeriodo = (iso?: string) => { const m = mes(iso); return !!m && m >= de && m <= ate; };
   const [fCli, setFCli] = useState(""); const [fRota, setFRota] = useState(""); const [fVei, setFVei] = useState(""); const [fMot, setFMot] = useState("");
   const [cfg] = useConfig(); const cteDocs = useCteDocuments();
-  const locais = useLocaisOperacionais();
+  const locais = useLocais();
   const cliOc = (o: OrdemColeta) => o.contratanteNome || o.clienteColetaNome || o.clienteNome || "—";
   const rotaOc = (o: OrdemColeta) => `${o.cidadeColeta}/${o.ufColeta} → ${o.cidadeEntrega}/${o.ufEntrega}`;
   const placaOc = (o: OrdemColeta) => vei.list.find((v) => v.id === o.veiculoId)?.placa ?? "—";
@@ -89,7 +89,7 @@ function Page() {
     if (tab === "abc") return [`Curva ABC de receita por ${agr}`, ["Grupo", "Classe", ...headersOc, "Receita", "Custo", "% acumulado grupo", "Margem %"], abc.map((l) => [l.chave, l.classe ?? "—", ...baseOc(l.oc), l.receita.toFixed(2), l.custo.toFixed(2), `${((l.acum ?? 0) * 100).toFixed(1)}%`, pct(l.receita - l.custo, l.receita)])];
     if (tab === "resultado") return ["Faturamento x custo · ordens de coleta", ["Grupo", ...headersOc, "Emissão", "Status", "Receita", "Custo", "Margem", "Margem %"], resultado.map((l) => [l.chave, ...baseOc(l.oc), data(l.oc.emitidaEm), statusOc(l.oc), l.receita.toFixed(2), l.custo.toFixed(2), (l.receita - l.custo).toFixed(2), pct(l.receita - l.custo, l.receita)])];
     if (tab === "custos") return ["Custos de transporte · ordens de coleta", [...headersOc, "Contratação", "Custo", "Receita", "Custo/receita", "Observações"], custos.map((l) => [...baseOc(l.oc), l.oc.contratacao === "terceiro" ? "Terceiro" : l.oc.contratacao === "frota" ? "Frota própria" : "Não informado", l.custo.toFixed(2), l.receita.toFixed(2), pct(l.custo, l.receita), l.oc.custoObs || "—"])];
-    if (tab === "titulos") return ["Recebimentos e pagamentos", ["Tipo", "Título", "Cliente/fornecedor", "Empresa", "Vencimento", "Valor", "Recebido/pago", "Saldo", "Situação", "Última baixa", "Histórico"], titulos.map((t) => [t.tipo, t.nome, t.pessoa, t.empresa, t.venc, t.valor.toFixed(2), t.baixado.toFixed(2), Math.max(0, t.valor - t.baixado).toFixed(2), t.status === "paga" ? "Liquidado" : t.venc < dHoje ? "Vencido" : "A vencer", data(t.data), t.movimentos?.map((m) => `${data(m.at)} · ${m.kind} · ${fmtBRL(m.amount)}`).join("; ") || "—"])];
+    if (tab === "titulos") return ["Recebimentos e pagamentos", ["Tipo", "Título", "Cliente/fornecedor", "Empresa", "Vencimento", "Valor", "Recebido/pago", "Saldo", "Situação", "Última baixa", "Histórico"], titulos.map((t) => [t.tipo, t.nome, t.pessoa, t.empresa, t.venc, t.valor.toFixed(2), t.baixado.toFixed(2), Math.max(0, t.valor - t.baixado).toFixed(2), t.status === "paga" ? "Liquidado" : t.venc < dHoje ? "Vencido" : "A vencer", data(t.data), t.movimentos?.map((m) => `${data(m.date)} · ${m.type === "baixa" ? "Baixa" : "Estorno"} · ${fmtBRL(m.value)}`).join("; ") || "—"])];
     if (tab === "ocorrencias") return ["Ocorrências", ["Data", "OC", "Cliente", "NF", "Rota", "Motorista", "Veículo", "Autor", "Descrição"], ocorr];
     return ["Operação · ordens de coleta", [...headersOc, "Coleta prevista", "Entrega prevista", "Status", "Peso (kg)", "Volumes", "Observações"], ocs.map((o) => [...baseOc(o), data(o.previsaoColeta || o.dataHoraColeta), data(o.dataHoraEntrega), statusOc(o), o.orderIds.reduce((s, id) => s + (nfMap.get(id)?.peso ?? 0), 0).toLocaleString("pt-BR"), o.orderIds.reduce((s, id) => s + (nfMap.get(id)?.volumes ?? 0), 0), o.instrucoes || o.observacao || "—"])];
   }
