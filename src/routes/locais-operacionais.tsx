@@ -76,7 +76,6 @@ function Page() {
               </label>
             ))}
           </div>
-          <label className="text-xs flex items-center gap-2"><input type="checkbox" checked={f.ativo} onChange={(e) => setF({ ...f, ativo: e.target.checked })} /> Ativo</label>
           {err && <div className="text-xs text-danger">{err}</div>}
           <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setEdit(null)}>Cancelar</Button><Button disabled={busy} onClick={salvar}>{busy ? "Salvando…" : "Salvar local"}</Button></div>
         </div>
