@@ -162,6 +162,13 @@
       "when": 1791545439778,
       "tag": "0022_delivery_proofs_monitoring",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791545743092,
+      "tag": "0023_scope_delivery_proofs_emitted_oc",
+      "breakpoints": true
     }
   ]
 }
