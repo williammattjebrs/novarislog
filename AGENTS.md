@@ -22,3 +22,4 @@
 - Legacy OCs (no modelo v2) convert only through the preview + explicit admin confirmation in Ordens de coleta; they never enter Monitoramento or the outbox retroactively.
 - OC collection location is per NF (coletaPorNf, header local is only the default); emission emails go only to collection warehouses, body-only table with just that warehouse's NFs, while the full PDF goes to the driver via WhatsApp — each party receives only what it operates.
 - Group companies live in the shared `companies` collection; OCs carry empresaId, contratacao and custoMotorista, validated at emission and frozen in the snapshot (PDF/email branding). A global per-browser company filter (src/lib/empresa-filter.ts) scopes OCs, NFs (via their active OC) and finance titles.
+- Group basic registration links in a collapsible AppShell navigation section, filtering each child by existing permissions and preserving its route; navigation grouping must not expand access.
