@@ -24,3 +24,5 @@
 - Group companies live in the shared `companies` collection; OCs carry empresaId, contratacao and custoMotorista, validated at emission and frozen in the snapshot (PDF/email branding). A global per-browser company filter (src/lib/empresa-filter.ts) scopes OCs, NFs (via their active OC) and finance titles.
 - Group basic registration links in a collapsible AppShell navigation section, filtering each child by existing permissions and preserving its route; navigation grouping must not expand access.
 - Render managerial reports from record-level lists and use those same rows for exports; enable CT-e NF details only in reports to preserve the finance table's existing interaction.
+- Build tracking rows through the shared OC-enrichment formatter for manual previews, sends and scheduling; use recorded collection events, never scheduled dates, and ignore system logs when selecting the last observation.
+- Store delivery proofs in a private bucket with append-only NF-linked metadata scoped to emitted OCs and permission-gated signed reads; quick monitoring notes reuse the confirmed atomic OC/NF update flow so documents remain private and saves stay consistent.

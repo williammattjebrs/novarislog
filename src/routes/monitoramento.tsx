@@ -5,6 +5,8 @@ import { RoleGate } from "@/components/RoleGate";
 import { useEffect, useMemo, useState } from "react";
 import { Filter, X, Search, Mail } from "lucide-react";
 import { BulkClientUpdate } from "@/components/BulkClientUpdate";
+import { DeliveryProofs } from "@/components/DeliveryProofs";
+import { MonitoringQuickNote } from "@/components/MonitoringQuickNote";
 import { useOrders, useConfig, useOrdensColeta, useMotoristas, useVeiculos } from "@/lib/mock-store";
 import { stageLabel, statusTone, toneClass, OC_STATUS, ORDER_STAGES, type OCStatus, type Order } from "@/lib/mock-data";
 import { Timeline } from "@/components/Timeline";
@@ -142,23 +144,24 @@ function MonitoramentoPage() {
           <div className={`panel overflow-x-auto ${sel ? "lg:col-span-2" : "lg:col-span-3"}`}>
             <table className="w-full text-sm">
               <thead><tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                <th className="text-left font-normal px-4 py-2.5">OC</th><th className="text-left font-normal">Motorista / placa</th><th className="text-left font-normal">Cliente coleta → descarga</th><th className="text-left font-normal">Locais</th><th className="text-left font-normal">Coleta / previsão</th><th className="text-left font-normal">Status</th>
+                <th className="text-left font-normal px-4 py-2.5">OC / NFs</th><th className="text-left font-normal">Motorista / placa</th><th className="text-left font-normal">Cliente coleta → descarga</th><th className="text-left font-normal">Locais</th><th className="text-left font-normal">Coleta / previsão</th><th className="text-left font-normal">Status</th><th className="text-left font-normal px-3">Último apontamento / registro rápido</th>
               </tr></thead>
               <tbody>
                 {filtered.map((oc) => {
                   const m = mot.list.find((x) => x.id === oc.motoristaId); const v = vei.list.find((x) => x.id === oc.veiculoId);
                   return (
                     <tr key={oc.id} onClick={() => setSelected(oc.id)} className={`border-t border-border hover:bg-elevated/50 cursor-pointer ${sel?.id === oc.id ? "bg-elevated/60" : ""}`}>
-                      <td className="px-4 py-3 num text-primary text-xs">{oc.numero}<div className="text-[10px] text-muted-foreground">{oc.orderIds.length} NF</div></td>
+                      <td className="px-4 py-3 num text-primary text-xs align-top">{oc.numero}<div className="text-[10px] text-muted-foreground">{oc.orderIds.length} NF</div><div className="space-y-2 mt-3" onClick={(e) => e.stopPropagation()}>{oc.orderIds.map((id) => { const n = nfById.get(id); return n ? <DeliveryProofs key={id} nfId={id} numero={n.numeroNFe} /> : null; })}</div></td>
                       <td className="text-xs">{m?.nome ?? "—"}<div className="num">{v?.placa ?? "—"}</div></td>
                       <td className="text-xs">{oc.clienteColetaNome} → {oc.clienteDescargaNome}</td>
                       <td className="text-xs">{oc.localColeta} ({oc.cidadeColeta}/{oc.ufColeta}) → {oc.localEntrega} ({oc.cidadeEntrega}/{oc.ufEntrega})</td>
                       <td className="text-xs">{fmtDataHora(oc.dataHoraColeta)}<div className="text-muted-foreground">{fmtDataHora(oc.dataHoraEntrega)}</div></td>
                       <td className="text-xs">{OC_STATUS.find((s) => s.id === oc.status)?.label}</td>
+                      <td className="px-3 py-3 align-top"><p className="text-xs mb-2 whitespace-pre-wrap break-words max-w-80">{[...(oc.historico ?? [])].reverse().find((t) => t.tipo === "observacao" || t.tipo === "ocorrencia")?.texto ?? "—"}</p><MonitoringQuickNote oc={oc} autor={user?.nome ?? "usuário"} /></td>
                     </tr>
                   );
                 })}
-                {!filtered.length && <tr><td colSpan={6} className="py-8 text-center text-xs text-muted-foreground">Nenhuma OC com esses filtros.</td></tr>}
+                {!filtered.length && <tr><td colSpan={7} className="py-8 text-center text-xs text-muted-foreground">Nenhuma OC com esses filtros.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -175,12 +178,14 @@ function MonitoramentoPage() {
 
 function OcPainel({ ocId, onClose, canSeeCosts }: { ocId: string; onClose: () => void; canSeeCosts: boolean }) {
   const ocs = useOrdensColeta(); const orders = useOrders(); const [cfg] = useConfig(); const { user } = useAuth();
-  const oc = ocs.list.find((o) => o.id === ocId)!;
-  const [status, setStatus] = useState<OCStatus>(oc.status); const [texto, setTexto] = useState(""); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const oc = ocs.list.find((o) => o.id === ocId);
+  const [status, setStatus] = useState<OCStatus>(oc?.status ?? "emitida"); const [texto, setTexto] = useState(""); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   const [nfSel, setNfSel] = useState<string | null>(null);
+  if (!oc) return null;
   const nfs = oc.orderIds.map((id) => orders.list.find((n) => n.id === id)).filter(Boolean) as typeof orders.list;
   const nf = nfs.find((n) => n.id === nfSel);
   async function registrar(tipo: "status" | "ocorrencia" | "obs") {
+    if (!oc) return;
     if (tipo !== "status" && !texto.trim()) return setErr("Descreva o apontamento.");
     setBusy(true); setErr("");
     try {
@@ -210,6 +215,7 @@ function OcPainel({ ocId, onClose, canSeeCosts }: { ocId: string; onClose: () =>
         <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Histórico da OC</div>
         <Timeline entries={oc.historico ?? []} />
       </div>
+      {nf && <div className="panel p-4"><DeliveryProofs nfId={nf.id} numero={nf.numeroNFe} /></div>}
       {nf && <TrackingPanel key={nf.id} order={nf} cfg={cfg} autor={user?.nome ?? "sistema"} onUpdate={(patch) => orders.update(nf.id, patch)} />}
       {nf && canSeeCosts && <CostPanel costs={nf.costs} valorFrete={nf.valorFrete} onSave={(next) => orders.update(nf.id, { costs: next, atualizadoEm: new Date().toISOString() })} />}
     </div>

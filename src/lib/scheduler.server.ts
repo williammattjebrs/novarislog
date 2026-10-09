@@ -2,8 +2,8 @@ import { DOMParser } from '@xmldom/xmldom';
 import { parseNFe } from './xml-parser';
 import { identifyClient } from './reliability';
 import { calcFreight, findFreightTable, findQuotation } from './cost-calc';
-import { buildTrackingEmail } from './tracking-email';
-import type { Client, FreightTable, Quotation, Order, RouteRate } from './mock-data';
+import { buildTrackingEmail, enrichTrackingOrders } from './tracking-email';
+import type { Client, FreightTable, Quotation, Order, OrdemColeta, RouteRate } from './mock-data';
 
 // Called only after the HTTP handler verifies its private scheduler secret.
 export async function runScheduler(dryRun: boolean) {
@@ -69,7 +69,7 @@ export async function runScheduler(dryRun: boolean) {
     const id=await claim(`tracking:${group.id}`,group.intervalMin);if(!id)continue;
     try {
       const {graphSendTracking}=await import('./graph-mail.server');
-      const email=buildTrackingEmail(orders,orders[0].clienteNome);
+      const email=buildTrackingEmail(enrichTrackingOrders(orders,list<OrdemColeta>('ordensColeta')),orders[0].clienteNome);
       await graphSendTracking([...new Set(group.emails)],email.title,email.html);
       accepted++;await finish(id,'accepted',{provider:'Microsoft',delivered:false});
     }catch(e){await finish(id,'uncertain',{},e instanceof Error?e.message:'Resultado de envio desconhecido; revisão manual necessária');}

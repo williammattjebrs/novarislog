@@ -1,6 +1,21 @@
-import { stageLabel, type Order } from "@/lib/mock-data";
+import { OC_STATUS, stageLabel, type Order, type OrdemColeta } from "@/lib/mock-data";
 
-export const TRACKING_COLUMNS = ["NF", "Cliente destino", "Cidade Origem", "Cidade Destino", "Data e hora prevista para a entrega", "Status atual"];
+export const TRACKING_COLUMNS = ["Nº da NF", "Cliente Destino", "Data da coleta", "Data/Hora prevista de entrega", "Status Atual", "Última Observação apontada"];
+export type TrackingOrder = Order & { ultimaObservacao?: string; statusOperacional?: string };
+
+export function latestTrackingObservation(order: Pick<Order, "timeline">): string {
+  return [...(order.timeline ?? [])].filter((t) => t.tipo === "observacao" || t.tipo === "ocorrencia")
+    .sort((a, b) => b.quando.localeCompare(a.quando))[0]?.texto ?? "";
+}
+
+export function enrichTrackingOrders(orders: Order[], ocs: OrdemColeta[]): TrackingOrder[] {
+  return orders.map((order) => {
+    const oc = ocs.find((o) => o.status !== "cancelada" && o.orderIds.includes(order.id));
+    const coleta = [...(oc?.historico ?? [])].filter((t) => t.tipo === "status" && /^Coletada(?:\s|·|$)/i.test(t.texto)).sort((a, b) => a.quando.localeCompare(b.quando))[0];
+    return { ...order, coletadoEm: order.coletadoEm || coleta?.quando, previsaoEntrega: order.previsaoEntrega || oc?.dataHoraEntrega || undefined,
+      statusOperacional: oc ? OC_STATUS.find((s) => s.id === oc.status)?.label : undefined, ultimaObservacao: latestTrackingObservation(order) };
+  });
+}
 
 // Repair legacy UTF-8 text incorrectly interpreted as Windows-1252, without changing valid accents.
 export function trackingText(value: string): string {
@@ -31,19 +46,19 @@ export function trackingForecast(value?: string): string {
   return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(date);
 }
 
-export function trackingRow(order: Order): string[] {
-  return [order.numeroNFe, trackingText(order.destinatario || "Não informado"), trackingText(`${order.cidadeColeta}/${order.ufColeta}`), trackingText(`${order.cidadeEntrega}/${order.ufEntrega}`), trackingForecast(order.previsaoEntrega), trackingText(order.rastreio?.situacao || stageLabel(order.stage))];
+export function trackingRow(order: TrackingOrder): string[] {
+  return [order.numeroNFe, trackingText(order.destinatario || "Não informado"), order.coletadoEm ? trackingForecast(order.coletadoEm) : "Não registrada", trackingForecast(order.previsaoEntrega), trackingText(order.statusOperacional || order.rastreio?.situacao || stageLabel(order.stage)), trackingText(order.ultimaObservacao ?? latestTrackingObservation(order)) || "—"];
 }
 
 const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] ?? char);
 const base64 = (text: string) => btoa(Array.from(new TextEncoder().encode(text), (byte) => String.fromCharCode(byte)).join(""));
 
-export function buildTrackingEmail(orders: Order[], client: string, subject?: string, introduction?: string) {
+export function buildTrackingEmail(orders: TrackingOrder[], client: string, subject?: string, introduction?: string) {
   const title = trackingText(subject || `Atualização das suas entregas - ${orders.length} nota(s)`);
   const intro = trackingText(introduction || `Olá ${trackingText(client)},\n\nSegue a posição atualizada das suas entregas:`);
   const rows = orders.map(trackingRow);
   const cell = "border:1px solid currentColor;padding:10px;text-align:left;vertical-align:top;font-size:13px;";
-  const table = `<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;"><thead><tr>${TRACKING_COLUMNS.map((label) => `<th scope="col" style="${cell}">${escapeHtml(label)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((text) => `<td style="${cell}">${escapeHtml(text)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+  const table = `<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;"><thead><tr>${TRACKING_COLUMNS.map((label) => `<th scope="col" style="${cell}background-color:#FF6B00;color:#0B1325;">${escapeHtml(label)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((text) => `<td style="${cell}">${escapeHtml(text)}</td>`).join("")}</tr>`).join("")}</tbody><tfoot><tr><td colspan="6" style="${cell}"><strong>Notas: ${orders.length} · Peso total: ${orders.reduce((sum, o) => sum + (o.peso || 0), 0).toLocaleString("pt-BR")} kg</strong></td></tr></tfoot></table>`;
   const html = `<div lang="pt-BR" style="font-family:Arial,sans-serif;line-height:1.5;"><p>${escapeHtml(intro).replace(/\r?\n/g, "<br>")}</p>${table}<p>Previsões no horário de Brasília. Horários não informados ficam a confirmar.</p><p>Atenciosamente,<br><strong>Novaris · Operador Logístico Integrado</strong></p></div>`;
   const text = `${intro}\n\n${TRACKING_COLUMNS.join(" | ")}\n${rows.map((row) => row.join(" | ")).join("\n")}\n\nPrevisões no horário de Brasília.\n\nAtenciosamente,\nNovaris · Operador Logístico Integrado`;
   return { title, intro, rows, html, text };

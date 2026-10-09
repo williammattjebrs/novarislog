@@ -5,7 +5,8 @@ import { stageLabel, type Order, type TimelineEntry } from "@/lib/mock-data";
 
 import { Button } from "@/components/ui/button";
 import { TrackingEmailPreview } from "@/components/TrackingEmailPreview";
-import { buildTrackingEmail, copyTrackingEmail } from "@/lib/tracking-email";
+import { buildTrackingEmail, copyTrackingEmail, enrichTrackingOrders } from "@/lib/tracking-email";
+import { useOrdensColeta } from "@/lib/mock-store";
 
 import { useServerFn } from "@tanstack/react-start";
 import { sendTrackingUpdate } from "@/lib/tracking-send.functions";
@@ -46,7 +47,8 @@ export function BulkClientUpdate({ orders, autor, onClose, onSent }: {
   }
 
   const escolhidas = lista.filter((o) => sel.has(o.id));
-  const draft = buildTrackingEmail(escolhidas, cliente);
+  const ocs = useOrdensColeta();
+  const draft = buildTrackingEmail(enrichTrackingOrders(escolhidas, ocs.list), cliente);
   const [feedback, setFeedback] = useState("");
   async function enviar() {
     if (!escolhidas.length || busy) return;
@@ -82,7 +84,7 @@ export function BulkClientUpdate({ orders, autor, onClose, onSent }: {
           <label className="flex items-center gap-2"><input type="checkbox" checked={automatic} onChange={(e) => setAutomatic(e.target.checked)} /> Envio automático</label>
           <label className="flex items-center gap-2">A cada <select aria-label="Intervalo de envio" value={intervalMin} onChange={(e) => setIntervalMin(Number(e.target.value))} className="input w-auto"><option value={15}>15 minutos</option><option value={30}>30 minutos</option><option value={60}>1 hora</option><option value={120}>2 horas</option><option value={240}>4 horas</option><option value={1440}>24 horas</option></select></label>
           <Button variant="outline" size="sm" onClick={saveGroup}>Salvar grupo</Button>
-          <span className="text-muted-foreground">Automático com Monitoramento aberto; envia notas não entregues.</span>
+          <span className="text-muted-foreground">Envio periódico no servidor · aguarda ativação de produção.</span>
         </div>
         <div className="flex items-center justify-between text-xs mb-2">
           <label className="inline-flex items-center gap-2"><input type="checkbox" checked={soAbertas} onChange={(e) => { setSoAbertas(e.target.checked); setMarcadas(null); }} /> Só notas não entregues</label>

@@ -2,7 +2,8 @@ import { useState } from "react";
 import { MapPin, Mail, Copy } from "lucide-react";
 import { DEFAULT_EMAIL_TEMPLATE, renderTemplate, stageLabel, type AppConfig, type Order, type TimelineEntry } from "@/lib/mock-data";
 
-import { buildTrackingEmail, copyTrackingEmail } from "@/lib/tracking-email";
+import { buildTrackingEmail, copyTrackingEmail, enrichTrackingOrders } from "@/lib/tracking-email";
+import { useOrdensColeta } from "@/lib/mock-store";
 import { TrackingEmailPreview } from "@/components/TrackingEmailPreview";
 import { Button } from "@/components/ui/button";
 import { useServerFn } from "@tanstack/react-start";
@@ -51,7 +52,8 @@ export function TrackingPanel({
     setFeedback("");
   }
 
-  const draft = buildTrackingEmail([preview ?? order], order.clienteNome, renderTemplate(tpl.assunto, preview ?? order, stageLabel((preview ?? order).stage)), renderTemplate(tpl.corpo, preview ?? order, stageLabel((preview ?? order).stage)));
+  const ocs = useOrdensColeta();
+  const draft = buildTrackingEmail(enrichTrackingOrders([preview ?? order], ocs.list), order.clienteNome, renderTemplate(tpl.assunto, preview ?? order, stageLabel((preview ?? order).stage)), renderTemplate(tpl.corpo, preview ?? order, stageLabel((preview ?? order).stage)));
   async function preparar() {
     if (busy) return;
     setBusy(true);
