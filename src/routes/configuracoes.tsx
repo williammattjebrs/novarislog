@@ -293,7 +293,7 @@ function InboxSection() {
 
 function WhatsappSection() {
   const [cfg, setCfg] = useConfig();
-  const wa = cfg.whatsapp ?? { numeroMotoristaPadrao: "", enviarPdfAutomatico: true, receberComprovantes: true, mensagemPadrao: "Segue a ordem de coleta {{oc}}. Qualquer imprevisto, avise por aqui." };
+  const wa = cfg.whatsapp ?? { enviarPdfAutomatico: true, receberComprovantes: true, mensagemPadrao: "Segue a ordem de coleta {{oc}}. Qualquer imprevisto, avise por aqui." };
   const setWa = (p: Partial<typeof wa>) => setCfg({ ...cfg, whatsapp: { ...wa, ...p } });
   return (
     <section className="panel p-5 space-y-3">
