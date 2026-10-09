@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getInboxConfig, saveInboxConfig, testInbox, syncInbox } from "@/lib/email-inbox.functions";
+import { getWhatsappConfig, saveWhatsappConfig, testWhatsapp } from "@/lib/whatsapp.functions";
 import { useAuth } from "@/lib/auth";
 import { Settings, RotateCcw, Trash2, DatabaseBackup, Upload, MessageCircle } from "lucide-react";
 import { downloadBackup, restoreBackup, validateBackup, type BackupPreview } from "@/lib/export-utils";
@@ -293,39 +294,102 @@ function InboxSection() {
 
 function WhatsappSection() {
   const [cfg, setCfg] = useConfig();
+  const qc = useQueryClient();
+  const fetchCfg = useServerFn(getWhatsappConfig);
+  const save = useServerFn(saveWhatsappConfig);
+  const test = useServerFn(testWhatsapp);
+  const { data, isLoading, error } = useQuery({ queryKey: ["whatsapp-config"], queryFn: () => fetchCfg(), retry: false });
+
   const wa = cfg.whatsapp ?? { enviarPdfAutomatico: true, receberComprovantes: true, mensagemPadrao: "Segue a ordem de coleta {{oc}}. Qualquer imprevisto, avise por aqui." };
   const setWa = (p: Partial<typeof wa>) => setCfg({ ...cfg, whatsapp: { ...wa, ...p } });
+
+  const [f, setF] = useState({ phoneNumberId: "", wabaId: "", accessToken: "", ativo: false });
+  const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (data) setF((x) => ({ ...x, phoneNumberId: data.phoneNumberId, wabaId: data.wabaId, ativo: data.ativo, accessToken: "" }));
+  }, [data]);
+
+  const set = (p: Partial<typeof f>) => setF((x) => ({ ...x, ...p }));
+  const conectado = !!data?.temToken && !!data?.phoneNumberId;
+
+  async function run(kind: "save" | "test") {
+    setBusy(kind);
+    setMsg(null);
+    try {
+      await save({ data: { ...f, accessToken: f.accessToken || undefined } });
+      set({ accessToken: "" });
+      if (kind === "save") setMsg({ ok: true, t: "Configuração salva." });
+      if (kind === "test") {
+        const r = await test();
+        setMsg({ ok: r.ok, t: r.mensagem });
+      }
+      qc.invalidateQueries({ queryKey: ["whatsapp-config"] });
+    } catch (e) {
+      setMsg({ ok: false, t: e instanceof Error ? e.message : "Falha na operação." });
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <section className="panel p-5 space-y-3">
       <div className="flex items-center gap-2">
         <MessageCircle className="h-4 w-4 text-primary" />
         <div className="font-display text-lg">WhatsApp Business</div>
-        <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border border-warning/40 text-warning">Não conectado</span>
+        {conectado ? (
+          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border border-success/40 text-success">Credenciais salvas</span>
+        ) : (
+          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border border-warning/40 text-warning">Não conectado</span>
+        )}
       </div>
       <p className="text-sm text-muted-foreground">
-        Quando o número WhatsApp Business da Novaris estiver conectado, esta integração passa a:
+        Quando conectado, esta integração envia o PDF completo da OC ao motorista na emissão e recebe as fotos de
+        comprovantes de entrega, anexando cada uma à NF certa no Monitoramento.
       </p>
-      <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
-        <li>Enviar automaticamente o PDF completo da OC ao motorista no momento da emissão (sem link).</li>
-        <li>Receber as fotos de comprovantes de entrega que os motoristas enviarem, ler o número da NF na imagem e anexar o comprovante à nota certa no Monitoramento.</li>
-      </ul>
       <p className="text-xs text-muted-foreground">
-        Deixe abaixo as preferências prontas — elas já ficam salvas. Quando você tiver o número e a API do WhatsApp Business, peça no chat: <b>"conectar o WhatsApp Business"</b>. A conexão vale também para o ambiente de produção, sem precisar alterar nada aqui.
+        Usa a API oficial do WhatsApp Business (Meta). Você encontra estas credenciais no painel da Meta for Developers,
+        no app do WhatsApp Business: <b>ID do número de telefone</b>, <b>ID da conta comercial (WABA)</b> e um <b>token de acesso permanente</b>.
+        O token fica guardado só no servidor e nunca aparece na tela.
       </p>
-      <fieldset className="space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <F label="Mensagem padrão ao motorista">
-            <input value={wa.mensagemPadrao} onChange={(e) => setWa({ mensagemPadrao: e.target.value })} className="input" />
-          </F>
+      {error && <div className="text-xs text-danger">{error instanceof Error ? error.message : "Sem acesso."}</div>}
+      {isLoading ? (
+        <div className="text-xs text-muted-foreground">Carregando…</div>
+      ) : (
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <F label="ID do número de telefone"><input value={f.phoneNumberId} onChange={(e) => set({ phoneNumberId: e.target.value })} placeholder="ex: 123456789012345" className="input" autoComplete="off" /></F>
+            <F label="ID da conta comercial (WABA)"><input value={f.wabaId} onChange={(e) => set({ wabaId: e.target.value })} placeholder="ex: 987654321098765" className="input" autoComplete="off" /></F>
+            <F label={data?.temToken ? "Token de acesso (vazio = manter)" : "Token de acesso"}>
+              <input type="password" value={f.accessToken} onChange={(e) => set({ accessToken: e.target.value })} placeholder={data?.temToken ? "••••••••" : ""} className="input" autoComplete="new-password" />
+            </F>
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={f.ativo} onChange={(e) => set({ ativo: e.target.checked })} /> Ativar integração (envio e recebimento)
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => run("save")} disabled={!!busy} className="text-sm px-3 py-1.5 rounded bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25">{busy === "save" ? "Salvando…" : "Salvar"}</button>
+            <button type="button" onClick={() => run("test")} disabled={!!busy} className="text-sm px-3 py-1.5 rounded border border-border hover:bg-elevated">{busy === "test" ? "Testando…" : "Salvar e testar conexão"}</button>
+          </div>
+          {msg && <div className={`text-xs ${msg.ok ? "text-success" : "text-danger"}`}>{msg.t}</div>}
+          {data?.ultimaVerificacao && (
+            <div className="text-[11px] text-muted-foreground">Última verificação: {new Date(data.ultimaVerificacao).toLocaleString("pt-BR")} — {data.ultimoStatus}</div>
+          )}
         </div>
+      )}
+      <div className="border-t border-border pt-3 space-y-3">
+        <div className="text-xs uppercase tracking-wider text-muted-foreground">Preferências (valem quando a integração estiver ativa)</div>
+        <F label="Mensagem padrão ao motorista">
+          <input value={wa.mensagemPadrao} onChange={(e) => setWa({ mensagemPadrao: e.target.value })} className="input" />
+        </F>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={wa.enviarPdfAutomatico} onChange={(e) => setWa({ enviarPdfAutomatico: e.target.checked })} /> Enviar PDF da OC automaticamente ao emitir
         </label>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={wa.receberComprovantes} onChange={(e) => setWa({ receberComprovantes: e.target.checked })} /> Receber e anexar comprovantes de entrega enviados pelos motoristas
         </label>
-      </fieldset>
-      <p className="text-[11px] text-muted-foreground">As preferências valem a partir do momento em que a conexão for feita; até lá, nada é enviado pelo WhatsApp.</p>
+      </div>
     </section>
   );
 }

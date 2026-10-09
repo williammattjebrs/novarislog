@@ -169,6 +169,13 @@
       "when": 1791545743092,
       "tag": "0023_scope_delivery_proofs_emitted_oc",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791557078171,
+      "tag": "0024_whatsapp_config",
+      "breakpoints": true
     }
   ]
 }

@@ -440,6 +440,39 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_config: {
+        Row: {
+          access_token: string
+          ativo: boolean
+          atualizado_em: string
+          id: number
+          phone_number_id: string
+          ultima_verificacao: string | null
+          ultimo_status: string | null
+          waba_id: string
+        }
+        Insert: {
+          access_token?: string
+          ativo?: boolean
+          atualizado_em?: string
+          id?: number
+          phone_number_id?: string
+          ultima_verificacao?: string | null
+          ultimo_status?: string | null
+          waba_id?: string
+        }
+        Update: {
+          access_token?: string
+          ativo?: boolean
+          atualizado_em?: string
+          id?: number
+          phone_number_id?: string
+          ultima_verificacao?: string | null
+          ultimo_status?: string | null
+          waba_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

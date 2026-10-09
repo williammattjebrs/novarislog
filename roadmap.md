@@ -64,4 +64,4 @@
 - [x] Validar gravação, anexos e prévia sem enviar e-mails reais; 18 testes aprovados e fluxo autenticado com dados descartáveis
 
 ## WhatsApp Business (preparação)
-- [ ] Conectar número WhatsApp Business em produção quando o usuário tiver número e API (tela de preferências já preparada em Configurações)
+- [ ] Usuário colar credenciais da API WhatsApp Business (ID do número, WABA, token) em Configurações e ativar; tela com salvar/testar já pronta, falta ligar envio de PDF e recebimento de comprovantes às credenciais
