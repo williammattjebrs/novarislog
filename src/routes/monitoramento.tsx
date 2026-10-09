@@ -185,6 +185,7 @@ function OcPainel({ ocId, onClose, canSeeCosts }: { ocId: string; onClose: () =>
   const nfs = oc.orderIds.map((id) => orders.list.find((n) => n.id === id)).filter(Boolean) as typeof orders.list;
   const nf = nfs.find((n) => n.id === nfSel);
   async function registrar(tipo: "status" | "ocorrencia" | "obs") {
+    if (!oc) return;
     if (tipo !== "status" && !texto.trim()) return setErr("Descreva o apontamento.");
     setBusy(true); setErr("");
     try {
