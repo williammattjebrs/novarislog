@@ -106,6 +106,7 @@ function ConfigPage() {
         </section>
 
         <InboxSection />
+        <WhatsappSection />
         <SchedulerStatus />
 
         <section className="panel p-5 space-y-3">
