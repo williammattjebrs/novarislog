@@ -100,6 +100,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
   const [f, setF] = useState(init);
   const [msg, setMsg] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
   const [zapLink, setZapLink] = useState<string | null>(null);
+  const [arquivosProntos, setArquivosProntos] = useState<{ files: File[]; texto: string; tel: string } | null>(null);
   const [busy, setBusy] = useState(false); const [enviarRev, setEnviarRev] = useState(false);
   const [docs, setDocs] = useState<{ version: number; created_at: string; pdf_sha256: string; send_requested: boolean; snapshot: any }[]>([]);
   const [envios, setEnvios] = useState<{ id: string; doc_version: number; email: string; papeis: string[]; status: string; attempts: number; last_error: string | null; accepted_at: string | null }[]>([]);
@@ -183,19 +184,37 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
     const reg: Expense = { ...(atual ?? { status: "prevista", recorrente: false, area: (draft.contratacao === "terceiro" ? "operacao" : "frota") as Expense["area"], tipo: (draft.contratacao === "terceiro" ? "frete_terceiros" : "variavel") as Expense["tipo"] }), id, ocId: oc.id, empresaId: draft.empresaId, descricao: `${oc.numero} · ${draft.contratacao === "terceiro" ? "frete terceiro" : "custo frota própria"}`, fornecedor: m?.nome ?? "motorista", valor, vencimento: atual?.vencimento ?? venc, competencia: venc.slice(0, 7) } as Expense;
     try { await commitLists({ expenses: atual ? lista.map((x) => (x.id === id ? reg : x)) : [reg, ...lista] }, `${oc.numero}: custo do transporte lançado no financeiro`); } catch { /* sem acesso ao financeiro: custo fica na OC */ }
   }
-  /** Abre o WhatsApp do motorista com a mensagem e o link do PDF completo (link válido por 7 dias). */
-  async function whatsMotorista(version: number) {
+  /** Envia a OC ao motorista como arquivo (PDF ou imagem), sem link. No celular abre o compartilhar → WhatsApp. */
+  async function whatsMotorista(version: number, formato: "pdf" | "imagem") {
     const tel = (m?.telefone ?? "").replace(/\D/g, "");
     if (!tel) return setMsg({ tipo: "erro", texto: "Motorista sem telefone cadastrado." });
+    setBusy(true); setArquivosProntos(null);
     try {
-      const { url } = await pdfLink({ data: { ocId: oc.id, version, longo: true } });
+      const { url } = await pdfLink({ data: { ocId: oc.id, version } });
+      const { baixarArquivoPdf, pdfParaImagens } = await import("@/lib/oc-share");
+      const pdf = await baixarArquivoPdf(url, oc.numero);
+      const files = formato === "pdf" ? [pdf] : await pdfParaImagens(pdf, oc.numero);
       const v = vei.list.find((x) => x.id === f.veiculoId);
-      const texto = `Olá ${m?.nome ?? ""}, segue a Ordem de Coleta ${oc.numero}${v ? ` (placa ${v.placa})` : ""}.\nColetas: ${lcs.map((l) => `${l.nome} - ${l.cidade}/${l.uf}`).join("; ")}\nData/hora: ${fmtDataHora(oc.dataHoraColeta)}\nPDF completo: ${url}`;
-      const link = `https://wa.me/${tel.length <= 11 ? "55" + tel : tel}?text=${encodeURIComponent(texto)}`;
-      // Abre sem vínculo com esta página (noopener): o WhatsApp recusa abas abertas a partir de about:blank/iframe.
-      setZapLink(link);
-      window.open(link, "_blank", "noopener,noreferrer");
-    } catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao gerar link do PDF." }); }
+      const texto = `Olá ${m?.nome ?? ""}, segue a Ordem de Coleta ${oc.numero}${v ? ` (placa ${v.placa})` : ""}.\nColetas: ${lcs.map((l) => `${l.nome} - ${l.cidade}/${l.uf}`).join("; ")}\nData/hora: ${fmtDataHora(oc.dataHoraColeta)}`;
+      await compartilhar({ files, texto, tel: tel.length <= 11 ? "55" + tel : tel });
+    } catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao preparar o arquivo." }); }
+    finally { setBusy(false); }
+  }
+  async function compartilhar(p: { files: File[]; texto: string; tel: string }) {
+    const { podeCompartilharArquivos, baixarArquivos } = await import("@/lib/oc-share");
+    if (podeCompartilharArquivos(p.files)) {
+      try { await navigator.share({ files: p.files, text: p.texto }); setArquivosProntos(null); setMsg({ tipo: "ok", texto: "Escolha o WhatsApp e a conversa do motorista para enviar o arquivo." }); return; }
+      catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        // Preparar o arquivo demora: o navegador pode exigir um novo toque para abrir o compartilhar.
+        setArquivosProntos(p); setMsg({ tipo: "ok", texto: "Arquivo pronto. Toque em “Compartilhar agora” para enviar pelo WhatsApp." }); return;
+      }
+    }
+    // Computador: baixa o arquivo e abre a conversa só com a mensagem (sem link) para anexar.
+    baixarArquivos(p.files);
+    const link = `https://wa.me/${p.tel}?text=${encodeURIComponent(p.texto)}`;
+    setZapLink(link); window.open(link, "_blank", "noopener,noreferrer");
+    setMsg({ tipo: "ok", texto: `Arquivo baixado (${p.files.map((x) => x.name).join(", ")}). Na conversa do WhatsApp, clique no clipe e anexe.` });
   }
   async function mudarStatus(novo: OCStatus) {
     if (novo === oc.status) return;
@@ -239,7 +258,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
       <div className="flex items-center gap-2 flex-wrap">
         <h2 className="font-display text-lg">{oc.numero}</h2>
         <span className="text-xs px-2 py-0.5 rounded border border-primary/40 text-primary">{label(oc)}</span>
-        {oc.docVersion ? <><span className="text-xs">Documento v{oc.docVersion}</span><Button size="sm" variant="outline" onClick={() => abrirPdf(oc.docVersion!)}><FileText className="h-3 w-3" /> Reimprimir OC</Button><Button size="sm" variant="outline" disabled={!m?.telefone} title={m?.telefone ? "Abre a conversa com o motorista já com a mensagem e o link do PDF" : "Cadastre o telefone do motorista"} onClick={() => whatsMotorista(oc.docVersion!)}><MessageCircle className="h-3 w-3" /> WhatsApp do motorista</Button><Button size="sm" variant="outline" title="Baixa o PDF para anexar manualmente na conversa do WhatsApp" onClick={() => baixarPdf(oc.docVersion!)}><Download className="h-3 w-3" /> Baixar PDF</Button>{zapLink && <a className="text-xs text-primary underline" href={zapLink} target="_blank" rel="noopener noreferrer">Se o WhatsApp não abriu, clique aqui</a>}</> : null}
+        {oc.docVersion ? <><span className="text-xs">Documento v{oc.docVersion}</span><Button size="sm" variant="outline" onClick={() => abrirPdf(oc.docVersion!)}><FileText className="h-3 w-3" /> Reimprimir OC</Button><Button size="sm" variant="outline" disabled={!m?.telefone || busy} title={m?.telefone ? "Envia a OC como imagem para o WhatsApp do motorista (abre em qualquer celular)" : "Cadastre o telefone do motorista"} onClick={() => whatsMotorista(oc.docVersion!, "imagem")}><MessageCircle className="h-3 w-3" /> WhatsApp: imagem</Button><Button size="sm" variant="outline" disabled={!m?.telefone || busy} title={m?.telefone ? "Envia o arquivo PDF para o WhatsApp do motorista" : "Cadastre o telefone do motorista"} onClick={() => whatsMotorista(oc.docVersion!, "pdf")}><MessageCircle className="h-3 w-3" /> WhatsApp: PDF</Button><Button size="sm" variant="outline" title="Baixa o PDF" onClick={() => baixarPdf(oc.docVersion!)}><Download className="h-3 w-3" /> Baixar PDF</Button>{arquivosProntos && <Button size="sm" onClick={() => compartilhar(arquivosProntos)}><Send className="h-3 w-3" /> Compartilhar agora</Button>}{zapLink && <a className="text-xs text-primary underline" href={zapLink} target="_blank" rel="noopener noreferrer">Se o WhatsApp não abriu, clique aqui</a>}</> : null}
         {oc.conteudoPendenteRevisao && <span className="text-xs text-warning">Conteúdo alterado após a emissão</span>}
         <button className="ml-auto" aria-label="Fechar" onClick={onClose}><X className="h-4 w-4" /></button>
       </div>
