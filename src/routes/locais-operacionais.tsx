@@ -22,7 +22,7 @@ export const Route = createFileRoute("/locais-operacionais")({
 });
 
 const inp = "w-full bg-input/40 border border-border rounded px-2 py-1.5 text-sm";
-const vazio = { nome: "", endereco: "", numero: "", complemento: "", bairro: "", cep: "", cidade: "", uf: "", contatos: "", emails: "", clienteIds: [] as string[], ativo: true };
+const vazio = { nome: "", endereco: "", numero: "", complemento: "", bairro: "", cep: "", cidade: "", uf: "", contatos: "", emails: "", clienteIds: [] as string[] };
 const splitEmails = (s: string) => [...new Set(s.split(/[;,\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean))];
 
 function Page() {
@@ -40,7 +40,7 @@ function Page() {
     const bad = emails.filter((e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
     if (bad.length) return setErr(`E-mail inválido: ${bad.join(", ")}`);
     const now = new Date().toISOString();
-    const rec: LocalOperacional = { id: edit === "__novo__" ? newId("LOC") : edit!, nome: f.nome.trim(), endereco: f.endereco.trim(), numero: f.numero.trim(), complemento: f.complemento.trim(), bairro: f.bairro.trim(), cep: f.cep.trim(), cidade: f.cidade, uf: f.uf, contatos: f.contatos.trim(), emails, clienteIds: f.clienteIds, ativo: f.ativo, criadoEm: locais.list.find((l) => l.id === edit)?.criadoEm ?? now, atualizadoEm: now };
+    const rec: LocalOperacional = { id: edit === "__novo__" ? newId("LOC") : edit!, nome: f.nome.trim(), endereco: f.endereco.trim(), numero: f.numero.trim(), complemento: f.complemento.trim(), bairro: f.bairro.trim(), cep: f.cep.trim(), cidade: f.cidade, uf: f.uf, contatos: f.contatos.trim(), emails, clienteIds: f.clienteIds, ativo: true, criadoEm: locais.list.find((l) => l.id === edit)?.criadoEm ?? now, atualizadoEm: now };
     setBusy(true);
     try { if (edit === "__novo__") await locais.add(rec); else await locais.update(rec.id, rec); setEdit(null); }
     catch (e) { setErr(e instanceof Error ? e.message : "Falha ao salvar."); }
@@ -76,24 +76,22 @@ function Page() {
               </label>
             ))}
           </div>
-          <label className="text-xs flex items-center gap-2"><input type="checkbox" checked={f.ativo} onChange={(e) => setF({ ...f, ativo: e.target.checked })} /> Ativo</label>
           {err && <div className="text-xs text-danger">{err}</div>}
           <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setEdit(null)}>Cancelar</Button><Button disabled={busy} onClick={salvar}>{busy ? "Salvando…" : "Salvar local"}</Button></div>
         </div>
       )}
       <div className="panel overflow-auto">
         <table className="w-full text-sm">
-          <thead className="text-xs text-muted-foreground text-left"><tr className="border-b border-border"><th className="p-2">Local</th><th>Endereço</th><th>Contatos</th><th>E-mails</th><th>Ativo</th><th /></tr></thead>
+          <thead className="text-xs text-muted-foreground text-left"><tr className="border-b border-border"><th className="p-2">Local</th><th>Endereço</th><th>Contatos</th><th>E-mails</th><th /></tr></thead>
           <tbody>
             {locais.list.map((l) => (
               <tr key={l.id} className="border-b border-border align-top">
                 <td className="p-2 font-medium">{l.nome}</td><td className="text-xs">{enderecoCompleto(l)}</td><td className="text-xs">{l.contatos || "—"}</td>
                 <td className="text-xs">{l.emails.length ? l.emails.join(", ") : <span className="text-warning">sem e-mail</span>}</td>
-                <td className="text-xs">{l.ativo ? "Sim" : "Não"}</td>
                 <td className="p-2 text-right"><Button size="sm" variant="outline" onClick={() => abrir(l)}><Pencil className="h-4 w-4" /></Button></td>
               </tr>
             ))}
-            {!locais.list.length && <tr><td colSpan={6} className="p-6 text-center text-xs text-muted-foreground">Nenhum local cadastrado.</td></tr>}
+            {!locais.list.length && <tr><td colSpan={5} className="p-6 text-center text-xs text-muted-foreground">Nenhum local cadastrado.</td></tr>}
           </tbody>
         </table>
       </div>

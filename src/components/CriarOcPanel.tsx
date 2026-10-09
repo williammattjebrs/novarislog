@@ -14,7 +14,7 @@ export const numeroOc = () => { const d = new Date(); return `OC-${String(d.getF
 
 export function LocalSelect({ value, onChange, clienteId, label }: { value: string; onChange: (id: string) => void; clienteId?: string; label: string }) {
   const locais = useLocais();
-  const ativos = locais.list.filter((l) => l.ativo || l.id === value);
+  const ativos = locais.list;
   const sorted = [...ativos].sort((a, b) => Number(b.clienteIds.includes(clienteId ?? "")) - Number(a.clienteIds.includes(clienteId ?? "")) || a.nome.localeCompare(b.nome));
   return (
     <select aria-label={label} className={inp} value={value} onChange={(e) => onChange(e.target.value)}>

@@ -215,7 +215,7 @@ export interface Order {
 
 // ---------- Rotas, Ordens de Coleta, Motoristas, Veículos ----------
 export interface Motorista { id: string; nome: string; cpf: string; telefone: string; email?: string; cnh?: string; observacao?: string; ativo: boolean; criadoEm: string; }
-export interface Veiculo { id: string; placa: string; tipo: string; modelo?: string; proprietario: "frota" | "terceiro"; capacidadeKg?: number; ativo: boolean; criadoEm: string; }
+export interface Veiculo { id: string; placa: string; placaCarreta?: string; tipo: string; modelo?: string; proprietario: "frota" | "terceiro"; capacidadeKg?: number; ativo: boolean; criadoEm: string; }
 export type RotaStatus = "aberta" | "programada" | "encerrada";
 /** Rota = agrupamento de NF-e com mesmo remetente e destinatário. */
 export interface Rota {

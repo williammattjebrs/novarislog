@@ -58,24 +58,27 @@ export function CapacidadeAlerta({ veiculoId, pesoKg }: { veiculoId?: string; pe
 export function VeiculoSelect({ value, onChange, disabled }: { value: string; onChange: (id: string) => void; disabled?: boolean }) {
   const vei = useVeiculos();
   const [novo, setNovo] = useState(false);
-  const [f, setF] = useState({ placa: "", tipo: "Truck", proprietario: "frota" as "frota" | "terceiro", capacidadeKg: "" });
+  const [f, setF] = useState({ placa: "", placaCarreta: "", tipo: "Truck", proprietario: "frota" as "frota" | "terceiro", capacidadeKg: "" });
   const [err, setErr] = useState("");
   async function salvar() {
     const placa = f.placa.toUpperCase().replace(/[^A-Z0-9]/g, "");
     if (!/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(placa)) return setErr("Placa inválida (ex.: ABC1D23 ou ABC1234).");
+    const carreta = f.placaCarreta.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (carreta && !/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(carreta)) return setErr("Placa da carreta inválida (ex.: ABC1D23 ou ABC1234).");
     const cap = Number(String(f.capacidadeKg).replace(/\./g, "").replace(",", "."));
     if (!cap || cap <= 0) return setErr("Informe a capacidade de carga (kg).");
     const existente = vei.list.find((x) => x.placa === placa);
     if (existente) { try{if (!existente.capacidadeKg) await vei.update(existente.id, { capacidadeKg: cap }); onChange(existente.id); setNovo(false); setErr("");}catch(e){setErr(e instanceof Error?e.message:'Falha ao atualizar veículo.');} return; }
     const id = newId("VEI");
-    try{await vei.add({ id, placa, tipo: f.tipo, modelo: "", proprietario: f.proprietario, capacidadeKg: cap, ativo: true, criadoEm: new Date().toISOString() });}catch(e){setErr(e instanceof Error?e.message:'Falha ao salvar veículo.');return;}
-    onChange(id); setNovo(false); setF({ placa: "", tipo: "Truck", proprietario: "frota", capacidadeKg: "" }); setErr("");
+    try{await vei.add({ id, placa, placaCarreta: carreta || undefined, tipo: f.tipo, modelo: "", proprietario: f.proprietario, capacidadeKg: cap, ativo: true, criadoEm: new Date().toISOString() });}catch(e){setErr(e instanceof Error?e.message:'Falha ao salvar veículo.');return;}
+    onChange(id); setNovo(false); setF({ placa: "", placaCarreta: "", tipo: "Truck", proprietario: "frota", capacidadeKg: "" }); setErr("");
   }
   if (novo) return (
     <div className="space-y-1 border border-primary/40 rounded p-2">
       <div className="text-xs font-semibold text-primary">Novo veículo</div>
       <div className="flex gap-1">
-        <input className={inp} placeholder="Placa" value={f.placa} onChange={(e) => setF({ ...f, placa: e.target.value.toUpperCase() })} />
+        <input className={inp} placeholder="Placa (cavalo)" value={f.placa} onChange={(e) => setF({ ...f, placa: e.target.value.toUpperCase() })} />
+        <input className={inp} placeholder="Placa da carreta (opcional)" value={f.placaCarreta} onChange={(e) => setF({ ...f, placaCarreta: e.target.value.toUpperCase() })} />
         <select className={inp} value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })}>{TIPOS_CAMINHAO.map((t) => <option key={t}>{t}</option>)}</select>
       </div>
       <div className="flex gap-1">
@@ -89,7 +92,7 @@ export function VeiculoSelect({ value, onChange, disabled }: { value: string; on
   return (
     <select className={inp} value={value} disabled={disabled} onChange={(e) => e.target.value === "__novo__" ? setNovo(true) : onChange(e.target.value)}>
       <option value="">Veículo (placa)…</option>
-      {vei.list.filter((v) => v.ativo).map((v) => <option key={v.id} value={v.id}>{v.placa} · {v.tipo}{v.capacidadeKg ? ` · ${v.capacidadeKg.toLocaleString("pt-BR")} kg` : ""}</option>)}
+      {vei.list.filter((v) => v.ativo).map((v) => <option key={v.id} value={v.id}>{v.placa}{v.placaCarreta ? ` + ${v.placaCarreta}` : ""} · {v.tipo}{v.capacidadeKg ? ` · ${v.capacidadeKg.toLocaleString("pt-BR")} kg` : ""}</option>)}
       <option value="__novo__">+ Cadastrar novo veículo…</option>
     </select>
   );

@@ -60,7 +60,7 @@ export type OcSnapshot = {
   ocId: string; numero: string; emitidoEm: string; emitidoPor: string;
   clienteColeta: { nome: string }; clienteDescarga: { nome: string }; contratante: { nome: string };
   coleta: { local: SnapLocal; dataHora: string }; descarga: { local: SnapLocal; dataHora: string };
-  motorista: { nome: string; cpf: string; telefone: string }; veiculo: { placa: string; tipo: string };
+  motorista: { nome: string; cpf: string; telefone: string }; veiculo: { placa: string; placaCarreta?: string; tipo: string };
   nfs: { id: string; numero: string; chave: string; remetente: string; destinatario: string; peso: number; volumes: number; coletaLocalId?: string }[];
   /** Todos os locais de coleta da OC (a OC pode coletar em vários armazéns). */
   coletas?: SnapLocal[];
@@ -113,7 +113,7 @@ export function buildSnapshot(oc: OrdemColeta, ctx: { nfs: Order[]; locais: Loca
     ocId: oc.id, numero: oc.numero, emitidoEm: ctx.agora ?? new Date().toISOString(), emitidoPor: ctx.emitidoPor,
     clienteColeta: { nome: oc.clienteColetaNome ?? "" }, clienteDescarga: { nome: oc.clienteDescargaNome ?? "" }, contratante: { nome: oc.contratanteNome || oc.clienteColetaNome || "" },
     coleta: { local: snapLocal(lc), dataHora: oc.dataHoraColeta }, coletas: lcs.map(snapLocal), descarga: { local: ld ? snapLocal(ld) : { id: "", nome: oc.localEntrega?.trim() || "A definir", endereco: "", cidade: oc.cidadeEntrega || "A definir", uf: oc.ufEntrega || "-", contatos: "", emails: [] }, dataHora: oc.dataHoraEntrega ?? "" },
-    motorista: { nome: m.nome, cpf: m.cpf, telefone: m.telefone }, veiculo: { placa: v.placa, tipo: v.tipo },
+    motorista: { nome: m.nome, cpf: m.cpf, telefone: m.telefone }, veiculo: { placa: v.placa, placaCarreta: v.placaCarreta, tipo: v.tipo },
     nfs, totais: { peso: nfs.reduce((s, n) => s + n.peso, 0), volumes: nfs.reduce((s, n) => s + n.volumes, 0) },
     instrucoes: oc.instrucoes ?? oc.observacao ?? "", destinatarios, pendenciasEnvio: pendencias,
   };
