@@ -16,10 +16,38 @@ export function LocalSelect({ value, onChange, clienteId, label }: { value: stri
   const locais = useLocais();
   const ativos = locais.list;
   const sorted = [...ativos].sort((a, b) => Number(b.clienteIds.includes(clienteId ?? "")) - Number(a.clienteIds.includes(clienteId ?? "")) || a.nome.localeCompare(b.nome));
+  const [novo, setNovo] = useState(false);
+  const [f, setF] = useState({ nome: "", endereco: "", cidade: "", uf: "", emails: "" });
+  const [err, setErr] = useState("");
+  async function salvar() {
+    if (!f.nome.trim() || !f.cidade.trim() || !f.uf.trim()) return setErr("Nome, cidade e UF são obrigatórios.");
+    const emails = f.emails.split(/[;,\s]+/).map((e) => e.trim().toLowerCase()).filter((e) => /^[^\s@;,]+@[^\s@;,]+\.[^\s@;,]+$/.test(e));
+    const existente = locais.list.find((x) => x.nome.trim().toLowerCase() === f.nome.trim().toLowerCase() && x.cidade.trim().toLowerCase() === f.cidade.trim().toLowerCase());
+    if (existente) { onChange(existente.id); setNovo(false); setErr(""); return; }
+    const id = newId("LOC");
+    try { await locais.add({ id, nome: f.nome.trim(), endereco: f.endereco.trim(), cidade: f.cidade.trim(), uf: f.uf.trim().toUpperCase().slice(0, 2), emails, contatos: "", clienteIds: clienteId ? [clienteId] : [], ativo: true, criadoEm: new Date().toISOString() }); }
+    catch (e) { setErr(e instanceof Error ? e.message : "Falha ao salvar local."); return; }
+    onChange(id); setNovo(false); setF({ nome: "", endereco: "", cidade: "", uf: "", emails: "" }); setErr("");
+  }
+  if (novo) return (
+    <div className="space-y-1 border border-primary/40 rounded p-2">
+      <div className="text-xs font-semibold text-primary">Novo local</div>
+      <input className={inp} placeholder="Nome do local (ex.: ALILOG)" value={f.nome} onChange={(e) => setF({ ...f, nome: e.target.value })} />
+      <input className={inp} placeholder="Endereço" value={f.endereco} onChange={(e) => setF({ ...f, endereco: e.target.value })} />
+      <div className="flex gap-1">
+        <input className={inp} placeholder="Cidade" value={f.cidade} onChange={(e) => setF({ ...f, cidade: e.target.value })} />
+        <input className={`${inp} max-w-[70px]`} placeholder="UF" maxLength={2} value={f.uf} onChange={(e) => setF({ ...f, uf: e.target.value.toUpperCase() })} />
+      </div>
+      <input className={inp} placeholder="E-mails do local (separados por vírgula)" value={f.emails} onChange={(e) => setF({ ...f, emails: e.target.value })} />
+      {err && <div className="text-xs text-danger">{err}</div>}
+      <div className="flex gap-1"><Button size="sm" onClick={salvar}>Salvar e vincular</Button><Button size="sm" variant="outline" onClick={() => setNovo(false)}>Voltar</Button></div>
+    </div>
+  );
   return (
-    <select aria-label={label} className={inp} value={value} onChange={(e) => onChange(e.target.value)}>
+    <select aria-label={label} className={inp} value={value} onChange={(e) => e.target.value === "__novo__" ? setNovo(true) : onChange(e.target.value)}>
       <option value="">{label}…</option>
       {sorted.map((l) => <option key={l.id} value={l.id}>{l.nome} · {l.cidade}/{l.uf}{l.emails.length ? "" : " · sem e-mail"}</option>)}
+      <option value="__novo__">+ Cadastrar novo local…</option>
     </select>
   );
 }
