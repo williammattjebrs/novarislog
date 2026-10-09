@@ -325,7 +325,7 @@ function WhatsappSection() {
           <input type="checkbox" checked={wa.receberComprovantes} onChange={(e) => setWa({ receberComprovantes: e.target.checked })} /> Receber e anexar comprovantes de entrega enviados pelos motoristas
         </label>
       </fieldset>
-      <p className="text-[11px] text-muted-foreground">Os campos ficam bloqueados até a conexão ser feita; as preferências já ficam salvas.</p>
+      <p className="text-[11px] text-muted-foreground">As preferências valem a partir do momento em que a conexão for feita; até lá, nada é enviado pelo WhatsApp.</p>
     </section>
   );
 }
