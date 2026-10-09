@@ -79,20 +79,24 @@ function Motoristas() {
 
 function Veiculos() {
   const v = useVeiculos();
-  const [f, setF] = useState({ placa: "", tipo: "Truck", modelo: "", proprietario: "frota" as "frota" | "terceiro", capacidadeKg: "" });
+  const [f, setF] = useState({ placa: "", placaCarreta: "", tipo: "Truck", modelo: "", proprietario: "frota" as "frota" | "terceiro", capacidadeKg: "" });
   const [err, setErr] = useState("");
+  const fmtPlaca = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
   function salvar() {
-    const placa = f.placa.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const placa = fmtPlaca(f.placa);
     if (!/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(placa)) return setErr("Placa inválida (ex.: ABC1D23 ou ABC1234).");
+    const carreta = fmtPlaca(f.placaCarreta);
+    if (carreta && !/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(carreta)) return setErr("Placa da carreta inválida (ex.: ABC1D23 ou ABC1234).");
     if (v.list.some((x) => x.placa === placa)) return setErr("Placa já cadastrada.");
     if (!Number(f.capacidadeKg)) return setErr("Informe a capacidade de carga (kg).");
-    v.add({ id: newId("VEI"), placa, tipo: f.tipo, modelo: f.modelo.trim(), proprietario: f.proprietario, capacidadeKg: Number(f.capacidadeKg) || undefined, ativo: true, criadoEm: new Date().toISOString() });
-    setF({ ...f, placa: "", modelo: "", capacidadeKg: "" }); setErr("");
+    v.add({ id: newId("VEI"), placa, placaCarreta: carreta || undefined, tipo: f.tipo, modelo: f.modelo.trim(), proprietario: f.proprietario, capacidadeKg: Number(f.capacidadeKg) || undefined, ativo: true, criadoEm: new Date().toISOString() });
+    setF({ ...f, placa: "", placaCarreta: "", modelo: "", capacidadeKg: "" }); setErr("");
   }
   return (
     <div className="panel p-4 space-y-3">
       <div className="grid md:grid-cols-6 gap-2">
-        <input className={inp} placeholder="Placa" value={f.placa} onChange={(e) => setF({ ...f, placa: e.target.value.toUpperCase() })} />
+        <input className={inp} placeholder="Placa (cavalo)" value={f.placa} onChange={(e) => setF({ ...f, placa: e.target.value.toUpperCase() })} />
+        <input className={inp} placeholder="Placa da carreta (opcional)" value={f.placaCarreta} onChange={(e) => setF({ ...f, placaCarreta: e.target.value.toUpperCase() })} />
         <select className={inp} value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })}>{TIPOS_CAMINHAO.map((t) => <option key={t}>{t}</option>)}</select>
         <input className={inp} placeholder="Modelo" value={f.modelo} onChange={(e) => setF({ ...f, modelo: e.target.value })} />
         <select className={inp} value={f.proprietario} onChange={(e) => setF({ ...f, proprietario: e.target.value as "frota" | "terceiro" })}><option value="frota">Frota própria</option><option value="terceiro">Terceiro</option></select>
@@ -101,17 +105,17 @@ function Veiculos() {
       </div>
       {err && <div className="text-xs text-danger">{err}</div>}
       <table className="w-full text-sm">
-        <thead className="text-xs text-muted-foreground text-left"><tr><th className="py-1">Placa</th><th>Tipo</th><th>Modelo</th><th>Proprietário</th><th>Capacidade</th><th>Ativo</th><th /></tr></thead>
+        <thead className="text-xs text-muted-foreground text-left"><tr><th className="py-1">Placa</th><th>Carreta</th><th>Tipo</th><th>Modelo</th><th>Proprietário</th><th>Capacidade</th><th>Ativo</th><th /></tr></thead>
         <tbody>
           {v.list.map((x) => (
             <tr key={x.id} className="border-t border-border">
-              <td className="py-1.5 num">{x.placa}</td><td>{x.tipo}</td><td>{x.modelo || "—"}</td><td>{x.proprietario === "frota" ? "Frota" : "Terceiro"}</td>
+              <td className="py-1.5 num">{x.placa}</td><td className="num">{x.placaCarreta || "—"}</td><td>{x.tipo}</td><td>{x.modelo || "—"}</td><td>{x.proprietario === "frota" ? "Frota" : "Terceiro"}</td>
               <td className="num"><input className={`${inp} w-28`} inputMode="numeric" placeholder="kg" defaultValue={x.capacidadeKg ?? ""} key={x.capacidadeKg ?? "none"} onBlur={(e) => { const n = Number(e.target.value.replace(/\D/g, "")) || undefined; if (n !== x.capacidadeKg) v.update(x.id, { capacidadeKg: n }); }} /></td>
               <td><input type="checkbox" checked={x.ativo} onChange={(e) => v.update(x.id, { ativo: e.target.checked })} /></td>
               <td className="text-right"><button onClick={() => confirm(`Excluir ${x.placa}?`) && v.remove(x.id)} className="text-danger"><Trash2 className="h-4 w-4" /></button></td>
             </tr>
           ))}
-          {!v.list.length && <tr><td colSpan={7} className="py-4 text-center text-muted-foreground text-xs">Nenhum veículo cadastrado.</td></tr>}
+          {!v.list.length && <tr><td colSpan={8} className="py-4 text-center text-muted-foreground text-xs">Nenhum veículo cadastrado.</td></tr>}
         </tbody>
       </table>
     </div>
