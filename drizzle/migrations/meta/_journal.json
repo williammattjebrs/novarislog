@@ -183,6 +183,13 @@
       "when": 1791574180542,
       "tag": "0025_oc_emit_requires_cost",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791574261545,
+      "tag": "0026_cte_sets_oc_aguardando_viagem",
+      "breakpoints": true
     }
   ]
 }
