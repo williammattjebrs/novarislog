@@ -56,3 +56,9 @@
 ## Listas detalhadas nos relatórios
 - [x] Substituir resumos por listas de NFs, OCs e títulos; manter filtros e exportar detalhes
 - [x] Verificar listas na sessão administrativa, filtro por veículo, CSV e impressão; 16 testes existentes aprovados
+
+## Follow-up e apontamentos de monitoramento
+- [ ] Atualizar tabela de follow-up manual e automático com coleta e última observação
+- [ ] Anexar e consultar comprovantes de entrega vinculados à NF
+- [ ] Registrar observação ou ocorrência diretamente na lista de monitoramento
+- [ ] Validar gravação, anexos e prévia sem enviar e-mails reais
