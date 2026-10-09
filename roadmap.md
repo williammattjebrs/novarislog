@@ -65,3 +65,7 @@
 
 ## WhatsApp Business (preparação)
 - [ ] Usuário colar credenciais da API WhatsApp Business (ID do número, WABA, token) em Configurações e ativar; tela com salvar/testar já pronta, falta ligar envio de PDF e recebimento de comprovantes às credenciais
+
+## Custo obrigatório e status de viagem (09/10/2026)
+- [x] Emissão de OC travada sem custo da operação (tela + servidor, migração 0025)
+- [x] CT-e vinculado: NF vira "CT-e emitido" e OC vira "Aguardando início de viagem" (migração 0026); monitoramento destaca o número do CT-e
