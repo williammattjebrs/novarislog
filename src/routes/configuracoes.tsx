@@ -310,9 +310,9 @@ function WhatsappSection() {
         <li>Receber as fotos de comprovantes de entrega que os motoristas enviarem, ler o número da NF na imagem e anexar o comprovante à nota certa no Monitoramento.</li>
       </ul>
       <p className="text-xs text-muted-foreground">
-        Deixe abaixo as preferências prontas. Para ativar, peça no chat: <b>"conectar o WhatsApp Business"</b> — a conexão é feita com um número exclusivo da empresa e aprovação do WhatsApp/Meta.
+        Deixe abaixo as preferências prontas — elas já ficam salvas. Quando você tiver o número e a API do WhatsApp Business, peça no chat: <b>"conectar o WhatsApp Business"</b>. A conexão vale também para o ambiente de produção, sem precisar alterar nada aqui.
       </p>
-      <fieldset disabled className="space-y-3 opacity-70">
+      <fieldset className="space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <F label="Mensagem padrão ao motorista">
             <input value={wa.mensagemPadrao} onChange={(e) => setWa({ mensagemPadrao: e.target.value })} className="input" />
