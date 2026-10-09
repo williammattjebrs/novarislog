@@ -105,5 +105,11 @@
     "overrides": {
       "entities": "4.5.0"
     }
+  },
+  "overrides": {
+    "tslib": "^2.8.1"
+  },
+  "resolutions": {
+    "tslib": "^2.8.1"
   }
 }
