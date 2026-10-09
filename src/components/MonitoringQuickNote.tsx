@@ -21,7 +21,7 @@ export function MonitoringQuickNote({ oc, autor }: { oc: OrdemColeta; autor: str
   return <div className="min-w-64 max-w-80 space-y-2" onClick={(e) => e.stopPropagation()}>
     <textarea aria-label={`Observação rápida ${oc.numero}`} placeholder="Digite o apontamento…" className="input min-h-16 resize-y text-xs" maxLength={5000} disabled={busy} value={text} onChange={(e) => setText(e.target.value)} />
     <div className="flex gap-2">
-      <select aria-label={`Tipo de apontamento ${oc.numero}`} className="input text-xs" disabled={busy} value={type} onChange={(e) => setType(e.target.value === "ocorrencia" ? "ocorrencia" : "observacao")}><option value="observacao">Observação</option><option value="ocorrencia">Ocorrência</option></select>
+      <select aria-label={`Tipo de apontamento ${oc.numero}`} className="input text-xs" disabled={busy} value={type} onChange={(e) => setType(e.target.value === "ocorrencia" ? "ocorrencia" : "observacao")}><option value="observacao">Observação</option><option value="ocorrencia" disabled={oc.status === "rascunho"}>Ocorrência</option></select>
       <Button size="sm" variant="outline" disabled={busy || !text.trim()} onClick={() => void save()}>{type === "ocorrencia" ? <AlertTriangle /> : <Save />}{busy ? "Salvando…" : "Salvar"}</Button>
     </div>
     {message && <p role="status" className="text-xs text-muted-foreground">{message}</p>}
