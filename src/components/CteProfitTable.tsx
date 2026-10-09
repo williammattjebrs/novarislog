@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { fmtBRL } from "@/lib/mock-data";
 import type { CteLinha } from "@/lib/cte-profit";
 
-export function CteProfitTable({ linhas }: { linhas: CteLinha[] }) {
+export function CteProfitTable({ linhas, detalhesVisiveis = false }: { linhas: CteLinha[]; detalhesVisiveis?: boolean }) {
   const [aberto, setAberto] = useState<string | null>(null);
   const tot = linhas.reduce((t, l) => ({ r: t.r + l.receita, c: t.c + l.custo }), { r: 0, c: 0 });
   return (
@@ -27,7 +27,7 @@ export function CteProfitTable({ linhas }: { linhas: CteLinha[] }) {
                 <td className="p-2 text-right num text-accent">{fmtBRL(l.custo)}{l.custoPendente && <span className="block text-[10px] text-warning">custo pendente</span>}</td>
                 <td className={`p-2 text-right num ${l.margem >= 0 ? "text-success" : "text-danger"}`}>{fmtBRL(l.margem)} <span className="text-xs">· {l.margemPct.toFixed(1)}%</span></td>
               </tr>
-              {aberto === l.chave && (
+               {(detalhesVisiveis || aberto === l.chave) && (
                 <tr className="border-b border-border bg-elevated/40"><td colSpan={10} className="p-3">
                   <table className="w-full text-xs">
                     <thead className="text-muted-foreground text-left"><tr><th className="p-1">NF</th><th className="p-1">OC</th><th className="p-1 text-right">Peso</th><th className="p-1 text-right">% do peso</th><th className="p-1 text-right">Frete rateado</th><th className="p-1 text-right">Custo rateado</th><th className="p-1 text-right">Margem</th></tr></thead>

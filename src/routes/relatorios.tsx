@@ -4,12 +4,13 @@ import { useMemo, useState } from "react";
 import { Download, Printer } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
-import { useConfig, useCteDocuments, useEmpresas, useExpenses, useInvoices, useMotoristas, useOrders, useOrdensColeta, useVeiculos } from "@/lib/mock-store";
 import { buildCteProfit } from "@/lib/cte-profit";
 import { CteProfitTable } from "@/components/CteProfitTable";
+import { Button } from "@/components/ui/button";
+import { expensePaid, receivedAmount } from "@/lib/finance-summary";
 import { useEmpresaFiltro, filtrarOcs, filtrarFin } from "@/lib/empresa-filter";
-import { fmtBRL, type OrdemColeta } from "@/lib/mock-data";
-import { isEmitida } from "@/lib/oc-model";
+import { fmtBRL, OC_STATUS, type OrdemColeta } from "@/lib/mock-data";
+import { isEmitida, localColetaDaNf } from "@/lib/oc-model";
 import { exportCsv, printReport } from "@/lib/export-utils";
 
 export const Route = createFileRoute("/relatorios")({
