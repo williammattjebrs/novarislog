@@ -393,6 +393,13 @@ export interface AppConfig {
   frota: FrotaCostParams;
   emailInbox?: EmailInboxConfig;
   emailTemplate?: EmailTemplateConfig;
+  whatsapp?: WhatsappConfig;
+}
+
+export interface WhatsappConfig {
+  enviarPdfAutomatico: boolean;   // envia PDF da OC ao motorista na emissão
+  receberComprovantes: boolean;   // lê fotos de comprovantes e anexa à NF
+  mensagemPadrao: string;         // mensagem padrão ao motorista
 }
 
 export interface EmailInboxConfig {
