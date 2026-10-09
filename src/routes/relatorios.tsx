@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Download, Printer } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
+import { useConfig, useCteDocuments, useEmpresas, useExpenses, useInvoices, useLocaisOperacionais, useMotoristas, useOrders, useOrdensColeta, useVeiculos } from "@/lib/mock-store";
 import { buildCteProfit } from "@/lib/cte-profit";
 import { CteProfitTable } from "@/components/CteProfitTable";
 import { Button } from "@/components/ui/button";
@@ -25,9 +26,10 @@ export const Route = createFileRoute("/relatorios")({
 });
 
 type Tab = "performance" | "cte" | "resultado" | "abc" | "operacao" | "custos" | "titulos" | "ocorrencias";
-type Linha = { chave: string; receita: number; custo: number; ocs: number };
 const mes = (iso?: string) => (iso ?? "").slice(0, 7);
 const pct = (a: number, b: number) => (b ? `${((a / b) * 100).toFixed(1)}%` : "—");
+const data = (iso?: string) => { if (!iso) return "—"; const d = new Date(iso); return Number.isNaN(d.getTime()) ? iso : d.toLocaleString("pt-BR"); };
+const statusOc = (o: OrdemColeta) => OC_STATUS.find((s) => s.id === o.status)?.label ?? o.status;
 
 function Page() {
   const [empresaF] = useEmpresaFiltro();
@@ -37,8 +39,8 @@ function Page() {
   const [tab, setTab] = useState<Tab>("performance"); const [agr, setAgr] = useState<"empresa" | "cliente" | "rota" | "mes">("empresa");
   const noPeriodo = (iso?: string) => { const m = mes(iso); return !!m && m >= de && m <= ate; };
   const [fCli, setFCli] = useState(""); const [fRota, setFRota] = useState(""); const [fVei, setFVei] = useState(""); const [fMot, setFMot] = useState("");
-  const [perfAgr, setPerfAgr] = useState<"cliente" | "rota" | "veiculo" | "motorista" | "mes">("cliente");
   const [cfg] = useConfig(); const cteDocs = useCteDocuments();
+  const locais = useLocaisOperacionais();
   const cliOc = (o: OrdemColeta) => o.contratanteNome || o.clienteColetaNome || o.clienteNome || "—";
   const rotaOc = (o: OrdemColeta) => `${o.cidadeColeta}/${o.ufColeta} → ${o.cidadeEntrega}/${o.ufEntrega}`;
   const placaOc = (o: OrdemColeta) => vei.list.find((v) => v.id === o.veiculoId)?.placa ?? "—";
@@ -51,78 +53,73 @@ function Page() {
   const nomeEmpresa = (id?: string) => empresas.list.find((e) => e.id === id)?.nome ?? "Sem empresa";
 
   const chave = (o: OrdemColeta) => agr === "empresa" ? nomeEmpresa(o.empresaId) : agr === "cliente" ? (o.contratanteNome || o.clienteColetaNome || o.clienteNome) : agr === "rota" ? `${o.cidadeColeta}/${o.ufColeta} → ${o.cidadeEntrega}/${o.ufEntrega}` : mes(o.emitidaEm ?? o.criadoEm);
-  const resultado = [...ocs.reduce((m, o) => { const k = chave(o); const l = m.get(k) ?? { chave: k, receita: 0, custo: 0, ocs: 0 }; l.receita += receitaOc(o); l.custo += o.custoMotorista ?? 0; l.ocs++; return m.set(k, l); }, new Map<string, Linha>()).values()].sort((a, b) => b.receita - a.receita);
-  const tot = resultado.reduce((t, l) => ({ receita: t.receita + l.receita, custo: t.custo + l.custo, ocs: t.ocs + l.ocs }), { receita: 0, custo: 0, ocs: 0 });
+  const resultado = ocs.map((o) => ({ oc: o, chave: chave(o), receita: receitaOc(o), custo: o.custoMotorista ?? 0 })).sort((a, b) => b.receita - a.receita);
+  const tot = resultado.reduce((t, l) => ({ receita: t.receita + l.receita, custo: t.custo + l.custo }), { receita: 0, custo: 0 });
 
   const ocIds = new Set(ocs.map((o) => o.id));
   const ctes = buildCteProfit(orders.list, ocs0.list, cteDocs.list, cfg).filter((l) => l.ocIds.some((id) => ocIds.has(id)));
-  const nfsOc = ocs.flatMap((o) => o.orderIds.map((id) => nfMap.get(id)).filter(Boolean)) as NonNullable<ReturnType<typeof nfMap.get>>[];
-  const entregues = nfsOc.filter((n) => n.stage === "entregue");
-  const noPrazo = entregues.filter((n) => !n.previsaoEntrega || !n.entregueEm || Date.parse(n.entregueEm) <= Date.parse(n.previsaoEntrega)).length;
-  const atrasoH = (n: { previsaoEntrega?: string; entregueEm?: string }) => n.previsaoEntrega && n.entregueEm ? (Date.parse(n.entregueEm) - Date.parse(n.previsaoEntrega)) / 36e5 : 0;
-  const chavePerf = (o: OrdemColeta) => perfAgr === "cliente" ? cliOc(o) : perfAgr === "rota" ? rotaOc(o) : perfAgr === "veiculo" ? placaOc(o) : perfAgr === "motorista" ? motOc(o) : mes(o.emitidaEm ?? o.criadoEm);
-  type P = { k: string; nfs: number; ent: number; prazo: number; atraso: number; somaAtraso: number; lead: number; leadN: number; transito: number; ocorr: number };
-  const perf = [...ocs.reduce((m, o) => { const k = chavePerf(o); const p = m.get(k) ?? { k, nfs: 0, ent: 0, prazo: 0, atraso: 0, somaAtraso: 0, lead: 0, leadN: 0, transito: 0, ocorr: 0 };
-    for (const id of o.orderIds) { const n = nfMap.get(id); if (!n) continue; p.nfs++;
-      if (n.stage === "ocorrencia" || n.timeline.some((t) => t.tipo === "ocorrencia")) p.ocorr++;
-      if (n.stage === "entregue") { p.ent++; const a = atrasoH(n); if (a > 0) { p.atraso++; p.somaAtraso += a; } else p.prazo++;
-        if (n.entregueEm && o.emitidaEm) { p.lead += (Date.parse(n.entregueEm) - Date.parse(o.emitidaEm)) / 864e5; p.leadN++; } }
-      else if (["em_viagem", "coletado", "aguardando_cte", "cte_ok", "cte_divergente", "em_coleta"].includes(n.stage)) p.transito++; }
-    return m.set(k, p); }, new Map<string, P>()).values()].sort((a, b) => b.nfs - a.nfs);
-  const abc = (() => { const r = [...resultado].sort((a, b) => b.receita - a.receita); let ac = 0; return r.map((l) => { ac += l.receita; const p = tot.receita ? ac / tot.receita : 0; return { ...l, acum: p, classe: p <= 0.8 ? "A" : p <= 0.95 ? "B" : "C" }; }); })();
-  const porStatus = (s: string[]) => ocs.filter((o) => s.includes(o.status)).length;
-
-  const custoPor = (fn: (o: OrdemColeta) => string) => [...ocs.reduce((m, o) => { const k = fn(o); const l = m.get(k) ?? { chave: k, receita: 0, custo: 0, ocs: 0 }; l.custo += o.custoMotorista ?? 0; l.receita += receitaOc(o); l.ocs++; return m.set(k, l); }, new Map<string, Linha>()).values()].sort((a, b) => b.custo - a.custo);
+  const notas = ocs.flatMap((oc) => oc.orderIds.flatMap((id) => { const nf = nfMap.get(id); return nf ? [{ oc, nf }] : []; }));
+  const entregues = notas.filter(({ oc }) => oc.status === "entregue");
+  const prazo = (oc: OrdemColeta, n: (typeof orders.list)[number]) => {
+    const previsao = n.previsaoEntrega || oc.dataHoraEntrega;
+    if (!previsao || (oc.status === "entregue" && !n.entregueEm)) return "Sem informação";
+    const limite = Date.parse(previsao), real = n.entregueEm ? Date.parse(n.entregueEm) : Date.now();
+    if (!Number.isFinite(limite) || !Number.isFinite(real)) return "Sem informação";
+    return real > limite ? (oc.status === "entregue" ? "Entregue com atraso" : "Em atraso") : (oc.status === "entregue" ? "No prazo" : "A vencer");
+  };
+  const noPrazo = entregues.filter(({ oc, nf }) => prazo(oc, nf) === "No prazo").length;
+  const abc = (() => { const grupos = new Map<string, number>(); resultado.forEach((l) => grupos.set(l.chave, (grupos.get(l.chave) ?? 0) + l.receita)); let ac = 0; const classes = new Map<string, { acum: number; classe: string }>(); [...grupos].sort((a, b) => b[1] - a[1]).forEach(([k, v]) => { ac += v; const p = tot.receita ? ac / tot.receita : 0; classes.set(k, { acum: p, classe: p <= 0.8 ? "A" : p <= 0.95 ? "B" : "C" }); }); return [...resultado].sort((a, b) => (grupos.get(b.chave) ?? 0) - (grupos.get(a.chave) ?? 0) || a.chave.localeCompare(b.chave)).map((l) => ({ ...l, ...classes.get(l.chave) })); })();
   const [custoAgr, setCustoAgr] = useState<"tipo" | "motorista" | "veiculo">("tipo");
-  const custos = custoPor((o) => custoAgr === "tipo" ? (o.contratacao === "terceiro" ? "Terceiro" : o.contratacao === "frota" ? "Frota própria" : "Não informado") : custoAgr === "motorista" ? (mot.list.find((m) => m.id === o.motoristaId)?.nome ?? "—") : (vei.list.find((v) => v.id === o.veiculoId)?.placa ?? "—"));
+  const custos = [...resultado].sort((a, b) => { const grupo = (o: OrdemColeta) => custoAgr === "motorista" ? motOc(o) : custoAgr === "veiculo" ? placaOc(o) : o.contratacao ?? ""; return grupo(a.oc).localeCompare(grupo(b.oc)) || b.custo - a.custo; });
 
   const dHoje = new Date().toISOString().slice(0, 10);
   const titulos = [
-    ...filtrarFin(empresaF, inv0.list).filter((i) => i.status !== "paga").map((i) => ({ tipo: "A receber", nome: `${i.numero} · ${i.clienteNome}`, venc: i.vencimento, valor: i.valor, empresa: nomeEmpresa(i.empresaId) })),
-    ...filtrarFin(empresaF, exp0.list).filter((e) => e.status !== "paga").map((e) => ({ tipo: "A pagar", nome: `${e.descricao} · ${e.fornecedor}`, venc: e.vencimento, valor: e.valor, empresa: nomeEmpresa(e.empresaId) })),
+    ...filtrarFin(empresaF, inv0.list).filter((i) => noPeriodo(i.competencia || i.emissao || i.vencimento) && (!fCli || i.clienteNome === fCli) && (!(fRota || fVei || fMot) || !!i.cteChave && ctes.some((c) => c.chave === i.cteChave))).map((i) => ({ tipo: "A receber", nome: i.numero, pessoa: i.clienteNome, venc: i.vencimento, valor: i.valor, baixado: receivedAmount(i), empresa: nomeEmpresa(i.empresaId), status: i.status, data: i.recebidoEm, movimentos: i.movements })),
+    ...filtrarFin(empresaF, exp0.list).filter((e) => noPeriodo(e.competencia || e.vencimento) && (!(fCli || fRota || fVei || fMot) || !!e.ocId && ocIds.has(e.ocId) || !!e.orderId && notas.some(({ nf }) => nf.id === e.orderId))).map((e) => ({ tipo: "A pagar", nome: e.descricao, pessoa: e.fornecedor, venc: e.vencimento, valor: e.valor, baixado: expensePaid(e), empresa: nomeEmpresa(e.empresaId), status: e.status, data: e.pagoEm, movimentos: e.movements })),
   ].sort((a, b) => (a.venc ?? "").localeCompare(b.venc ?? ""));
 
-  const ocorr = nfsOc.flatMap((n) => n.timeline.filter((t) => t.tipo === "ocorrencia" && noPeriodo(t.quando)).map((t) => ({ cliente: n.clienteNome, nf: n.numeroNFe, cat: (t as { categoria?: string }).categoria ?? t.texto.split(/[:·]/)[0].slice(0, 40), quando: t.quando, texto: t.texto })));
-  const ocorrCat = [...ocorr.reduce((m, o) => m.set(o.cat, (m.get(o.cat) ?? 0) + 1), new Map<string, number>()).entries()].sort((a, b) => b[1] - a[1]);
+  const ocorr = notas.flatMap(({ oc, nf }) => nf.timeline.filter((t) => t.tipo === "ocorrencia" && noPeriodo(t.quando)).map((t) => [data(t.quando), oc.numero, nf.clienteNome, nf.numeroNFe, rotaOc(oc), motOc(oc), placaOc(oc), t.autor, t.texto]));
+  const nfNumeros = (o: OrdemColeta) => o.orderIds.map((id) => nfMap.get(id)?.numeroNFe ?? id).join(", ");
+  const baseOc = (o: OrdemColeta) => [o.numero, nomeEmpresa(o.empresaId), cliOc(o), rotaOc(o), motOc(o), placaOc(o), nfNumeros(o)];
 
   function dados(): [string, string[], (string | number)[][]] {
-    if (tab === "performance") return [`Performance de entrega por ${perfAgr}`, ["Grupo", "NFs", "Entregues", "No prazo", "Atrasadas", "% no prazo", "Atraso médio (h)", "Lead time médio (dias)", "Em trânsito", "Com ocorrência"], perf.map((p) => [p.k, p.nfs, p.ent, p.prazo, p.atraso, pct(p.prazo, p.ent), p.atraso ? (p.somaAtraso / p.atraso).toFixed(1) + "h" : "—", p.leadN ? (p.lead / p.leadN).toFixed(1) + "d" : "—", p.transito, p.ocorr])];
-    if (tab === "cte") return ["Rentabilidade por CT-e", ["CT-e", "Data", "Cliente", "Rota", "NFs", "Peso kg", "Receita", "Custo", "Margem", "Margem %"], ctes.map((l) => [l.numero, l.data, l.cliente, l.rota, l.nfs.length, l.peso, l.receita.toFixed(2), l.custo.toFixed(2), l.margem.toFixed(2), `${l.margemPct.toFixed(1)}%`])];
-    if (tab === "abc") return [`Curva ABC de receita por ${agr}`, ["Grupo", "Classe", "OCs", "Receita", "% acumulado", "Margem %"], abc.map((l) => [l.chave, l.classe, l.ocs, l.receita.toFixed(2), `${(l.acum * 100).toFixed(1)}%`, pct(l.receita - l.custo, l.receita)])];
-    if (tab === "resultado") return [`Resultado por ${agr}`, ["Grupo", "OCs", "Receita", "Custo", "Margem", "Margem %"], resultado.map((l) => [l.chave, l.ocs, l.receita.toFixed(2), l.custo.toFixed(2), (l.receita - l.custo).toFixed(2), pct(l.receita - l.custo, l.receita)])];
-    if (tab === "custos") return [`Custo por ${custoAgr}`, ["Grupo", "OCs", "Custo", "Receita", "Custo/receita"], custos.map((l) => [l.chave, l.ocs, l.custo.toFixed(2), l.receita.toFixed(2), pct(l.custo, l.receita)])];
-    if (tab === "titulos") return ["Títulos em aberto", ["Tipo", "Título", "Empresa", "Vencimento", "Valor", "Situação"], titulos.map((t) => [t.tipo, t.nome, t.empresa, t.venc, t.valor.toFixed(2), t.venc < dHoje ? "Vencido" : "A vencer"])];
-    if (tab === "ocorrencias") return ["Ocorrências", ["Data", "Cliente", "NF", "Categoria", "Descrição"], ocorr.map((o) => [o.quando.slice(0, 10), o.cliente, o.nf, o.cat, o.texto])];
-    return ["Operação", ["Indicador", "Valor"], [["OCs emitidas", ocs.length], ["Em coleta/programadas", porStatus(["emitida", "em_coleta"])], ["Coletadas", porStatus(["coletada"])], ["Em viagem", porStatus(["em_viagem"])], ["Entregues", porStatus(["entregue"])], ["Com ocorrência", porStatus(["ocorrencia"])], ["NFs transportadas", nfsOc.length], ["Entregas no prazo", pct(noPrazo, entregues.length)]]];
+    if (tab === "performance") return ["Performance de entrega · notas", ["OC", "Empresa", "Cliente", "NF", "Remetente", "Destinatário", "Rota", "Local de coleta", "Motorista", "Veículo", "Peso (kg)", "Volumes", "Valor NF", "Status OC", "Previsão", "Entrega realizada", "Prazo", "Ocorrências"], notas.map(({ oc, nf }) => [oc.numero, nomeEmpresa(oc.empresaId), nf.clienteNome, nf.numeroNFe, nf.remetente, nf.destinatario, `${nf.cidadeColeta}/${nf.ufColeta} → ${nf.cidadeEntrega}/${nf.ufEntrega}`, locais.list.find((l) => l.id === localColetaDaNf(oc, nf.id))?.nome || oc.localColeta || "—", motOc(oc), placaOc(oc), nf.peso.toLocaleString("pt-BR"), nf.volumes, nf.valorNF.toFixed(2), statusOc(oc), data(nf.previsaoEntrega || oc.dataHoraEntrega), data(nf.entregueEm), prazo(oc, nf), nf.timeline.filter((t) => t.tipo === "ocorrencia").map((t) => t.texto).join("; ") || "—"])];
+    if (tab === "cte") return ["Rentabilidade por CT-e · rateio por NF", ["CT-e", "Data", "Cliente", "Rota", "NF", "OC", "Peso (kg)", "% peso", "Frete rateado", "Custo rateado", "Margem NF"], ctes.flatMap((l) => l.nfs.map((n) => [l.numero, l.data, l.cliente, l.rota, n.nf, ocs0.list.find((o) => o.id === n.ocId)?.numero ?? n.ocId ?? "—", n.peso.toLocaleString("pt-BR"), pct(n.peso, l.peso), n.receita.toFixed(2), n.custo.toFixed(2), (n.receita - n.custo).toFixed(2)]))];
+    const headersOc = ["OC", "Empresa", "Cliente", "Rota", "Motorista", "Veículo", "NFs"];
+    if (tab === "abc") return [`Curva ABC de receita por ${agr}`, ["Grupo", "Classe", ...headersOc, "Receita", "Custo", "% acumulado grupo", "Margem %"], abc.map((l) => [l.chave, l.classe ?? "—", ...baseOc(l.oc), l.receita.toFixed(2), l.custo.toFixed(2), `${((l.acum ?? 0) * 100).toFixed(1)}%`, pct(l.receita - l.custo, l.receita)])];
+    if (tab === "resultado") return ["Faturamento x custo · ordens de coleta", ["Grupo", ...headersOc, "Emissão", "Status", "Receita", "Custo", "Margem", "Margem %"], resultado.map((l) => [l.chave, ...baseOc(l.oc), data(l.oc.emitidaEm), statusOc(l.oc), l.receita.toFixed(2), l.custo.toFixed(2), (l.receita - l.custo).toFixed(2), pct(l.receita - l.custo, l.receita)])];
+    if (tab === "custos") return ["Custos de transporte · ordens de coleta", [...headersOc, "Contratação", "Custo", "Receita", "Custo/receita", "Observações"], custos.map((l) => [...baseOc(l.oc), l.oc.contratacao === "terceiro" ? "Terceiro" : l.oc.contratacao === "frota" ? "Frota própria" : "Não informado", l.custo.toFixed(2), l.receita.toFixed(2), pct(l.custo, l.receita), l.oc.custoObs || "—"])];
+    if (tab === "titulos") return ["Recebimentos e pagamentos", ["Tipo", "Título", "Cliente/fornecedor", "Empresa", "Vencimento", "Valor", "Recebido/pago", "Saldo", "Situação", "Última baixa", "Histórico"], titulos.map((t) => [t.tipo, t.nome, t.pessoa, t.empresa, t.venc, t.valor.toFixed(2), t.baixado.toFixed(2), Math.max(0, t.valor - t.baixado).toFixed(2), t.status === "paga" ? "Liquidado" : t.venc < dHoje ? "Vencido" : "A vencer", data(t.data), t.movimentos?.map((m) => `${data(m.at)} · ${m.kind} · ${fmtBRL(m.amount)}`).join("; ") || "—"])];
+    if (tab === "ocorrencias") return ["Ocorrências", ["Data", "OC", "Cliente", "NF", "Rota", "Motorista", "Veículo", "Autor", "Descrição"], ocorr];
+    return ["Operação · ordens de coleta", [...headersOc, "Coleta prevista", "Entrega prevista", "Status", "Peso (kg)", "Volumes", "Observações"], ocs.map((o) => [...baseOc(o), data(o.previsaoColeta || o.dataHoraColeta), data(o.dataHoraEntrega), statusOc(o), o.orderIds.reduce((s, id) => s + (nfMap.get(id)?.peso ?? 0), 0).toLocaleString("pt-BR"), o.orderIds.reduce((s, id) => s + (nfMap.get(id)?.volumes ?? 0), 0), o.instrucoes || o.observacao || "—"])];
   }
   const sub = `${empresaF ? (empresaF === "__sem" ? "Sem empresa" : nomeEmpresa(empresaF)) : "Todas as empresas"} · ${de} a ${ate}`;
   const tabela = dados();
   return (
     <div className="p-6 space-y-4">
       <div className="flex flex-wrap items-end gap-3">
-        <div><h1 className="text-2xl font-display">Relatórios gerenciais</h1><p className="text-sm text-muted-foreground">{sub} · use o filtro de empresa no topo para ver uma empresa ou o grupo todo.</p></div>
+        <div><h1 className="text-2xl font-display">Relatórios gerenciais</h1><p className="text-sm text-muted-foreground">{sub}</p></div>
         <label className="text-xs ml-auto">De<input aria-label="Mês inicial" type="month" className="input block" value={de} onChange={(e) => setDe(e.target.value)} /></label>
         <label className="text-xs">Até<input aria-label="Mês final" type="month" className="input block" value={ate} onChange={(e) => setAte(e.target.value)} /></label>
-        <button onClick={() => exportCsv(`relatorio-${tab}.csv`, tabela[1], tabela[2])} className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-elevated"><Download className="h-4 w-4" /> Excel</button>
-        <button onClick={() => printReport(tabela[0], sub, tabela[1], tabela[2])} className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-elevated"><Printer className="h-4 w-4" /> PDF</button>
+        <Button variant="outline" onClick={() => exportCsv(`relatorio-${tab}.csv`, tabela[1], tabela[2])}><Download /> Excel</Button>
+        <Button variant="outline" onClick={() => printReport(tabela[0], sub, tabela[1], tabela[2])}><Printer /> PDF</Button>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Kpi l="Receita" v={fmtBRL(tot.receita)} /><Kpi l="Custo transporte" v={fmtBRL(tot.custo)} /><Kpi l="Margem" v={`${fmtBRL(tot.receita - tot.custo)} · ${pct(tot.receita - tot.custo, tot.receita)}`} /><Kpi l="OCs emitidas" v={String(ocs.length)} /><Kpi l="Entregas no prazo" v={pct(noPrazo, entregues.length)} />
       </div>
       <div className="flex flex-wrap gap-1 border-b border-border">
-        {([["performance", "Performance de entrega"], ["cte", "Rentabilidade por CT-e"], ["resultado", "Faturamento x custo"], ["abc", "Curva ABC"], ["operacao", "Operação"], ["custos", "Custos de transporte"], ["titulos", "Recebimentos e pagamentos"], ["ocorrencias", "Ocorrências"]] as const).map(([k, l]) => <button key={k} onClick={() => setTab(k)} className={`px-3 py-2 text-sm border-b-2 ${tab === k ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>{l}</button>)}
+        {([["performance", "Performance de entrega"], ["cte", "Rentabilidade por CT-e"], ["resultado", "Faturamento x custo"], ["abc", "Curva ABC"], ["operacao", "Operação"], ["custos", "Custos de transporte"], ["titulos", "Recebimentos e pagamentos"], ["ocorrencias", "Ocorrências"]] as const).map(([k, l]) => <Button variant="ghost" key={k} onClick={() => setTab(k)} aria-pressed={tab === k} className={`rounded-none px-3 py-2 border-b-2 ${tab === k ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>{l}</Button>)}
       </div>
       <div className="flex flex-wrap gap-2">
         {([["Cliente", fCli, setFCli, opc(cliOc)], ["Rota", fRota, setFRota, opc(rotaOc)], ["Veículo", fVei, setFVei, opc(placaOc)], ["Motorista", fMot, setFMot, opc(motOc)]] as const).map(([l, v, set, ops]) => (
           <select key={l} aria-label={`Filtrar ${l}`} className="input max-w-56" value={v} onChange={(e) => set(e.target.value)}><option value="">{l}: todos</option>{ops.map((o) => <option key={o} value={o}>{o}</option>)}</select>))}
-        {tab === "performance" && <select aria-label="Agrupar performance por" className="input max-w-48" value={perfAgr} onChange={(e) => setPerfAgr(e.target.value as typeof perfAgr)}><option value="cliente">Por cliente</option><option value="rota">Por rota</option><option value="veiculo">Por veículo</option><option value="motorista">Por motorista</option><option value="mes">Por mês</option></select>}
       </div>
       {(tab === "resultado" || tab === "abc") && <select aria-label="Agrupar por" className="input max-w-48" value={agr} onChange={(e) => setAgr(e.target.value as typeof agr)}><option value="empresa">Por empresa</option><option value="cliente">Por cliente</option><option value="rota">Por rota</option><option value="mes">Por mês</option></select>}
       {tab === "custos" && <select aria-label="Agrupar custo por" className="input max-w-48" value={custoAgr} onChange={(e) => setCustoAgr(e.target.value as typeof custoAgr)}><option value="tipo">Terceiro x frota</option><option value="motorista">Por motorista</option><option value="veiculo">Por veículo</option></select>}
-      {tab === "ocorrencias" && ocorrCat.length > 0 && <div className="flex flex-wrap gap-2 text-xs">{ocorrCat.map(([c, n]) => <span key={c} className="border border-border rounded px-2 py-1">{c} · <b>{n}</b></span>)}</div>}
-      {tab === "cte" ? <CteProfitTable linhas={ctes} /> : <div className="panel overflow-auto">
+      <div className="text-xs text-muted-foreground">{tab === "cte" ? `${ctes.length} CT-es · ${tabela[2].length} NFs` : `${tabela[2].length} registros`}</div>
+      {tab === "cte" ? <CteProfitTable linhas={ctes} detalhesVisiveis /> : <div className="overflow-auto border-y border-border">
         <table className="w-full text-sm">
-          <thead className="text-xs text-muted-foreground text-left"><tr className="border-b border-border">{tabela[1].map((h) => <th key={h} className="p-2">{h}</th>)}</tr></thead>
+          <thead className="text-xs text-muted-foreground text-left"><tr className="border-b border-border">{tabela[1].map((h) => <th key={h} className="p-2 whitespace-nowrap">{h}</th>)}</tr></thead>
           <tbody>{tabela[2].map((r, i) => <tr key={i} className="border-b border-border">{r.map((c, j) => <td key={j} className="p-2 text-xs">{typeof c === "string" && /^-?\d+\.\d{2}$/.test(c) ? fmtBRL(Number(c)) : c}</td>)}</tr>)}
             {!tabela[2].length && <tr><td colSpan={tabela[1].length} className="p-6 text-center text-xs text-muted-foreground">Sem dados no período.</td></tr>}</tbody>
         </table>
