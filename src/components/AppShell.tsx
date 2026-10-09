@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Users, PackageSearch, Radar, Wallet, Settings, UserCog,
-  Radio, Bell, Search, LogOut, BookOpen, Route as RouteIcon, Truck, Menu, X, MapPin, Upload, Building2, BarChart3,
+   Radio, Bell, Search, LogOut, BookOpen, Route as RouteIcon, Truck, Menu, X, MapPin, Upload, Building2, BarChart3, FolderOpen, ChevronDown,
 } from "lucide-react";
 import logo from "@/assets/novaris-logo.png.asset.json";
 import simbolo from "@/assets/novaris-simbolo.png.asset.json";
@@ -17,21 +17,24 @@ import { financialState } from "@/lib/reliability";
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
 
+const BASIC_NAV: NavItem[] = [
+  { to: "/locais-operacionais", label: "Locais operacionais", icon: MapPin },
+  { to: "/motoristas", label: "Motoristas & Veículos", icon: Truck },
+  { to: "/empresas", label: "Empresas do grupo", icon: Building2 },
+  { to: "/usuarios", label: "Usuários & acessos", icon: UserCog },
+];
+
 const NAV: NavItem[] = [
   { to: "/", label: "Torre de controle", icon: LayoutDashboard, exact: true },
   { to: "/clientes", label: "Clientes & CRM", icon: Users },
   { to: "/importacao", label: "Importação", icon: Upload },
   { to: "/ordens-coleta", label: "Ordens de coleta", icon: PackageSearch },
   { to: "/rotas", label: "Acompanhamento de Coleta", icon: RouteIcon },
-  { to: "/locais-operacionais", label: "Locais operacionais", icon: MapPin },
-  { to: "/motoristas", label: "Motoristas & Veículos", icon: Truck },
   { to: "/monitoramento", label: "Monitoramento", icon: Radar },
   { to: "/financeiro", label: "Financeiro", icon: Wallet },
   { to: "/relatorios", label: "Relatórios gerenciais", icon: BarChart3 },
-  { to: "/empresas", label: "Empresas do grupo", icon: Building2 },
   { to: "/tv", label: "Indicadores (TV)", icon: Radio },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
-  { to: "/usuarios", label: "Usuários & acessos", icon: UserCog },
   { to: "/manual", label: "Manual de uso", icon: BookOpen },
 ];
 
@@ -41,6 +44,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [noticeOpen, setNoticeOpen] = useState(false);
+  const basicActive = BASIC_NAV.some((item) => pathname === item.to || pathname.startsWith(item.to + "/"));
+  const [basicOpen, setBasicOpen] = useState(basicActive);
   const orders = useOrders();
   const clients = useClients();
   const ocs = useOrdensColeta();
@@ -49,6 +54,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [empresaF, setEmpresaF] = useEmpresaFiltro();
 
   const items = NAV.filter((i) => user && canAccess(role, i.to, user?.modulos));
+  const basicItems = BASIC_NAV.filter((i) => user && canAccess(role, i.to, user.modulos));
   const query = search.trim().toLocaleLowerCase("pt-BR");
   const results = query ? [
     ...orders.list.filter(o => [o.id,o.numeroNFe,o.cteNumero,o.cteChave,...(o.cteChaves ?? []),o.clienteNome,o.placa].join(" ").toLocaleLowerCase("pt-BR").includes(query)).map(o => ({ id: o.id, label: `NF ${o.numeroNFe} · ${o.clienteNome}`, to: canAccess(role,"/rotas",user?.modulos) ? "/rotas" : "/monitoramento", record: o.id })),
@@ -67,7 +73,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <nav className="flex-1 px-3 py-4 space-y-1">
           <div className="px-2 pb-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Núcleo</div>
-          {items.map((item) => {
+           {items.filter((item) => !["/tv", "/configuracoes", "/manual"].includes(item.to)).map((item) => {
             const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
             const Icon = item.icon;
             return (
@@ -85,6 +91,35 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <span className="flex-1 truncate">{item.label}</span>
               </Link>
             );
+          })}
+          {basicItems.length > 0 && (
+            <div>
+              <Button
+                variant="ghost"
+                className={`w-full justify-start gap-3 px-3 text-sm font-normal ${basicActive ? "bg-sidebar-accent text-sidebar-primary" : "text-sidebar-foreground/80"}`}
+                aria-expanded={basicOpen}
+                aria-controls="cadastros-basicos-menu"
+                onClick={() => setBasicOpen((open) => !open)}
+              >
+                <FolderOpen className={`h-4 w-4 ${basicActive ? "text-primary" : "text-muted-foreground"}`} />
+                <span className="flex-1 text-left">Cadastros Básicos</span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${basicOpen ? "rotate-180" : ""}`} />
+              </Button>
+              {basicOpen && (
+                <div id="cadastros-basicos-menu" className="ml-5 mt-1 space-y-1 border-l border-sidebar-border pl-2">
+                  {basicItems.map((item) => {
+                    const active = pathname === item.to || pathname.startsWith(item.to + "/");
+                    const Icon = item.icon;
+                    return <Link key={item.to} to={item.to} onClick={() => setMobileOpen(false)} aria-current={active ? "page" : undefined} className={`flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors ${active ? "bg-sidebar-accent text-sidebar-primary border border-primary/30" : "text-sidebar-foreground/80 hover:bg-sidebar-accent"}`}><Icon className={`h-4 w-4 shrink-0 ${active ? "text-primary" : "text-muted-foreground"}`} /><span>{item.label}</span></Link>;
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+          {items.filter((item) => ["/tv", "/configuracoes", "/manual"].includes(item.to)).map((item) => {
+            const active = pathname.startsWith(item.to);
+            const Icon = item.icon;
+            return <Link key={item.to} to={item.to} className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${active ? "bg-sidebar-accent text-sidebar-primary border border-primary/30" : "text-sidebar-foreground/80 hover:bg-sidebar-accent"}`}><Icon className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground"}`} /><span className="flex-1 truncate">{item.label}</span></Link>;
           })}
         </nav>
 
