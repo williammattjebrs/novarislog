@@ -1,11 +1,12 @@
 // Modelo da Ordem de Coleta independente (v2). Código puro: usado no navegador, no servidor e nos testes.
 import type { Empresa, LocalOperacional, Motorista, OCStatus, OrdemColeta, Order, OrderStage, Veiculo, Client } from "./mock-data";
 
-export const OC_EMITIDAS: OCStatus[] = ["emitida", "em_coleta", "coletada", "em_viagem", "entregue", "ocorrencia"];
+export const OC_EMITIDAS: OCStatus[] = ["emitida", "em_coleta", "coletada", "aguardando_viagem", "em_viagem", "entregue", "ocorrencia"];
 export const OC_EXECUCAO: { id: OCStatus; label: string }[] = [
   { id: "emitida", label: "Emitida · programada" },
   { id: "em_coleta", label: "Em coleta" },
   { id: "coletada", label: "Coletada" },
+  { id: "aguardando_viagem", label: "Aguardando início de viagem" },
   { id: "em_viagem", label: "Em viagem" },
   { id: "entregue", label: "Entregue" },
   { id: "ocorrencia", label: "Ocorrência" },
@@ -23,6 +24,7 @@ export function stageFromOc(status: OCStatus, nf: Order): OrderStage {
     case "emitida": return fiscal ? nf.stage : "coleta_agendada";
     case "em_coleta": return fiscal ? nf.stage : "em_coleta";
     case "coletada": return nf.cteChave ? nf.stage : "aguardando_cte";
+    case "aguardando_viagem": return nf.cteChave ? nf.stage : "aguardando_cte";
     case "em_viagem": return "em_viagem";
     case "entregue": return "entregue";
     case "ocorrencia": return "ocorrencia";
@@ -75,7 +77,7 @@ export function validarEmissao(oc: OrdemColeta, ctx: { nfs: Order[]; locais: Loc
   const empresa = ctx.empresas?.find((e) => e.id === oc.empresaId);
   if (ctx.empresas && !empresa) erros.push("Escolha a empresa emissora da OC.");
   if (!oc.contratacao) erros.push("Informe a contratação: terceiro ou frota própria.");
-  else if (!(Number(oc.custoMotorista) > 0)) erros.push(oc.contratacao === "terceiro" ? "Informe o valor fechado com o motorista." : "Informe o custo da frota própria.");
+  if (!(Number(oc.custoMotorista) > 0)) erros.push(oc.contratacao === "frota" ? "Informe o custo da frota própria." : "Informe o valor fechado com o motorista.");
   if (!isV2(oc)) erros.push("OC legada: converta antes de emitir.");
   if (["cancelada", "entregue"].includes(oc.status)) erros.push("OC cancelada ou entregue não pode ser emitida.");
   if (!oc.orderIds.length) erros.push("Selecione ao menos uma NF.");
