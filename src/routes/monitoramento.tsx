@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Filter, X, Search, Mail } from "lucide-react";
 import { BulkClientUpdate } from "@/components/BulkClientUpdate";
 import { DeliveryProofs } from "@/components/DeliveryProofs";
+import { ProofPhotoReader } from "@/components/ProofPhotoReader";
 import { MonitoringQuickNote } from "@/components/MonitoringQuickNote";
 import { useOrders, useConfig, useOrdensColeta, useMotoristas, useVeiculos } from "@/lib/mock-store";
 import { stageLabel, statusTone, toneClass, OC_STATUS, ORDER_STAGES, type OCStatus, type Order } from "@/lib/mock-data";
@@ -110,6 +111,7 @@ function MonitoramentoPage() {
           <h1 className="mt-1 text-2xl md:text-3xl font-semibold">Monitoramento de OCs</h1>
           <p className="text-sm text-muted-foreground mt-1">{emitidas.length} OC emitidas · {nfsMonitoradas.length} NF nessas OCs. Rascunhos não aparecem aqui.</p>
         </div>
+        <ProofPhotoReader nfs={orders.list.filter((n) => emitidas.some((oc) => isEmitida(oc) && oc.orderIds.includes(n.id)))} />
         {legados > 0 && <div className="panel p-3 text-xs text-warning">{legados} OC(s) legadas aguardam conversão em <Link to="/ordens-coleta" className="underline">Ordens de coleta</Link> e não são monitoradas.</div>}
         <div className="panel p-3 flex flex-wrap items-center gap-2">
           <Filter className="h-3.5 w-3.5 text-muted-foreground" />
