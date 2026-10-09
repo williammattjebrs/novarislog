@@ -512,7 +512,7 @@ export const ORDER_STAGES: { id: OrderStage; label: string }[] = [
   { id: "em_coleta", label: "Em coleta" },
   { id: "coletado", label: "Coletado" },
   { id: "aguardando_cte", label: "Aguardando CT-e" },
-  { id: "cte_ok", label: "CT-e OK" },
+  { id: "cte_ok", label: "CT-e emitido" },
   { id: "cte_divergente", label: "CT-e divergente" },
   { id: "em_viagem", label: "Em viagem" },
   { id: "entregue", label: "Entregue" },
