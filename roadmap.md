@@ -54,5 +54,5 @@
 - [x] Relatórios gerenciais com exportação
 
 ## Listas detalhadas nos relatórios
-- [ ] Substituir resumos por listas de NFs, OCs e títulos; manter filtros e exportar detalhes
-- [ ] Verificar as listas e filtros pela interface
+- [x] Substituir resumos por listas de NFs, OCs e títulos; manter filtros e exportar detalhes
+- [x] Verificar listas na sessão administrativa, filtro por veículo, CSV e impressão; 16 testes existentes aprovados
