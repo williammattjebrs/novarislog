@@ -69,3 +69,6 @@
 ## Custo obrigatório e status de viagem (09/10/2026)
 - [x] Emissão de OC travada sem custo da operação (tela + servidor, migração 0025)
 - [x] CT-e vinculado: NF vira "CT-e emitido" e OC vira "Aguardando início de viagem" (migração 0026); monitoramento destaca o número do CT-e
+
+## Acompanhamento de Coleta (13/10/2026)
+- [x] Coluna Notas moveida para logo depois de OC; alinhamentos revisados (células com mesmo respiro, colunas de texto truncadas com aviso ao passar o mouse, controles com largura fixa)
