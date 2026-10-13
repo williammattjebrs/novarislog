@@ -26,3 +26,4 @@
 - Render managerial reports from record-level lists and use those same rows for exports; enable CT-e NF details only in reports to preserve the finance table's existing interaction.
 - Build tracking rows through the shared OC-enrichment formatter for manual previews, sends and scheduling; use recorded collection events, never scheduled dates, and ignore system logs when selecting the last observation.
 - Store delivery proofs in a private bucket with append-only NF-linked metadata scoped to emitted OCs and permission-gated signed reads; quick monitoring notes reuse the confirmed atomic OC/NF update flow so documents remain private and saves stay consistent.
+- Inline monitoring status changes reuse aplicarStatusOc and its confirmed atomic OC/NF commit; drafts cannot bypass emission through this control.
