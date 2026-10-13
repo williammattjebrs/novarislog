@@ -52,7 +52,11 @@ export function ocEmailHtml(s: OcSnapshot & { versao?: number }, nfs = s.nfs) {
   const td = "padding:8px 10px;border:1px solid #ddd;text-align:center;font-weight:bold;font-size:13px";
   const peso = nfs.reduce((t, n) => t + n.peso, 0);
   const placa = esc(s.veiculo.placa + (s.veiculo.placaCarreta ? ` / ${s.veiculo.placaCarreta}` : ""));
-  const linhas = nfs.map((n) => `<tr><td style="${td}">${esc(n.numero)}</td><td style="${td}">${placa}</td><td style="${td}">${esc(s.motorista.nome)}</td><td style="${td}">${esc(s.motorista.cpf)}</td><td style="${td}">${esc(s.veiculo.tipo)}</td><td style="${td}">${esc(fmtExtenso(s.coleta.dataHora))}</td><td style="${td}">${esc(s.instrucoes)}</td></tr>`).join("");
+   // Estes dados pertencem à mesma OC e são iguais para todas as NFs deste armazém.
+   // Mesclar só as linhas de notas; o rodapé permanece fora do rowspan.
+   const compartilhados = [placa, esc(s.motorista.nome), esc(s.motorista.cpf), esc(s.veiculo.tipo), esc(fmtExtenso(s.coleta.dataHora)), esc(s.instrucoes)]
+     .map((valor) => `<td rowspan="${nfs.length}" style="${td};vertical-align:middle">${valor}</td>`).join("");
+   const linhas = nfs.map((n, index) => `<tr><td style="${td}">${esc(n.numero)}</td>${index === 0 ? compartilhados : ""}</tr>`).join("");
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;color:#111">
 <p>Olá equipe, uma nova solicitação de carregamento foi feita, confira abaixo:</p>
 <h2 style="margin:16px 0 8px">Informações Gerais</h2>
