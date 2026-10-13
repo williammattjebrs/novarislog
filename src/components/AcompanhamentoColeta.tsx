@@ -55,7 +55,7 @@ function Linha({ oc, empresa, motorista, placa, notas, atrasada }: { oc: OrdemCo
   return (
     <tr className={`border-b border-border align-top ${atrasada ? "bg-danger/5" : ""}`}>
       <td className="p-2 align-top whitespace-nowrap"><Link to="/ordens-coleta" search={{ registro: oc.id }} className="num text-primary">{oc.numero}</Link><div className="text-muted-foreground">{oc.orderIds.length} NF</div></td>
-      <td className="p-2 align-top max-w-40"><div className="num leading-snug">{notas.length ? notas.map((n) => <div key={n.id} title={`NF-e ${n.numeroNFe}`}>{n.numeroNFe}</div>) : <span className="text-muted-foreground">—</span>}</div></td>
+      <td className="p-2 align-top whitespace-nowrap"><div className="num leading-snug">{notas.length ? notas.map((n) => <div key={n.id} title={`NF-e ${n.numeroNFe}`}>{n.numeroNFe}</div>) : <span className="text-muted-foreground">—</span>}</div></td>
       <td className="p-2 align-top">{empresa}</td>
       <td className="p-2 align-top">{oc.clienteColetaNome ?? oc.clienteNome}<div className="text-muted-foreground">{oc.localColeta || "—"} · {oc.cidadeColeta}/{oc.ufColeta}</div></td>
       <td className="p-2 align-top">{motorista}<div className="num text-muted-foreground">{placa}</div></td>
