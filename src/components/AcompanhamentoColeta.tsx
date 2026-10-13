@@ -56,9 +56,9 @@ function Linha({ oc, empresa, motorista, placa, notas, atrasada }: { oc: OrdemCo
     <tr className={`border-b border-border align-top ${atrasada ? "bg-danger/5" : ""}`}>
       <td className="p-2 align-top whitespace-nowrap"><Link to="/ordens-coleta" search={{ registro: oc.id }} className="num text-primary">{oc.numero}</Link><div className="text-muted-foreground">{oc.orderIds.length} NF</div></td>
       <td className="p-2 align-top whitespace-nowrap"><div className="num leading-snug">{notas.length ? notas.map((n) => <div key={n.id} title={`NF-e ${n.numeroNFe}`}>{n.numeroNFe}</div>) : <span className="text-muted-foreground">—</span>}</div></td>
-      <td className="p-2 align-top whitespace-nowrap">{empresa}</td>
-      <td className="p-2 align-top whitespace-nowrap">{oc.clienteColetaNome ?? oc.clienteNome}<div className="text-muted-foreground">{oc.localColeta || "—"} · {oc.cidadeColeta}/{oc.ufColeta}</div></td>
-      <td className="p-2 align-top whitespace-nowrap">{motorista}<div className="num text-muted-foreground">{placa}</div></td>
+      <td className="p-2 align-top"><div className="max-w-40 truncate" title={empresa}>{empresa}</div></td>
+      <td className="p-2 align-top"><div className="max-w-56 truncate" title={oc.clienteColetaNome ?? oc.clienteNome}>{oc.clienteColetaNome ?? oc.clienteNome}</div><div className="text-muted-foreground max-w-56 truncate" title={`${oc.localColeta || "—"} · ${oc.cidadeColeta}/${oc.ufColeta}`}>{oc.localColeta || "—"} · {oc.cidadeColeta}/{oc.ufColeta}</div></td>
+      <td className="p-2 align-top"><div className="max-w-36 truncate" title={motorista}>{motorista}</div><div className="num text-muted-foreground whitespace-nowrap">{placa}</div></td>
       <td className="p-2 align-top whitespace-nowrap">{fmtDataHora(oc.dataHoraColeta)}</td>
       <td className="p-2 align-top"><input aria-label={`Previsão de coleta ${oc.numero}`} type="datetime-local" disabled={busy} className={inp + (atrasada ? " border-danger" : "")} defaultValue={toLocal(oc.previsaoColeta || oc.dataHoraColeta)}
         onBlur={(e) => { const v = e.target.value ? new Date(e.target.value).toISOString() : ""; if (v && v !== (oc.previsaoColeta || oc.dataHoraColeta)) void run(() => salvarOc(oc, { previsaoColeta: v }, autor, `Previsão de coleta: ${fmtDataHora(v)}`)); }} /></td>
