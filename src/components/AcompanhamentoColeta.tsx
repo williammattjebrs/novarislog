@@ -37,7 +37,7 @@ export function AcompanhamentoColeta() {
       <div className="overflow-auto">
         <table className="w-full text-xs">
           <thead className="text-muted-foreground text-left"><tr className="border-b border-border"><th className="p-2">OC</th><th>Empresa</th><th>Cliente / coleta</th><th>Motorista · placa</th><th>Coleta programada</th><th>Previsão atual</th><th>Status</th><th>Observação</th></tr></thead>
-          <tbody>{lista.map((o) => <Linha key={o.id} oc={o} empresa={empresas.list.find((e) => e.id === o.empresaId)?.nome ?? "—"} motorista={mot.list.find((m) => m.id === o.motoristaId)?.nome ?? "—"} placa={vei.list.find((v) => v.id === o.veiculoId)?.placa ?? ""} atrasada={atrasada(o)} />)}
+          <tbody>{lista.map((o) => <Linha key={o.id} oc={o} empresa={empresas.list.find((e) => e.id === o.empresaId)?.nome ?? "—"} motorista={mot.list.find((m) => m.id === o.motoristaId)?.nome ?? "—"} placa={(() => { const v = vei.list.find((x) => x.id === o.veiculoId); return v ? v.placa + (v.placaCarreta ? ` + ${v.placaCarreta}` : "") : ""; })()} atrasada={atrasada(o)} />)}
             {!lista.length && <tr><td colSpan={8} className="p-4 text-center text-muted-foreground">Nenhuma OC emitida neste filtro. Emita em <Link to="/ordens-coleta" className="text-primary">Ordens de coleta</Link>.</td></tr>}
           </tbody>
         </table>

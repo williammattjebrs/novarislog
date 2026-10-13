@@ -19,7 +19,7 @@ table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:4p
 <div class="g"><div class="b"><h3>Coleta</h3>${esc(oc.localColeta)}<br>${esc(oc.cidadeColeta)}/${esc(oc.ufColeta)}<br><b>Data/hora:</b> ${fmtDH(oc.dataHoraColeta)}</div>
 <div class="b"><h3>Entrega</h3>${esc(oc.localEntrega)}<br>${esc(oc.cidadeEntrega)}/${esc(oc.ufEntrega)}<br><b>Previsão:</b> ${fmtDH(oc.dataHoraEntrega)}</div>
 <div class="b"><h3>Motorista</h3>${esc(m?.nome ?? "—")}<br>CPF: ${esc(m?.cpf ?? "—")}<br>Tel.: ${esc(m?.telefone ?? "—")}</div>
-<div class="b"><h3>Veículo</h3>Placa: <b>${esc(v?.placa ?? "—")}</b><br>${esc(v?.tipo ?? "")} ${esc(v?.modelo ?? "")}</div></div>
+<div class="b"><h3>Veículo</h3>Placa: <b>${esc(v ? v.placa + (v.placaCarreta ? ` + ${v.placaCarreta}` : "") : "—")}</b><br>${esc(v?.tipo ?? "")} ${esc(v?.modelo ?? "")}</div></div>
 <table><thead><tr><th>NF-e</th><th>Remetente</th><th>Destinatário</th><th class="r">Vol.</th><th class="r">Peso (kg)</th><th class="r">Valor NF</th></tr></thead><tbody>${rows}</tbody>
 <tfoot><tr><th colspan="3">${nfs.length} nota(s)</th><th class="r">${vol}</th><th class="r">${peso.toLocaleString("pt-BR")}</th><th class="r">${valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</th></tr></tfoot></table>
 ${oc.observacao ? `<div class="b" style="margin-top:12px"><h3>Observações</h3>${esc(oc.observacao)}</div>` : ""}
@@ -42,7 +42,7 @@ export function whatsappMotorista(oc: OrdemColeta, nfs: Order[], m?: Motorista, 
   const txt = [`*ORDEM DE COLETA ${oc.numero}* — Novaris`, `Cliente: ${oc.clienteNome}`, ``,
     `*COLETA:* ${oc.localColeta} — ${oc.cidadeColeta}/${oc.ufColeta}`, `Data/hora: ${fmtDH(oc.dataHoraColeta)}`, ``,
     `*ENTREGA:* ${oc.localEntrega} — ${oc.cidadeEntrega}/${oc.ufEntrega}`, `Previsão: ${fmtDH(oc.dataHoraEntrega)}`, ``,
-    `Veículo: ${v?.placa ?? "—"} (${v?.tipo ?? ""})`, `NFs: ${nfs.map((n) => n.numeroNFe).join(", ")}`,
+    `Veículo: ${v ? v.placa + (v.placaCarreta ? ` + ${v.placaCarreta}` : "") : "—"} (${v?.tipo ?? ""})`, `NFs: ${nfs.map((n) => n.numeroNFe).join(", ")}`,
     `Peso total: ${nfs.reduce((s, n) => s + (n.peso || 0), 0).toLocaleString("pt-BR")} kg · Volumes: ${nfs.reduce((s, n) => s + (n.volumes || 0), 0)}`,
     oc.observacao ? `Obs.: ${oc.observacao}` : ""].filter((l) => l !== undefined).join("\n");
   let tel = (m?.telefone ?? "").replace(/\D/g, "");
