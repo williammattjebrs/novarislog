@@ -58,9 +58,9 @@ function Linha({ oc, empresa, motorista, placa, notas, atrasada }: { oc: OrdemCo
       <td className="p-2 align-top max-w-40"><div className="num leading-snug">{notas.length ? notas.map((n) => <div key={n.id} title={`NF-e ${n.numeroNFe}`}>{n.numeroNFe}</div>) : <span className="text-muted-foreground">—</span>}</div></td>
       <td className="p-2 align-top">{empresa}</td>
       <td className="p-2 align-top">{oc.clienteColetaNome ?? oc.clienteNome}<div className="text-muted-foreground">{oc.localColeta || "—"} · {oc.cidadeColeta}/{oc.ufColeta}</div></td>
-      <td>{motorista}<div className="num text-muted-foreground">{placa}</div></td>
-      <td>{fmtDataHora(oc.dataHoraColeta)}</td>
-      <td><input aria-label={`Previsão de coleta ${oc.numero}`} type="datetime-local" disabled={busy} className={inp + (atrasada ? " border-danger" : "")} defaultValue={toLocal(oc.previsaoColeta || oc.dataHoraColeta)}
+      <td className="p-2 align-top">{motorista}<div className="num text-muted-foreground">{placa}</div></td>
+      <td className="p-2 align-top whitespace-nowrap">{fmtDataHora(oc.dataHoraColeta)}</td>
+      <td className="p-2 align-top"><input aria-label={`Previsão de coleta ${oc.numero}`} type="datetime-local" disabled={busy} className={inp + (atrasada ? " border-danger" : "")} defaultValue={toLocal(oc.previsaoColeta || oc.dataHoraColeta)}
         onBlur={(e) => { const v = e.target.value ? new Date(e.target.value).toISOString() : ""; if (v && v !== (oc.previsaoColeta || oc.dataHoraColeta)) void run(() => salvarOc(oc, { previsaoColeta: v }, autor, `Previsão de coleta: ${fmtDataHora(v)}`)); }} /></td>
       <td><select aria-label={`Status ${oc.numero}`} disabled={busy} className={inp} value={oc.status} onChange={(e) => { const novo = e.target.value as OCStatus; const label = OC_STATUS.find((s) => s.id === novo)?.label ?? novo; void run(() => aplicarStatusOc(oc, novo, label, autor)); }}>
         {OC_EXECUCAO.map((s) => <option key={s.id} value={s.id}>{OC_STATUS.find((x) => x.id === s.id)?.label ?? s.label}</option>)}
