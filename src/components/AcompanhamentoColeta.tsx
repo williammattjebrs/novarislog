@@ -33,11 +33,11 @@ export function AcompanhamentoColeta() {
         <select aria-label="Filtro do acompanhamento" className={inp + " ml-auto"} value={filtro} onChange={(e) => setFiltro(e.target.value as typeof filtro)}>
           <option value="pendentes">A coletar</option><option value="atrasadas">Atrasadas</option><option value="coletadas">Coletadas sem CT-e</option><option value="todas">Todas</option>
         </select>
-        <input aria-label="Buscar no acompanhamento" className={inp} placeholder="OC, cliente, NF, motorista, placa" value={busca} onChange={(e) => setBusca(e.target.value)} />
+        <input aria-label="Buscar no acompanhamento" className={inp + " w-64"} placeholder="OC, NF, cliente, motorista, placa" value={busca} onChange={(e) => setBusca(e.target.value)} />
       </div>
       <div className="overflow-auto">
-        <table className="w-full text-xs">
-          <thead className="text-muted-foreground text-left"><tr className="border-b border-border"><th className="p-2">OC</th><th>Empresa</th><th>Cliente / coleta</th><th>Notas</th><th>Motorista · placa</th><th>Coleta programada</th><th>Previsão atual</th><th>Status</th><th>Observação</th></tr></thead>
+        <table className="w-full min-w-max text-xs">
+          <thead className="text-muted-foreground text-left"><tr className="border-b border-border"><th className="p-2 font-medium whitespace-nowrap">OC</th><th className="p-2 font-medium whitespace-nowrap">Notas</th><th className="p-2 font-medium whitespace-nowrap">Empresa</th><th className="p-2 font-medium whitespace-nowrap">Cliente / coleta</th><th className="p-2 font-medium whitespace-nowrap">Motorista · placa</th><th className="p-2 font-medium whitespace-nowrap">Coleta programada</th><th className="p-2 font-medium whitespace-nowrap">Previsão atual</th><th className="p-2 font-medium whitespace-nowrap">Status</th><th className="p-2 font-medium whitespace-nowrap">Observação</th></tr></thead>
           <tbody>{lista.map((o) => <Linha key={o.id} oc={o} empresa={empresas.list.find((e) => e.id === o.empresaId)?.nome ?? "—"} motorista={mot.list.find((m) => m.id === o.motoristaId)?.nome ?? "—"} placa={(() => { const v = vei.list.find((x) => x.id === o.veiculoId); return v ? v.placa + (v.placaCarreta ? ` + ${v.placaCarreta}` : "") : ""; })()} notas={notasDaOc(o)} atrasada={atrasada(o)} />)}
             {!lista.length && <tr><td colSpan={9} className="p-4 text-center text-muted-foreground">Nenhuma OC emitida neste filtro. Emita em <Link to="/ordens-coleta" className="text-primary">Ordens de coleta</Link>.</td></tr>}
           </tbody>
@@ -54,18 +54,18 @@ function Linha({ oc, empresa, motorista, placa, notas, atrasada }: { oc: OrdemCo
   const ult = (oc.historico ?? []).at(-1);
   return (
     <tr className={`border-b border-border align-top ${atrasada ? "bg-danger/5" : ""}`}>
-      <td className="p-2"><Link to="/ordens-coleta" search={{ registro: oc.id }} className="num text-primary">{oc.numero}</Link><div className="text-muted-foreground">{oc.orderIds.length} NF</div></td>
-      <td>{empresa}</td>
-      <td>{oc.clienteColetaNome ?? oc.clienteNome}<div className="text-muted-foreground">{oc.localColeta || "—"} · {oc.cidadeColeta}/{oc.ufColeta}</div></td>
-      <td className="max-w-40"><div className="num leading-snug">{notas.map((n) => <div key={n.id} title={`NF-e ${n.numeroNFe}`}>{n.numeroNFe}</div>) || <span className="text-muted-foreground">—</span>}</div></td>
-      <td>{motorista}<div className="num text-muted-foreground">{placa}</div></td>
-      <td>{fmtDataHora(oc.dataHoraColeta)}</td>
-      <td><input aria-label={`Previsão de coleta ${oc.numero}`} type="datetime-local" disabled={busy} className={inp + (atrasada ? " border-danger" : "")} defaultValue={toLocal(oc.previsaoColeta || oc.dataHoraColeta)}
+      <td className="p-2 align-top whitespace-nowrap"><Link to="/ordens-coleta" search={{ registro: oc.id }} className="num text-primary">{oc.numero}</Link><div className="text-muted-foreground">{oc.orderIds.length} NF</div></td>
+      <td className="p-2 align-top whitespace-nowrap"><div className="num leading-snug">{notas.length ? notas.map((n) => <div key={n.id} title={`NF-e ${n.numeroNFe}`}>{n.numeroNFe}</div>) : <span className="text-muted-foreground">—</span>}</div></td>
+      <td className="p-2 align-top"><div className="max-w-40 truncate" title={empresa}>{empresa}</div></td>
+      <td className="p-2 align-top"><div className="max-w-56 truncate" title={oc.clienteColetaNome ?? oc.clienteNome}>{oc.clienteColetaNome ?? oc.clienteNome}</div><div className="text-muted-foreground max-w-56 truncate" title={`${oc.localColeta || "—"} · ${oc.cidadeColeta}/${oc.ufColeta}`}>{oc.localColeta || "—"} · {oc.cidadeColeta}/{oc.ufColeta}</div></td>
+      <td className="p-2 align-top"><div className="max-w-36 truncate" title={motorista}>{motorista}</div><div className="num text-muted-foreground whitespace-nowrap">{placa}</div></td>
+      <td className="p-2 align-top whitespace-nowrap">{fmtDataHora(oc.dataHoraColeta)}</td>
+      <td className="p-2 align-top"><input aria-label={`Previsão de coleta ${oc.numero}`} type="datetime-local" disabled={busy} className={inp + " w-44" + (atrasada ? " border-danger" : "")} defaultValue={toLocal(oc.previsaoColeta || oc.dataHoraColeta)}
         onBlur={(e) => { const v = e.target.value ? new Date(e.target.value).toISOString() : ""; if (v && v !== (oc.previsaoColeta || oc.dataHoraColeta)) void run(() => salvarOc(oc, { previsaoColeta: v }, autor, `Previsão de coleta: ${fmtDataHora(v)}`)); }} /></td>
-      <td><select aria-label={`Status ${oc.numero}`} disabled={busy} className={inp} value={oc.status} onChange={(e) => { const novo = e.target.value as OCStatus; const label = OC_STATUS.find((s) => s.id === novo)?.label ?? novo; void run(() => aplicarStatusOc(oc, novo, label, autor)); }}>
+      <td className="p-2 align-top"><select aria-label={`Status ${oc.numero}`} disabled={busy} className={inp + " w-44"} value={oc.status} onChange={(e) => { const novo = e.target.value as OCStatus; const label = OC_STATUS.find((s) => s.id === novo)?.label ?? novo; void run(() => aplicarStatusOc(oc, novo, label, autor)); }}>
         {OC_EXECUCAO.map((s) => <option key={s.id} value={s.id}>{OC_STATUS.find((x) => x.id === s.id)?.label ?? s.label}</option>)}
       </select></td>
-      <td className="min-w-56"><div className="flex gap-1"><input aria-label={`Observação ${oc.numero}`} className={inp + " flex-1"} placeholder="Follow-up…" value={obs} onChange={(e) => setObs(e.target.value)} />
+      <td className="p-2 align-top"><div className="flex w-64 gap-1"><input aria-label={`Observação ${oc.numero}`} className={inp + " min-w-0 flex-1"} placeholder="Follow-up…" value={obs} onChange={(e) => setObs(e.target.value)} />
         <button disabled={busy || !obs.trim()} className="px-2 rounded border border-primary/40 text-primary disabled:opacity-40" onClick={() => void run(async () => { await salvarOc(oc, {}, autor, obs.trim()); setObs(""); })}>ok</button></div>
         {ult && <div className="text-muted-foreground mt-1 truncate max-w-64" title={ult.texto}>{ult.texto}</div>}
         {err && <div className="text-danger">{err}</div>}</td>
