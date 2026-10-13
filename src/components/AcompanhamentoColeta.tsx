@@ -65,7 +65,7 @@ function Linha({ oc, empresa, motorista, placa, notas, atrasada }: { oc: OrdemCo
       <td className="p-2 align-top"><select aria-label={`Status ${oc.numero}`} disabled={busy} className={inp + " w-44"} value={oc.status} onChange={(e) => { const novo = e.target.value as OCStatus; const label = OC_STATUS.find((s) => s.id === novo)?.label ?? novo; void run(() => aplicarStatusOc(oc, novo, label, autor)); }}>
         {OC_EXECUCAO.map((s) => <option key={s.id} value={s.id}>{OC_STATUS.find((x) => x.id === s.id)?.label ?? s.label}</option>)}
       </select></td>
-      <td className="p-2 align-top"><div className="flex w-72 gap-1"><input aria-label={`Observação ${oc.numero}`} className={inp + " min-w-0 flex-1"} placeholder="Follow-up…" value={obs} onChange={(e) => setObs(e.target.value)} />
+      <td className="p-2 align-top"><div className="flex w-64 gap-1"><input aria-label={`Observação ${oc.numero}`} className={inp + " min-w-0 flex-1"} placeholder="Follow-up…" value={obs} onChange={(e) => setObs(e.target.value)} />
         <button disabled={busy || !obs.trim()} className="px-2 rounded border border-primary/40 text-primary disabled:opacity-40" onClick={() => void run(async () => { await salvarOc(oc, {}, autor, obs.trim()); setObs(""); })}>ok</button></div>
         {ult && <div className="text-muted-foreground mt-1 truncate max-w-64" title={ult.texto}>{ult.texto}</div>}
         {err && <div className="text-danger">{err}</div>}</td>
