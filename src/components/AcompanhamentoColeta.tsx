@@ -33,7 +33,7 @@ export function AcompanhamentoColeta() {
         <select aria-label="Filtro do acompanhamento" className={inp + " ml-auto"} value={filtro} onChange={(e) => setFiltro(e.target.value as typeof filtro)}>
           <option value="pendentes">A coletar</option><option value="atrasadas">Atrasadas</option><option value="coletadas">Coletadas sem CT-e</option><option value="todas">Todas</option>
         </select>
-        <input aria-label="Buscar no acompanhamento" className={inp} placeholder="OC, cliente, NF, motorista, placa" value={busca} onChange={(e) => setBusca(e.target.value)} />
+        <input aria-label="Buscar no acompanhamento" className={inp + " w-64"} placeholder="OC, NF, cliente, motorista, placa" value={busca} onChange={(e) => setBusca(e.target.value)} />
       </div>
       <div className="overflow-auto">
         <table className="w-full min-w-max text-xs">
