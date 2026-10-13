@@ -51,7 +51,7 @@ export function ocEmailHtml(s: OcSnapshot & { versao?: number }, nfs = s.nfs) {
   const th = "background:#F7841E;color:#111;padding:8px 10px;border:1px solid #ddd;font-weight:bold;text-align:center";
   const td = "padding:8px 10px;border:1px solid #ddd;text-align:center;font-weight:bold;font-size:13px";
   const peso = nfs.reduce((t, n) => t + n.peso, 0);
-  const placa = esc(s.veiculo.placa + (s.veiculo.placaCarreta ? ` + ${s.veiculo.placaCarreta}` : ""));
+  const placa = esc(s.veiculo.placa + (s.veiculo.placaCarreta ? ` / ${s.veiculo.placaCarreta}` : ""));
   const linhas = nfs.map((n) => `<tr><td style="${td}">${esc(n.numero)}</td><td style="${td}">${placa}</td><td style="${td}">${esc(s.motorista.nome)}</td><td style="${td}">${esc(s.motorista.cpf)}</td><td style="${td}">${esc(s.veiculo.tipo)}</td><td style="${td}">${esc(fmtExtenso(s.coleta.dataHora))}</td><td style="${td}">${esc(s.instrucoes)}</td></tr>`).join("");
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;color:#111">
 <p>Olá equipe, uma nova solicitação de carregamento foi feita, confira abaixo:</p>
@@ -93,7 +93,7 @@ export async function processOcOutbox(db: Admin, ocId: string | null, send: Send
         if (!nfs.length) continue;
         const localId = papeis[0]?.startsWith("coleta:") ? papeis[0].slice(7) : "";
         const nomeLocal = (localId && (s.nfs.find((n) => n.coletaLocalId === localId) as { coletaLocalNome?: string } | undefined)?.coletaLocalNome) || "";
-        await send(row.email, `Solicitação de carregamento · ${s.numero}${nomeLocal ? ` · ${nomeLocal}` : ""} · ${nfs.length} NF(s) · ${s.veiculo.placa}${s.veiculo.placaCarreta ? ` + ${s.veiculo.placaCarreta}` : ""}`, ocEmailHtml(s, nfs));
+        await send(row.email, `Solicitação de carregamento · ${s.numero}${nomeLocal ? ` · ${nomeLocal}` : ""} · ${nfs.length} NF(s) · ${s.veiculo.placa}${s.veiculo.placaCarreta ? ` / ${s.veiculo.placaCarreta}` : ""}`, ocEmailHtml(s, nfs));
       }
       await db.rpc("tms_oc_email_finish", { p_id: row.id, p_status: "aceito", p_error: "" }); aceitos++;
     } catch (e) {
