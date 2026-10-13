@@ -62,7 +62,7 @@ function Linha({ oc, empresa, motorista, placa, notas, atrasada }: { oc: OrdemCo
       <td className="p-2 align-top whitespace-nowrap">{fmtDataHora(oc.dataHoraColeta)}</td>
       <td className="p-2 align-top"><input aria-label={`Previsão de coleta ${oc.numero}`} type="datetime-local" disabled={busy} className={inp + " w-44" + (atrasada ? " border-danger" : "")} defaultValue={toLocal(oc.previsaoColeta || oc.dataHoraColeta)}
         onBlur={(e) => { const v = e.target.value ? new Date(e.target.value).toISOString() : ""; if (v && v !== (oc.previsaoColeta || oc.dataHoraColeta)) void run(() => salvarOc(oc, { previsaoColeta: v }, autor, `Previsão de coleta: ${fmtDataHora(v)}`)); }} /></td>
-      <td className="p-2 align-top"><select aria-label={`Status ${oc.numero}`} disabled={busy} className={inp} value={oc.status} onChange={(e) => { const novo = e.target.value as OCStatus; const label = OC_STATUS.find((s) => s.id === novo)?.label ?? novo; void run(() => aplicarStatusOc(oc, novo, label, autor)); }}>
+      <td className="p-2 align-top"><select aria-label={`Status ${oc.numero}`} disabled={busy} className={inp + " w-44"} value={oc.status} onChange={(e) => { const novo = e.target.value as OCStatus; const label = OC_STATUS.find((s) => s.id === novo)?.label ?? novo; void run(() => aplicarStatusOc(oc, novo, label, autor)); }}>
         {OC_EXECUCAO.map((s) => <option key={s.id} value={s.id}>{OC_STATUS.find((x) => x.id === s.id)?.label ?? s.label}</option>)}
       </select></td>
       <td className="p-2 align-top"><div className="flex w-72 gap-1"><input aria-label={`Observação ${oc.numero}`} className={inp + " min-w-0 flex-1"} placeholder="Follow-up…" value={obs} onChange={(e) => setObs(e.target.value)} />
