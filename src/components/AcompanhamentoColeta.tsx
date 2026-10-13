@@ -36,7 +36,7 @@ export function AcompanhamentoColeta() {
         <input aria-label="Buscar no acompanhamento" className={inp} placeholder="OC, cliente, NF, motorista, placa" value={busca} onChange={(e) => setBusca(e.target.value)} />
       </div>
       <div className="overflow-auto">
-        <table className="w-full text-xs">
+        <table className="w-full min-w-max text-xs">
           <thead className="text-muted-foreground text-left"><tr className="border-b border-border"><th className="p-2 font-medium whitespace-nowrap">OC</th><th className="p-2 font-medium whitespace-nowrap">Notas</th><th className="p-2 font-medium whitespace-nowrap">Empresa</th><th className="p-2 font-medium whitespace-nowrap">Cliente / coleta</th><th className="p-2 font-medium whitespace-nowrap">Motorista · placa</th><th className="p-2 font-medium whitespace-nowrap">Coleta programada</th><th className="p-2 font-medium whitespace-nowrap">Previsão atual</th><th className="p-2 font-medium whitespace-nowrap">Status</th><th className="p-2 font-medium whitespace-nowrap">Observação</th></tr></thead>
           <tbody>{lista.map((o) => <Linha key={o.id} oc={o} empresa={empresas.list.find((e) => e.id === o.empresaId)?.nome ?? "—"} motorista={mot.list.find((m) => m.id === o.motoristaId)?.nome ?? "—"} placa={(() => { const v = vei.list.find((x) => x.id === o.veiculoId); return v ? v.placa + (v.placaCarreta ? ` + ${v.placaCarreta}` : "") : ""; })()} notas={notasDaOc(o)} atrasada={atrasada(o)} />)}
             {!lista.length && <tr><td colSpan={9} className="p-4 text-center text-muted-foreground">Nenhuma OC emitida neste filtro. Emita em <Link to="/ordens-coleta" className="text-primary">Ordens de coleta</Link>.</td></tr>}
