@@ -195,7 +195,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
       const pdf = await baixarArquivoPdf(url, oc.numero);
       const files = formato === "pdf" ? [pdf] : await pdfParaImagens(pdf, oc.numero);
       const v = vei.list.find((x) => x.id === f.veiculoId);
-      const texto = `Olá ${m?.nome ?? ""}, segue a Ordem de Coleta ${oc.numero}${v ? ` (placa ${v.placa})` : ""}.\nColetas: ${lcs.map((l) => `${l.nome} - ${l.cidade}/${l.uf}`).join("; ")}\nData/hora: ${fmtDataHora(oc.dataHoraColeta)}`;
+      const texto = `Olá ${m?.nome ?? ""}, segue a Ordem de Coleta ${oc.numero}${v ? ` (placa ${v.placa}${v.placaCarreta ? ` + ${v.placaCarreta}` : ""})` : ""}.\nColetas: ${lcs.map((l) => `${l.nome} - ${l.cidade}/${l.uf}`).join("; ")}\nData/hora: ${fmtDataHora(oc.dataHoraColeta)}`;
       await compartilhar({ files, texto, tel: tel.length <= 11 ? "55" + tel : tel });
     } catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao preparar o arquivo." }); }
     finally { setBusy(false); }
