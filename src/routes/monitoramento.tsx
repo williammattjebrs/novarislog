@@ -8,6 +8,7 @@ import { BulkClientUpdate } from "@/components/BulkClientUpdate";
 import { DeliveryProofs } from "@/components/DeliveryProofs";
 import { ProofPhotoReader } from "@/components/ProofPhotoReader";
 import { MonitoringQuickNote } from "@/components/MonitoringQuickNote";
+import { MonitoringQuickStatus } from "@/components/MonitoringQuickStatus";
 import { useOrders, useConfig, useOrdensColeta, useMotoristas, useVeiculos } from "@/lib/mock-store";
 import { stageLabel, statusTone, toneClass, OC_STATUS, ORDER_STAGES, type OCStatus, type Order } from "@/lib/mock-data";
 import { Timeline } from "@/components/Timeline";
@@ -158,7 +159,7 @@ function MonitoramentoPage() {
                       <td className="text-xs">{oc.clienteColetaNome} → {oc.clienteDescargaNome}</td>
                       <td className="text-xs">{oc.localColeta} ({oc.cidadeColeta}/{oc.ufColeta}) → {oc.localEntrega} ({oc.cidadeEntrega}/{oc.ufEntrega})</td>
                       <td className="text-xs">{fmtDataHora(oc.dataHoraColeta)}<div className="text-muted-foreground">{fmtDataHora(oc.dataHoraEntrega)}</div></td>
-                      <td className="text-xs">{OC_STATUS.find((s) => s.id === oc.status)?.label}</td>
+                      <td className="text-xs"><MonitoringQuickStatus oc={oc} autor={user?.nome ?? "usuário"} /></td>
                       <td className="px-3 py-3 align-top"><p className="text-xs mb-2 whitespace-pre-wrap break-words max-w-80">{[...(oc.historico ?? [])].reverse().find((t) => t.tipo === "observacao" || t.tipo === "ocorrencia")?.texto ?? "—"}</p><MonitoringQuickNote oc={oc} autor={user?.nome ?? "usuário"} /></td>
                     </tr>
                   );
