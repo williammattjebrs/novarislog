@@ -18,11 +18,12 @@ export function AcompanhamentoColeta() {
   const [filtro, setFiltro] = useState<"pendentes" | "atrasadas" | "coletadas" | "todas">("pendentes");
   const [busca, setBusca] = useState("");
   const semCte = (oc: OrdemColeta) => oc.orderIds.some((id) => { const n = orders.list.find((x) => x.id === id); return n && !n.cteChave && !n.cteNumero; });
+  const notasDaOc = (oc: OrdemColeta) => oc.orderIds.map((id) => orders.list.find((x) => x.id === id)).filter(Boolean) as { id: string; numeroNFe: string; chaveNFe?: string }[];
   const base = filtrarOcs(empresaF, ocs.list).filter((o) => isEmitida(o) && (["emitida", "em_coleta", "ocorrencia"].includes(o.status) || (o.status === "coletada" && semCte(o))));
   const atrasada = (o: OrdemColeta) => o.status !== "coletada" && Date.parse(o.previsaoColeta || o.dataHoraColeta) < Date.now();
   const q = busca.trim().toLowerCase();
   const lista = base.filter((o) => (filtro === "todas" || (filtro === "pendentes" && o.status !== "coletada") || (filtro === "coletadas" && o.status === "coletada") || (filtro === "atrasadas" && atrasada(o)))
-    && (!q || [o.numero, o.clienteColetaNome, o.localColeta, mot.list.find((m) => m.id === o.motoristaId)?.nome, vei.list.find((v) => v.id === o.veiculoId)?.placa].join(" ").toLowerCase().includes(q)))
+    && (!q || [o.numero, o.clienteColetaNome, o.localColeta, mot.list.find((m) => m.id === o.motoristaId)?.nome, vei.list.find((v) => v.id === o.veiculoId)?.placa, ...notasDaOc(o).flatMap((n) => [n.numeroNFe, n.chaveNFe ?? ""])].join(" ").toLowerCase().includes(q)))
     .sort((a, b) => (a.previsaoColeta || a.dataHoraColeta).localeCompare(b.previsaoColeta || b.dataHoraColeta));
   return (
     <div className="panel p-4 space-y-3">
@@ -32,13 +33,13 @@ export function AcompanhamentoColeta() {
         <select aria-label="Filtro do acompanhamento" className={inp + " ml-auto"} value={filtro} onChange={(e) => setFiltro(e.target.value as typeof filtro)}>
           <option value="pendentes">A coletar</option><option value="atrasadas">Atrasadas</option><option value="coletadas">Coletadas sem CT-e</option><option value="todas">Todas</option>
         </select>
-        <input aria-label="Buscar no acompanhamento" className={inp} placeholder="OC, cliente, motorista, placa" value={busca} onChange={(e) => setBusca(e.target.value)} />
+        <input aria-label="Buscar no acompanhamento" className={inp} placeholder="OC, cliente, NF, motorista, placa" value={busca} onChange={(e) => setBusca(e.target.value)} />
       </div>
       <div className="overflow-auto">
         <table className="w-full text-xs">
-          <thead className="text-muted-foreground text-left"><tr className="border-b border-border"><th className="p-2">OC</th><th>Empresa</th><th>Cliente / coleta</th><th>Motorista · placa</th><th>Coleta programada</th><th>Previsão atual</th><th>Status</th><th>Observação</th></tr></thead>
-          <tbody>{lista.map((o) => <Linha key={o.id} oc={o} empresa={empresas.list.find((e) => e.id === o.empresaId)?.nome ?? "—"} motorista={mot.list.find((m) => m.id === o.motoristaId)?.nome ?? "—"} placa={(() => { const v = vei.list.find((x) => x.id === o.veiculoId); return v ? v.placa + (v.placaCarreta ? ` + ${v.placaCarreta}` : "") : ""; })()} atrasada={atrasada(o)} />)}
-            {!lista.length && <tr><td colSpan={8} className="p-4 text-center text-muted-foreground">Nenhuma OC emitida neste filtro. Emita em <Link to="/ordens-coleta" className="text-primary">Ordens de coleta</Link>.</td></tr>}
+          <thead className="text-muted-foreground text-left"><tr className="border-b border-border"><th className="p-2">OC</th><th>Empresa</th><th>Cliente / coleta</th><th>Notas</th><th>Motorista · placa</th><th>Coleta programada</th><th>Previsão atual</th><th>Status</th><th>Observação</th></tr></thead>
+          <tbody>{lista.map((o) => <Linha key={o.id} oc={o} empresa={empresas.list.find((e) => e.id === o.empresaId)?.nome ?? "—"} motorista={mot.list.find((m) => m.id === o.motoristaId)?.nome ?? "—"} placa={(() => { const v = vei.list.find((x) => x.id === o.veiculoId); return v ? v.placa + (v.placaCarreta ? ` + ${v.placaCarreta}` : "") : ""; })()} notas={notasDaOc(o)} atrasada={atrasada(o)} />)}
+            {!lista.length && <tr><td colSpan={9} className="p-4 text-center text-muted-foreground">Nenhuma OC emitida neste filtro. Emita em <Link to="/ordens-coleta" className="text-primary">Ordens de coleta</Link>.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -46,7 +47,7 @@ export function AcompanhamentoColeta() {
   );
 }
 
-function Linha({ oc, empresa, motorista, placa, atrasada }: { oc: OrdemColeta; empresa: string; motorista: string; placa: string; atrasada: boolean }) {
+function Linha({ oc, empresa, motorista, placa, notas, atrasada }: { oc: OrdemColeta; empresa: string; motorista: string; placa: string; notas: { id: string; numeroNFe: string }[]; atrasada: boolean }) {
   const { user } = useAuth(); const autor = user?.nome ?? "usuário";
   const [obs, setObs] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const run = async (fn: () => Promise<void>) => { setBusy(true); setErr(""); try { await fn(); } catch (e) { setErr(e instanceof Error ? e.message : "Falha"); } finally { setBusy(false); } };
