@@ -553,6 +553,15 @@ export type Database = {
         }
         Returns: Json
       }
+      tms_oc_link_nfs: {
+        Args: {
+          p_actor: string
+          p_actor_nome: string
+          p_nf_ids: string[]
+          p_oc_id: string
+        }
+        Returns: Json
+      }
       tms_oc_selftest: { Args: never; Returns: Json }
       tms_records_commit: {
         Args: { changes: Json; reason?: string }
