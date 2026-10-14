@@ -264,6 +264,8 @@ export interface OrdemColeta {
   contratacao?: "terceiro" | "frota";
   custoMotorista?: number;
   custoObs?: string;
+  /** OC programada/emitida antes de a NF existir; a NF é vinculada depois da coleta. */
+  aguardandoNf?: boolean;
   /** Chave de agrupamento automático (remetente|destinatário) do rascunho sugerido na importação. */
   autoKey?: string;
   /** Previsão e follow-up da coleta (Acompanhamento de Coleta). */

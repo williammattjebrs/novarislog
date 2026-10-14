@@ -98,7 +98,7 @@ export async function renderOcPdf(s: OcSnapshot & { versao?: number }) {
   text(`Motorista: ${s.motorista.nome} · CPF ${s.motorista.cpf} · Tel. ${s.motorista.telefone}`);
   text(`Veículo: placa ${s.veiculo.placa}${s.veiculo.placaCarreta ? ` · carreta ${s.veiculo.placaCarreta}` : ""} · ${s.veiculo.tipo}`);
 
-  section(`Notas fiscais (${s.nfs.length}) · ${s.totais.peso.toLocaleString("pt-BR")} kg · ${s.totais.volumes} volumes`);
+  section(s.nfs.length ? `Notas fiscais (${s.nfs.length}) · ${s.totais.peso.toLocaleString("pt-BR")} kg · ${s.totais.volumes} volumes` : "Notas fiscais: serão informadas após a coleta");
   const cols = [{ t: "NF", w: 50 }, { t: "Local de coleta", w: 115 }, { t: "Remetente", w: 120 }, { t: "Destinatário", w: 120 }, { t: "Volumes", w: 45 }, { t: "Peso (kg)", w: CW - 450 }];
   const row = (vals: string[], b = false) => {
     const lines = vals.map((v, i) => wrap(v, b ? bold : font, 8, cols[i].w - 6));
