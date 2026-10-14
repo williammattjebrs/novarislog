@@ -38,6 +38,7 @@ const toLocal = (iso?: string) => (iso ? new Date(new Date(iso).getTime() - new 
 const label = (oc: OrdemColeta) => { const l = OC_STATUS.find((s) => s.id === oc.status)?.label ?? oc.status; return isV2(oc) || l.startsWith("Legado") ? l : `Legado · ${l}`; };
 
 function Page() {
+  const orders = useOrders();
   const ocs0 = useOrdensColeta(); const { registro } = Route.useSearch(); const [empresaF] = useEmpresaFiltro();
   const ocs = { ...ocs0, list: filtrarOcs(empresaF, ocs0.list) };
   const [sel, setSel] = useState<string | null>(registro ?? null);
@@ -75,7 +76,7 @@ function Page() {
                   <td className="text-xs">{oc.clienteColetaNome ?? oc.clienteNome} → {oc.clienteDescargaNome ?? "—"}</td>
                   <td className="text-xs">{oc.localColeta || "—"} ({oc.cidadeColeta}/{oc.ufColeta}) → {oc.localEntrega || "—"} ({oc.cidadeEntrega}/{oc.ufEntrega})</td>
                   <td className="text-xs">{fmtDataHora(oc.dataHoraColeta)}</td>
-                  <td className="text-xs">{oc.orderIds.length}</td>
+                  <td className="text-xs">{(() => { const nums = oc.orderIds.map((id) => orders.list.find((n) => n.id === id)?.numeroNFe).filter(Boolean) as string[]; return (<>{nums.length ? <div className="num">{nums.join(", ")}</div> : "—"}<div className="text-[10px] text-muted-foreground">{oc.orderIds.length} NF</div></>); })()}</td>
                   <td className="text-xs">{oc.docVersion ? `v${oc.docVersion}${oc.conteudoPendenteRevisao ? " · revisão pendente" : ""}` : oc.documentoEstado === "legado_sem_snapshot" ? "legado sem PDF" : "—"}</td>
                   <td className="text-xs">{label(oc)}</td>
                 </tr>
