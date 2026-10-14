@@ -27,3 +27,4 @@
 - Build tracking rows through the shared OC-enrichment formatter for manual previews, sends and scheduling; use recorded collection events, never scheduled dates, and ignore system logs when selecting the last observation.
 - Store delivery proofs in a private bucket with append-only NF-linked metadata scoped to emitted OCs and permission-gated signed reads; quick monitoring notes reuse the confirmed atomic OC/NF update flow so documents remain private and saves stay consistent.
 - Inline monitoring status changes reuse aplicarStatusOc and its confirmed atomic OC/NF commit; drafts cannot bypass emission through this control.
+- OCs may be emitted without NF (aguardandoNf, header collection location); NFs arriving later link only via the service-only tms_oc_link_nfs (moves them out of drafts) followed by a new document version without email, so late invoices never duplicate warehouse messages.
