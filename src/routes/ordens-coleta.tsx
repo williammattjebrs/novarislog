@@ -67,18 +67,18 @@ function Page() {
       </div>
       <div className="panel overflow-auto">
         <table className="w-full text-sm">
-          <thead className="text-xs text-muted-foreground text-left"><tr className="border-b border-border"><th className="p-2">OC</th><th>Cliente coleta → descarga</th><th>Locais</th><th>Coleta</th><th>NFs</th><th>Documento</th><th>Status</th></tr></thead>
+          <thead className="text-xs text-muted-foreground text-left"><tr className="border-b border-border"><th className="p-2 whitespace-nowrap">OC</th><th className="p-2 whitespace-nowrap">Cliente coleta → descarga</th><th className="p-2 whitespace-nowrap">Locais</th><th className="p-2 whitespace-nowrap">Coleta</th><th className="p-2 whitespace-nowrap">NFs</th><th className="p-2 whitespace-nowrap">Documento</th><th className="p-2 whitespace-nowrap">Status</th></tr></thead>
           <tbody>
             {lista.map((oc) => (
               <Fragment key={oc.id}>
                 <tr onClick={() => setSel(oc.id)} className={`border-b border-border cursor-pointer hover:bg-elevated/50 ${sel === oc.id ? "bg-elevated/60" : ""}`}>
-                  <td className="p-2 num text-primary">{oc.numero}</td>
-                  <td className="text-xs">{oc.clienteColetaNome ?? oc.clienteNome} → {oc.clienteDescargaNome ?? "—"}</td>
-                  <td className="text-xs">{oc.localColeta || "—"} ({oc.cidadeColeta}/{oc.ufColeta}) → {oc.localEntrega || "—"} ({oc.cidadeEntrega}/{oc.ufEntrega})</td>
-                  <td className="text-xs">{fmtDataHora(oc.dataHoraColeta)}</td>
-                  <td className="text-xs">{(() => { const nums = oc.orderIds.map((id) => orders.list.find((n) => n.id === id)?.numeroNFe).filter(Boolean) as string[]; return (<>{nums.length ? <div className="num">{nums.join(", ")}</div> : "—"}<div className="text-[10px] text-muted-foreground">{oc.orderIds.length} NF</div></>); })()}</td>
-                  <td className="text-xs">{oc.docVersion ? `v${oc.docVersion}${oc.conteudoPendenteRevisao ? " · revisão pendente" : ""}` : oc.documentoEstado === "legado_sem_snapshot" ? "legado sem PDF" : "—"}</td>
-                  <td className="text-xs">{label(oc)}</td>
+                  <td className="p-2 align-top num text-primary whitespace-nowrap">{oc.numero}</td>
+                  <td className="p-2 align-top text-xs">{oc.clienteColetaNome ?? oc.clienteNome} → {oc.clienteDescargaNome ?? "—"}</td>
+                  <td className="p-2 align-top text-xs">{oc.localColeta || "—"} ({oc.cidadeColeta}/{oc.ufColeta}) → {oc.localEntrega || "—"} ({oc.cidadeEntrega}/{oc.ufEntrega})</td>
+                  <td className="p-2 align-top text-xs whitespace-nowrap">{fmtDataHora(oc.dataHoraColeta)}</td>
+                  <td className="p-2 align-top text-xs whitespace-nowrap">{(() => { const nums = oc.orderIds.map((id) => orders.list.find((n) => n.id === id)?.numeroNFe).filter(Boolean) as string[]; return (<>{nums.length ? <div className="num">{nums.join(", ")}</div> : "—"}<div className="text-[10px] text-muted-foreground">{oc.orderIds.length} NF</div></>); })()}</td>
+                  <td className="p-2 align-top text-xs whitespace-nowrap">{oc.docVersion ? `v${oc.docVersion}${oc.conteudoPendenteRevisao ? " · revisão pendente" : ""}` : oc.documentoEstado === "legado_sem_snapshot" ? "legado sem PDF" : "—"}</td>
+                  <td className="p-2 align-top text-xs whitespace-nowrap">{label(oc)}</td>
                 </tr>
                 {sel === oc.id && <tr aria-label={`Edição de ${oc.numero}`}><td colSpan={7} className="p-0 bg-elevated/20"><OcDetalhe key={oc.id} ocId={oc.id} onClose={() => setSel(null)} /></td></tr>}
               </Fragment>
