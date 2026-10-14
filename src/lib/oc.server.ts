@@ -66,7 +66,7 @@ export function ocEmailHtml(s: OcSnapshot & { versao?: number }, nfs = s.nfs) {
    // Estes dados pertencem à mesma OC e são iguais para todas as NFs deste armazém.
    // Mesclar só as linhas de notas; o rodapé permanece fora do rowspan.
    const compartilhados = [placa, esc(s.motorista.nome), esc(s.motorista.cpf), esc(s.veiculo.tipo), esc(fmtExtenso(s.coleta.dataHora)), esc(s.instrucoes)]
-     .map((valor) => `<td rowspan="${Math.max(nfs.length, 1)}" style="${td};vertical-align:middle">${valor}</td>`).join("");
+     .map((valor) => `<td${nfs.length > 1 ? ` rowspan="${nfs.length}"` : ""} style="${td};vertical-align:middle">${valor}</td>`).join("");
    const linhas = nfs.length
      ? nfs.map((n, index) => `<tr><td style="${td}">${esc(n.numero)}</td>${index === 0 ? compartilhados : ""}</tr>`).join("")
      : `<tr><td style="${td}">A informar após a coleta</td>${compartilhados}</tr>`;
