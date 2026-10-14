@@ -8,15 +8,15 @@ import { RoleGate } from "@/components/RoleGate";
 import { Button } from "@/components/ui/button";
 import { Timeline } from "@/components/Timeline";
 import { MotoristaSelect, VeiculoSelect, CapacidadeAlerta } from "@/components/FleetSelects";
-import { LocalSelect } from "@/components/CriarOcPanel";
+import { LocalSelect, numeroOc } from "@/components/CriarOcPanel";
 import { useClients, useLocais, useMotoristas, useOrders, useOrdensColeta, useVeiculos, useEmpresas } from "@/lib/mock-store";
 import { useEmpresaFiltro, filtrarOcs } from "@/lib/empresa-filter";
 import type { Expense } from "@/lib/mock-data";
 import { OC_STATUS, type OCStatus, type OrdemColeta, type Order } from "@/lib/mock-data";
-import { destinatariosOc, localColetaDaNf, isV2, ocAtivaDaNf, previewConversao, validarEmissao, OC_EMITIDAS, OC_EXECUCAO } from "@/lib/oc-model";
+import { destinatariosOc, localColetaDaNf, isV2, novaOcRascunho, ocAtivaDaNf, previewConversao, validarEmissao, OC_EMITIDAS, OC_EXECUCAO } from "@/lib/oc-model";
 import { aplicarStatusOc, salvarOc } from "@/lib/oc-actions";
 import { commitLists, getList, getVersion, refreshShared } from "@/lib/shared-db";
-import { emitirOC, enviarAgoraOC, linkPdfOC, reenfileirarEnvios } from "@/lib/oc.functions";
+import { emitirOC, enviarAgoraOC, linkPdfOC, reenfileirarEnvios, vincularNfOC } from "@/lib/oc.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { fmtDataHora } from "@/lib/oc-pdf";
@@ -344,7 +344,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
           {editavel && oc.status === "rascunho" && livres.length > 0 && <select aria-label="Adicionar NF" className={inp + " mt-2"} value="" onChange={(e) => e.target.value && setF({ ...f, orderIds: [...f.orderIds, e.target.value] })}>
             <option value="">+ Adicionar NF sem OC…</option>{livres.slice(0, 300).map((n) => <option key={n.id} value={n.id}>NF {n.numeroNFe} · {n.remetente} → {n.destinatario}</option>)}
           </select>}
-          {emitida && oc.status !== "entregue" || emitida ? <VincularNf oc={oc} busy={busy} onVincular={vincular} /> : null}
+          {emitida && <VincularNf oc={oc} busy={busy} onVincular={vincular} />}
         </div>
         <div className="rounded border border-border p-3 text-xs space-y-1">
           <div className="font-semibold">E-mail aos armazéns de coleta (sem anexo, cada um só com as notas dele) {oc.docVersion ? "· somente se solicitar envio da revisão" : "· enviado na primeira emissão"}</div>
@@ -421,6 +421,29 @@ function ConversaoLegado() {
         {user?.role === "admin" ? <Button disabled={busy || !conv.length} onClick={confirmar}>{busy ? "Convertendo…" : `Confirmar conversão de ${conv.length}`}</Button> : <p className="text-xs text-muted-foreground">Somente administradores confirmam a conversão.</p>}
         {msg && <div role="status" className="text-xs">{msg}</div>}
       </>}
+    </div>
+  );
+}
+
+/** NFs que podem entrar numa OC emitida: livres ou em rascunho. Sugestões primeiro (mesmo cliente da coleta/descarga). */
+function VincularNf({ oc, busy, onVincular }: { oc: OrdemColeta; busy: boolean; onVincular: (ids: string[]) => void }) {
+  const orders = useOrders(); const ocs = useOrdensColeta();
+  const [sel, setSel] = useState<string[]>([]); const [q, setQ] = useState("");
+  const norm = (x?: string) => (x ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const parecido = (a?: string, b?: string) => { const x = norm(a), y = norm(b); return !!x && !!y && (x.includes(y.slice(0, 8)) || y.includes(x.slice(0, 8))); };
+  const cands = useMemo(() => orders.list.filter((n) => { const h = ocAtivaDaNf(ocs.list, n.id); return h?.id !== oc.id && (!h || (isV2(h) && h.status === "rascunho")); })
+    .map((n) => ({ n, sug: (oc.clienteColetaId && n.clienteId === oc.clienteColetaId) || parecido(n.remetente, oc.clienteColetaNome) || parecido(n.clienteNome, oc.clienteColetaNome) || parecido(n.destinatario, oc.clienteDescargaNome) }))
+    .sort((a, b) => Number(b.sug) - Number(a.sug) || String(b.n.criadoEm ?? "").localeCompare(String(a.n.criadoEm ?? ""))), [orders.list, ocs.list, oc]);
+  const t = q.trim().toLowerCase();
+  const vis = cands.filter(({ n, sug }) => (t ? [n.numeroNFe, n.chaveNFe, n.remetente, n.destinatario].join(" ").toLowerCase().includes(t) : sug)).slice(0, 30);
+  return (
+    <div className="mt-3 rounded border border-primary/40 p-3 space-y-2 text-xs">
+      <div className="font-semibold text-primary">Vincular NF que chegou depois da coleta</div>
+      <input aria-label="Buscar NF para vincular" className={inp} placeholder="Buscar por número, chave, remetente ou destinatário" value={q} onChange={(e) => setQ(e.target.value)} />
+      {!t && <div className="text-muted-foreground">Sugestões do mesmo cliente da coleta/descarga{vis.length ? "" : ": nenhuma — busque a nota acima"}.</div>}
+      {vis.map(({ n, sug }) => <label key={n.id} className="flex gap-2 items-center"><input type="checkbox" checked={sel.includes(n.id)} onChange={(e) => setSel(e.target.checked ? [...sel, n.id] : sel.filter((x) => x !== n.id))} />
+        <span className="num">NF {n.numeroNFe}</span><span className="text-muted-foreground">{n.remetente} → {n.destinatario}</span><span className="num text-muted-foreground">{(n.peso || 0).toLocaleString("pt-BR")} kg</span>{sug && <span className="text-success">sugerida</span>}</label>)}
+      <Button size="sm" disabled={busy || !sel.length} onClick={() => { onVincular(sel); setSel([]); }}>Vincular {sel.length || ""} NF</Button>
     </div>
   );
 }
