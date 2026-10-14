@@ -40,6 +40,17 @@ export async function emitOc(db: Admin, actor: { id: string; nome: string }, ocI
   return { ok: true as const, ...(data as { docVersion: number; status: string; enfileirados: number }), pendencias: snapshot.pendenciasEnvio };
 }
 
+/** Vincula NFs chegadas depois a uma OC emitida e gera nova versão do documento, sem reenviar e-mail. */
+export async function vincularNfs(db: Admin, actor: { id: string; nome: string }, ocId: string, nfIds: string[]) {
+  const { data, error } = await db.rpc("tms_oc_link_nfs", { p_actor: actor.id, p_actor_nome: actor.nome, p_oc_id: ocId, p_nf_ids: nfIds });
+  if (error) return { ok: false as const, erros: [error.message] };
+  const r = data as { ocVersion: number; vinculadas: number };
+  if (!r.vinculadas) return { ok: false as const, erros: ["Nenhuma NF nova para vincular."] };
+  const e = await emitOc(db, actor, ocId, r.ocVersion, false);
+  if (!e.ok) return { ok: false as const, erros: [`NF vinculada, mas a nova versão do PDF não foi gerada: ${e.erros.join(" ")} Use "Gerar nova versão".`] };
+  return { ok: true as const, vinculadas: r.vinculadas, docVersion: e.docVersion };
+}
+
 const fmtExtenso = (iso?: string) => (iso ? new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "a definir");
 /** NFs que cabem a um destinatário: as dos locais de coleta ligados ao e-mail (snapshots antigos: todas). */
 export function nfsDoDestinatario(s: OcSnapshot, papeis: string[]) {
@@ -55,8 +66,10 @@ export function ocEmailHtml(s: OcSnapshot & { versao?: number }, nfs = s.nfs) {
    // Estes dados pertencem à mesma OC e são iguais para todas as NFs deste armazém.
    // Mesclar só as linhas de notas; o rodapé permanece fora do rowspan.
    const compartilhados = [placa, esc(s.motorista.nome), esc(s.motorista.cpf), esc(s.veiculo.tipo), esc(fmtExtenso(s.coleta.dataHora)), esc(s.instrucoes)]
-     .map((valor) => `<td rowspan="${nfs.length}" style="${td};vertical-align:middle">${valor}</td>`).join("");
-   const linhas = nfs.map((n, index) => `<tr><td style="${td}">${esc(n.numero)}</td>${index === 0 ? compartilhados : ""}</tr>`).join("");
+     .map((valor) => `<td rowspan="${Math.max(nfs.length, 1)}" style="${td};vertical-align:middle">${valor}</td>`).join("");
+   const linhas = nfs.length
+     ? nfs.map((n, index) => `<tr><td style="${td}">${esc(n.numero)}</td>${index === 0 ? compartilhados : ""}</tr>`).join("")
+     : `<tr><td style="${td}">A informar após a coleta</td>${compartilhados}</tr>`;
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;color:#111">
 <p>Olá equipe, uma nova solicitação de carregamento foi feita, confira abaixo:</p>
 <h2 style="margin:16px 0 8px">Informações Gerais</h2>
@@ -94,7 +107,7 @@ export async function processOcOutbox(db: Admin, ocId: string | null, send: Send
       const grupos = locaisColeta.length ? locaisColeta.map((p) => [p]) : [row.papeis ?? []];
       for (const papeis of grupos) {
         const nfs = nfsDoDestinatario(s, papeis);
-        if (!nfs.length) continue;
+        if (!nfs.length && s.nfs.length) continue;
         const localId = papeis[0]?.startsWith("coleta:") ? papeis[0].slice(7) : "";
         const nomeLocal = (localId && (s.nfs.find((n) => n.coletaLocalId === localId) as { coletaLocalNome?: string } | undefined)?.coletaLocalNome) || "";
         await send(row.email, `Solicitação de carregamento · ${s.numero}${nomeLocal ? ` · ${nomeLocal}` : ""} · ${nfs.length} NF(s) · ${s.veiculo.placa}${s.veiculo.placaCarreta ? ` / ${s.veiculo.placaCarreta}` : ""}`, ocEmailHtml(s, nfs));
