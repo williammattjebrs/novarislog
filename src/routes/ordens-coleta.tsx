@@ -43,27 +43,43 @@ function Page() {
   const ocs = { ...ocs0, list: filtrarOcs(empresaF, ocs0.list) };
   const [sel, setSel] = useState<string | null>(registro ?? null);
   useEffect(() => { if (registro) setSel(registro); }, [registro]);
-  const [filtro, setFiltro] = useState<"ativas" | "rascunho" | "emitidas" | "legado" | "todas">("ativas");
+  const [filtro, setFiltro] = useState<"ativas" | "rascunho" | "emitidas" | "semnf" | "legado" | "todas">("ativas");
   const [busca, setBusca] = useState("");
+  const { user } = useAuth(); const locais = useLocais();
+  const [criando, setCriando] = useState(false);
+  async function novaSemNf() {
+    setCriando(true);
+    try {
+      const id = `OC-${crypto.randomUUID()}`;
+      const oc = { ...novaOcRascunho([], { id, numero: numeroOc(), autor: user?.nome ?? "usuário", clienteColetaNome: "", clienteDescargaNome: "", locais: locais.list }), aguardandoNf: true };
+      oc.historico = [{ quando: oc.criadoEm, autor: user?.nome ?? "usuário", tipo: "sistema", texto: "Rascunho criado sem NF (nota será vinculada após a coleta)" }];
+      await commitLists({ ordensColeta: [oc, ...(getList<OrdemColeta>("ordensColeta") ?? [])] }, `Rascunho ${oc.numero} criado sem NF`);
+      setFiltro("ativas"); setSel(id);
+    } catch (e) { alert(e instanceof Error ? e.message : "Falha ao criar a OC."); }
+    finally { setCriando(false); }
+  }
   const q = busca.trim().toLowerCase();
   const lista = ocs.list.filter((o) => {
-    const f = filtro === "todas" || (filtro === "ativas" && o.status === "rascunho") || (filtro === "rascunho" && isV2(o) && o.status === "rascunho") || (filtro === "emitidas" && isV2(o) && OC_EMITIDAS.includes(o.status)) || (filtro === "legado" && !isV2(o));
+    const f = filtro === "todas" || (filtro === "ativas" && o.status === "rascunho") || (filtro === "rascunho" && isV2(o) && o.status === "rascunho") || (filtro === "emitidas" && isV2(o) && OC_EMITIDAS.includes(o.status)) || (filtro === "semnf" && isV2(o) && !!o.aguardandoNf && !o.orderIds.length && o.status !== "cancelada") || (filtro === "legado" && !isV2(o));
     return f && (!q || [o.numero, o.clienteNome, o.clienteColetaNome, o.clienteDescargaNome, o.localColeta, o.localEntrega].join(" ").toLowerCase().includes(q));
   });
   const legados = ocs.list.filter((o) => !isV2(o)).length;
+  const semNf = ocs.list.filter((o) => isV2(o) && o.aguardandoNf && !o.orderIds.length && OC_EMITIDAS.includes(o.status)).length;
   return (
     <div className="p-6 space-y-4">
       <div>
         <h1 className="text-2xl font-display">Ordens de coleta</h1>
-        <p className="text-sm text-muted-foreground">Cada XML importado já vira um rascunho aqui (notas do mesmo remetente e destinatário entram no mesmo rascunho). Escolha a empresa, motorista, veículo e custo e emita: a OC segue para Acompanhamento de Coleta e o e-mail vai aos armazéns.</p>
+        <p className="text-sm text-muted-foreground">Cada XML importado já vira um rascunho aqui (notas do mesmo remetente e destinatário entram no mesmo rascunho). Escolha a empresa, motorista, veículo e custo e emita: a OC segue para Acompanhamento de Coleta e o e-mail vai aos armazéns. Quando a nota só sair depois da coleta, use "Nova OC sem NF" e vincule a nota depois.</p>
       </div>
       {legados > 0 && <ConversaoLegado />}
+      {semNf > 0 && <button className="text-sm text-warning underline" onClick={() => setFiltro("semnf")}>{semNf} OC(s) emitida(s) aguardando NF — vincular</button>}
       <div className="flex flex-wrap gap-2 items-center text-sm">
         <select aria-label="Filtro" className="bg-input/40 border border-border rounded px-2 py-1" value={filtro} onChange={(e) => setFiltro(e.target.value as typeof filtro)}>
-          <option value="ativas">Em preparação (rascunhos)</option><option value="rascunho">Rascunhos</option><option value="emitidas">Emitidas</option><option value="legado">Legadas (a converter)</option><option value="todas">Todas</option>
+          <option value="ativas">Em preparação (rascunhos)</option><option value="rascunho">Rascunhos</option><option value="emitidas">Emitidas</option><option value="semnf">Aguardando NF</option><option value="legado">Legadas (a converter)</option><option value="todas">Todas</option>
         </select>
         <input className="input max-w-xs" placeholder="Buscar OC, cliente, local" value={busca} onChange={(e) => setBusca(e.target.value)} />
         <span className="text-xs text-muted-foreground">{lista.length} OC</span>
+        <Button size="sm" variant="outline" className="ml-auto" disabled={criando} onClick={novaSemNf}>+ Nova OC sem NF</Button>
       </div>
       <div className="panel overflow-auto">
         <table className="w-full text-sm">
@@ -76,7 +92,7 @@ function Page() {
                   <td className="p-2 align-top text-xs">{oc.clienteColetaNome ?? oc.clienteNome} → {oc.clienteDescargaNome ?? "—"}</td>
                   <td className="p-2 align-top text-xs">{oc.localColeta || "—"} ({oc.cidadeColeta}/{oc.ufColeta}) → {oc.localEntrega || "—"} ({oc.cidadeEntrega}/{oc.ufEntrega})</td>
                   <td className="p-2 align-top text-xs whitespace-nowrap">{fmtDataHora(oc.dataHoraColeta)}</td>
-                  <td className="p-2 align-top text-xs whitespace-nowrap">{(() => { const nums = oc.orderIds.map((id) => orders.list.find((n) => n.id === id)?.numeroNFe).filter(Boolean) as string[]; return (<>{nums.length ? <div className="num">{nums.join(", ")}</div> : "—"}<div className="text-[10px] text-muted-foreground">{oc.orderIds.length} NF</div></>); })()}</td>
+                  <td className="p-2 align-top text-xs whitespace-nowrap">{(() => { const nums = oc.orderIds.map((id) => orders.list.find((n) => n.id === id)?.numeroNFe).filter(Boolean) as string[]; return (<>{nums.length ? <div className="num">{nums.join(", ")}</div> : oc.aguardandoNf ? <div className="text-warning">Aguardando NF</div> : "—"}<div className="text-[10px] text-muted-foreground">{oc.orderIds.length} NF</div></>); })()}</td>
                   <td className="p-2 align-top text-xs whitespace-nowrap">{oc.docVersion ? `v${oc.docVersion}${oc.conteudoPendenteRevisao ? " · revisão pendente" : ""}` : oc.documentoEstado === "legado_sem_snapshot" ? "legado sem PDF" : "—"}</td>
                   <td className="p-2 align-top text-xs whitespace-nowrap">{label(oc)}</td>
                 </tr>
@@ -97,7 +113,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
   const { user } = useAuth(); const autor = user?.nome ?? "usuário";
   const oc = ocs.list.find((o) => o.id === ocId)!;
   const emitir = useServerFn(emitirOC); const pdfLink = useServerFn(linkPdfOC); const requeue = useServerFn(reenfileirarEnvios); const enviarAgora = useServerFn(enviarAgoraOC);
-  const init = () => ({ motoristaId: oc.motoristaId ?? "", veiculoId: oc.veiculoId ?? "", clienteColetaId: oc.clienteColetaId ?? "", clienteColetaNome: oc.clienteColetaNome ?? oc.clienteNome, clienteDescargaNome: oc.clienteDescargaNome ?? "", localDescargaId: oc.localDescargaId ?? "", localEntrega: oc.localEntrega ?? "", contratanteNome: oc.contratanteNome ?? "", dataHoraColeta: toLocal(oc.dataHoraColeta), dataHoraEntrega: toLocal(oc.dataHoraEntrega), instrucoes: oc.instrucoes ?? oc.observacao ?? "", orderIds: oc.orderIds, coletaPorNf: oc.coletaPorNf ?? {} as Record<string, string>, empresaId: oc.empresaId ?? (empresas.list.filter((e) => e.ativa).length === 1 ? empresas.list.find((e) => e.ativa)!.id : ""), contratacao: (oc.contratacao ?? "") as "" | "terceiro" | "frota", custoMotorista: oc.custoMotorista ? String(oc.custoMotorista) : "", custoObs: oc.custoObs ?? "" });
+  const init = () => ({ aguardandoNf: !!oc.aguardandoNf, localColetaId: oc.localColetaId ?? "", motoristaId: oc.motoristaId ?? "", veiculoId: oc.veiculoId ?? "", clienteColetaId: oc.clienteColetaId ?? "", clienteColetaNome: oc.clienteColetaNome ?? oc.clienteNome, clienteDescargaNome: oc.clienteDescargaNome ?? "", localDescargaId: oc.localDescargaId ?? "", localEntrega: oc.localEntrega ?? "", contratanteNome: oc.contratanteNome ?? "", dataHoraColeta: toLocal(oc.dataHoraColeta), dataHoraEntrega: toLocal(oc.dataHoraEntrega), instrucoes: oc.instrucoes ?? oc.observacao ?? "", orderIds: oc.orderIds, coletaPorNf: oc.coletaPorNf ?? {} as Record<string, string>, empresaId: oc.empresaId ?? (empresas.list.filter((e) => e.ativa).length === 1 ? empresas.list.find((e) => e.ativa)!.id : ""), contratacao: (oc.contratacao ?? "") as "" | "terceiro" | "frota", custoMotorista: oc.custoMotorista ? String(oc.custoMotorista) : "", custoObs: oc.custoObs ?? "" });
   const [f, setF] = useState(init);
   const [msg, setMsg] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
   const [zapLink, setZapLink] = useState<string | null>(null);
@@ -131,19 +147,30 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
     setDocs((d.data ?? []) as never); setEnvios((e.data ?? []) as never);
   }
   useEffect(() => { void loadDocs(); }, [ocId, oc.docVersion]);
-  const draft: OrdemColeta = { ...oc, ...f, clienteColetaId: f.clienteColetaId || undefined, motoristaId: f.motoristaId || undefined, veiculoId: f.veiculoId || undefined, localColetaId: undefined, localDescargaId: f.localDescargaId || undefined, localEntrega: f.localDescargaId ? "" : (f.localEntrega ?? "").trim(), dataHoraColeta: f.dataHoraColeta ? new Date(f.dataHoraColeta).toISOString() : "", dataHoraEntrega: f.dataHoraEntrega ? new Date(f.dataHoraEntrega).toISOString() : "", empresaId: f.empresaId || undefined, contratacao: f.contratacao || undefined, custoMotorista: Number(String(f.custoMotorista).replace(/\./g, "").replace(",", ".")) || 0 };
+  const draft: OrdemColeta = { ...oc, ...f, aguardandoNf: !f.orderIds.length && f.aguardandoNf, clienteColetaId: f.clienteColetaId || undefined, motoristaId: f.motoristaId || undefined, veiculoId: f.veiculoId || undefined, localColetaId: f.localColetaId || undefined, localDescargaId: f.localDescargaId || undefined, localEntrega: f.localDescargaId ? "" : (f.localEntrega ?? "").trim(), dataHoraColeta: f.dataHoraColeta ? new Date(f.dataHoraColeta).toISOString() : "", dataHoraEntrega: f.dataHoraEntrega ? new Date(f.dataHoraEntrega).toISOString() : "", empresaId: f.empresaId || undefined, contratacao: f.contratacao || undefined, custoMotorista: Number(String(f.custoMotorista).replace(/\./g, "").replace(",", ".")) || 0 };
   // Comparação estável: o banco reordena as chaves de coletaPorNf, o que deixava a OC sempre "com alterações" e bloqueava a emissão.
   const estavel = (x: ReturnType<typeof init>) => JSON.stringify({ ...x, coletaPorNf: Object.fromEntries(Object.entries(x.coletaPorNf).filter(([, v]) => v).sort(([a], [b]) => a.localeCompare(b))) });
   const dirty = estavel(f) !== estavel(init());
   const nfs = f.orderIds.map((id) => orders.list.find((n) => n.id === id)).filter(Boolean) as Order[];
   const livres = orders.list.filter((n) => !f.orderIds.includes(n.id) && !ocAtivaDaNf(ocs.list, n.id));
-  const lc = undefined as (typeof locais.list)[number] | undefined; const ld = locais.list.find((l) => l.id === f.localDescargaId); const m = mot.list.find((x) => x.id === f.motoristaId);
-  const lcs = [...new Set(f.orderIds.map((id) => localColetaDaNf(draft, id)))].map((id) => locais.list.find((l) => l.id === id)).filter(Boolean) as typeof locais.list;
+  const lc = locais.list.find((l) => l.id === f.localColetaId); const ld = locais.list.find((l) => l.id === f.localDescargaId); const m = mot.list.find((x) => x.id === f.motoristaId);
+  const lcs = (f.orderIds.length ? [...new Set(f.orderIds.map((id) => localColetaDaNf(draft, id)))] : [f.localColetaId]).map((id) => locais.list.find((l) => l.id === id)).filter(Boolean) as typeof locais.list;
   const dest = destinatariosOc(lcs);
   const val = validarEmissao(draft, { nfs: orders.list, locais: locais.list, motoristas: mot.list, veiculos: vei.list, empresas: empresas.list });
+  const vincularFn = useServerFn(vincularNfOC);
+  async function vincular(nfIds: string[]) {
+    if (!confirm(`Vincular ${nfIds.length} NF à ${oc.numero}?\n\nSerá gerada uma nova versão do PDF, sem reenviar e-mail.`)) return;
+    setBusy(true); setMsg(null);
+    try {
+      const r = await vincularFn({ data: { ocId: oc.id, nfIds } });
+      await refreshShared(); await loadDocs();
+      setMsg(r.ok ? { tipo: "ok", texto: `${r.vinculadas} NF vinculada(s). Documento v${r.docVersion} gerado, sem envio de e-mail.` } : { tipo: "erro", texto: r.erros.join(" ") });
+    } catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao vincular." }); }
+    finally { setBusy(false); }
+  }
 
   async function salvar() {
-    if (!f.orderIds.length) return setMsg({ tipo: "erro", texto: "A OC precisa de ao menos uma NF." });
+    if (!f.orderIds.length && !f.aguardandoNf) return setMsg({ tipo: "erro", texto: "A OC precisa de ao menos uma NF, ou marque \"NF será informada após a coleta\"." });
     setBusy(true); setMsg(null);
     try {
       await salvarOc(oc, { ...draft, localColeta: lcs.length ? lcs.map((l) => l.nome).join(" + ") : oc.localColeta, cidadeColeta: lcs[0]?.cidade ?? lc?.cidade ?? oc.cidadeColeta, ufColeta: lcs[0]?.uf ?? lc?.uf ?? oc.ufColeta, localEntrega: ld?.nome ?? (draft.localEntrega || oc.localEntrega), cidadeEntrega: ld?.cidade ?? oc.cidadeEntrega, ufEntrega: ld?.uf ?? oc.ufEntrega, clienteNome: f.clienteColetaNome, conteudoPendenteRevisao: emitida ? true : oc.conteudoPendenteRevisao },
@@ -306,6 +333,9 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
         <textarea aria-label="Instruções" disabled={!editavel} className={inp} rows={2} placeholder="Instruções para coleta/descarga" value={f.instrucoes} onChange={(e) => setF({ ...f, instrucoes: e.target.value })} />
         <div>
           <div className="text-xs font-semibold mb-1">NFs ({nfs.length}) · {nfs.reduce((s, n) => s + (n.peso || 0), 0).toLocaleString("pt-BR")} kg · {nfs.reduce((s, n) => s + (n.volumes || 0), 0)} vol</div>
+          {oc.status === "rascunho" && editavel && <label className="text-xs flex items-center gap-2 mb-1"><input type="checkbox" checked={f.aguardandoNf} onChange={(e) => setF({ ...f, aguardandoNf: e.target.checked })} /> NF será informada após a coleta (emitir a OC sem nota)</label>}
+          {!nfs.length && (f.aguardandoNf || emitida) && <fieldset disabled={!editavel || emitida} className="max-w-md mb-1"><LocalSelect label="Local de coleta" value={f.localColetaId} onChange={(id) => setF({ ...f, localColetaId: id })} /></fieldset>}
+          {!nfs.length && oc.aguardandoNf && emitida && <div className="text-xs text-warning">Aguardando NF: vincule a nota abaixo assim que ela for importada.</div>}
           <div className="space-y-1 text-xs">
             {nfs.map((n) => <div key={n.id} className="flex gap-2 items-center flex-wrap border-t border-border pt-1"><span className="num">NF {n.numeroNFe}</span><span className="text-muted-foreground">{n.remetente} → {n.destinatario}</span><span className="num text-muted-foreground">{(n.peso || 0).toLocaleString("pt-BR")} kg</span>
               <fieldset disabled={!editavel} className="min-w-[220px]"><LocalSelect label={`Local de coleta da NF ${n.numeroNFe}`} value={f.coletaPorNf[n.id] ?? ""} clienteId={n.clienteId} onChange={(id) => setF({ ...f, coletaPorNf: { ...f.coletaPorNf, [n.id]: id } })} /></fieldset>
@@ -314,6 +344,7 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
           {editavel && oc.status === "rascunho" && livres.length > 0 && <select aria-label="Adicionar NF" className={inp + " mt-2"} value="" onChange={(e) => e.target.value && setF({ ...f, orderIds: [...f.orderIds, e.target.value] })}>
             <option value="">+ Adicionar NF sem OC…</option>{livres.slice(0, 300).map((n) => <option key={n.id} value={n.id}>NF {n.numeroNFe} · {n.remetente} → {n.destinatario}</option>)}
           </select>}
+          {emitida && oc.status !== "entregue" || emitida ? <VincularNf oc={oc} busy={busy} onVincular={vincular} /> : null}
         </div>
         <div className="rounded border border-border p-3 text-xs space-y-1">
           <div className="font-semibold">E-mail aos armazéns de coleta (sem anexo, cada um só com as notas dele) {oc.docVersion ? "· somente se solicitar envio da revisão" : "· enviado na primeira emissão"}</div>
