@@ -190,6 +190,13 @@
       "when": 1791574261545,
       "tag": "0026_cte_sets_oc_aguardando_viagem",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1792003951856,
+      "tag": "0027_oc_without_nf_link_later",
+      "breakpoints": true
     }
   ]
 }

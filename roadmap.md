@@ -72,3 +72,4 @@
 
 ## Acompanhamento de Coleta (13/10/2026)
 - [x] Coluna Notas moveida para logo depois de OC; alinhamentos revisados (células com mesmo respiro, colunas de texto truncadas com aviso ao passar o mouse, controles com largura fixa)
+- [x] OC sem NF: emitir antes da nota e vincular a NF depois (sugestão + manual, nova versão sem e-mail)

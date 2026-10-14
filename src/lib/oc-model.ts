@@ -68,6 +68,8 @@ export type OcSnapshot = {
   coletas?: SnapLocal[];
   totais: { peso: number; volumes: number }; instrucoes: string;
   destinatarios: Destinatario[]; pendenciasEnvio: string[];
+  /** Emitida sem NF: a nota será vinculada depois da coleta. */
+  aguardandoNf?: boolean;
 };
 export type SnapLocal = { id: string; nome: string; endereco: string; cidade: string; uf: string; contatos: string; emails: string[] };
 const snapLocal = (l: LocalOperacional): SnapLocal => ({ id: l.id, nome: l.nome, endereco: enderecoCompleto(l), cidade: l.cidade, uf: l.uf, contatos: l.contatos ?? "", emails: l.emails ?? [] });
@@ -80,12 +82,12 @@ export function validarEmissao(oc: OrdemColeta, ctx: { nfs: Order[]; locais: Loc
   if (!(Number(oc.custoMotorista) > 0)) erros.push(oc.contratacao === "frota" ? "Informe o custo da frota própria." : "Informe o valor fechado com o motorista.");
   if (!isV2(oc)) erros.push("OC legada: converta antes de emitir.");
   if (["cancelada", "entregue"].includes(oc.status)) erros.push("OC cancelada ou entregue não pode ser emitida.");
-  if (!oc.orderIds.length) erros.push("Selecione ao menos uma NF.");
+  if (!oc.orderIds.length && !oc.aguardandoNf) erros.push("Selecione ao menos uma NF (ou marque \"NF será informada após a coleta\").");
   const faltando = oc.orderIds.filter((id) => !ctx.nfs.some((n) => n.id === id));
   if (faltando.length) erros.push(`NF não encontrada: ${faltando.join(", ")}`);
   const m = ctx.motoristas.find((x) => x.id === oc.motoristaId);
   const v = ctx.veiculos.find((x) => x.id === oc.veiculoId);
-  const idsColeta = [...new Set(oc.orderIds.map((id) => localColetaDaNf(oc, id)))];
+  const idsColeta = oc.orderIds.length ? [...new Set(oc.orderIds.map((id) => localColetaDaNf(oc, id)))] : [oc.localColetaId ?? ""];
   const lcs = idsColeta.map((id) => ctx.locais.find((x) => x.id === id)).filter(Boolean) as LocalOperacional[];
   const lc = lcs[0];
   const ld = ctx.locais.find((x) => x.id === oc.localDescargaId);
@@ -95,6 +97,7 @@ export function validarEmissao(oc: OrdemColeta, ctx: { nfs: Order[]; locais: Loc
   if (!oc.clienteDescargaNome?.trim()) erros.push("Informe o cliente da descarga.");
   const semLocal = oc.orderIds.filter((id) => !ctx.locais.some((x) => x.id === localColetaDaNf(oc, id)));
   if (semLocal.length) erros.push(`Informe o local de coleta de ${semLocal.length} NF(s).`);
+  if (!oc.orderIds.length && !lc) erros.push("Informe o local de coleta.");
   lcs.filter((l) => !l.endereco?.trim() || !l.cidade).forEach((l) => erros.push(`Local de coleta ${l.nome} sem endereço completo.`));
   // Local de entrega é opcional; se informado, precisa de endereço completo.
   if (ld && (!ld.endereco?.trim() || !ld.cidade)) erros.push(`Local de descarga ${ld.nome} sem endereço completo.`);
@@ -118,6 +121,7 @@ export function buildSnapshot(oc: OrdemColeta, ctx: { nfs: Order[]; locais: Loca
     motorista: { nome: m.nome, cpf: m.cpf, telefone: m.telefone }, veiculo: { placa: v.placa, placaCarreta: v.placaCarreta, tipo: v.tipo },
     nfs, totais: { peso: nfs.reduce((s, n) => s + n.peso, 0), volumes: nfs.reduce((s, n) => s + n.volumes, 0) },
     instrucoes: oc.instrucoes ?? oc.observacao ?? "", destinatarios, pendenciasEnvio: pendencias,
+    ...(!nfs.length ? { aguardandoNf: true } : {}),
   };
   return { erros: [], snapshot };
 }
