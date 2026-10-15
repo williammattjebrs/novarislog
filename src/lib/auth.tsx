@@ -135,6 +135,7 @@ export const ROLE_LABEL: Record<Role, string> = {
 
 export const MODULE_OPTIONS: { path: string; label: string }[] = [
   { path: "/clientes", label: "Clientes & CRM" },
+  { path: "/simulador", label: "Simulador de frete" },
   { path: "/rotas", label: "Rotas · fila de NF-e e XML" },
   { path: "/ordens-coleta", label: "Ordens de coleta" },
   { path: "/locais-operacionais", label: "Locais operacionais" },

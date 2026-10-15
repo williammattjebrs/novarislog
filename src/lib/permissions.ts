@@ -1,10 +1,10 @@
-export const MODULE_PATHS = ["/clientes", "/importacao", "/rotas", "/ordens-coleta", "/locais-operacionais", "/motoristas", "/monitoramento", "/financeiro", "/configuracoes", "/usuarios", "/empresas", "/relatorios"] as const;
+export const MODULE_PATHS = ["/clientes", "/simulador", "/importacao", "/rotas", "/ordens-coleta", "/locais-operacionais", "/motoristas", "/monitoramento", "/financeiro", "/configuracoes", "/usuarios", "/empresas", "/relatorios"] as const;
 export type AccessRole = "admin" | "comercial" | "operacao" | "financeiro";
 export const ROLE_MODULES: Record<AccessRole, string[]> = {
   admin: ["/", ...MODULE_PATHS, "/tv"],
-  comercial: ["/", "/clientes", "/tv"],
+  comercial: ["/", "/clientes", "/simulador", "/tv"],
   operacao: ["/", "/importacao", "/rotas", "/ordens-coleta", "/locais-operacionais", "/motoristas", "/monitoramento", "/tv"],
-  financeiro: ["/", "/financeiro", "/relatorios", "/tv"],
+  financeiro: ["/", "/financeiro", "/relatorios", "/simulador", "/tv"],
 };
 export const COLLECTION_MODULE: Record<string, string> = {
   clients: "/clientes", clientGroups: "/clientes", freightTables: "/clientes", routeRates: "/clientes", quotations: "/clientes", crmDeals: "/clientes",
