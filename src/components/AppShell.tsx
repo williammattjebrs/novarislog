@@ -2,13 +2,13 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Users, PackageSearch, Radar, Wallet, Settings, UserCog,
-   Radio, Bell, Search, LogOut, BookOpen, Route as RouteIcon, Truck, Menu, X, MapPin, Upload, Building2, BarChart3, FolderOpen, ChevronDown,
+   Radio, Bell, Search, LogOut, BookOpen, Route as RouteIcon, Truck, Menu, X, MapPin, Upload, Building2, BarChart3, FolderOpen, ChevronDown, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import logo from "@/assets/novaris-logo.png.asset.json";
 import simbolo from "@/assets/novaris-simbolo.png.asset.json";
 import { useAuth, ROLE_LABEL, canAccess, type Role } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useClients, useOrders, useOrdensColeta, useEmpresas } from "@/lib/mock-store";
 import { useEmpresaFiltro } from "@/lib/empresa-filter";
 import { ocAtivaDaNf, isEmitida } from "@/lib/oc-model";
@@ -42,6 +42,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    if (localStorage.getItem("novaris-sidebar-collapsed") === "1") setCollapsed(true);
+  }, []);
+  const rail = collapsed;
+  const toggleSidebar = () => {
+    setCollapsed((c) => {
+      localStorage.setItem("novaris-sidebar-collapsed", c ? "0" : "1");
+      return !c;
+    });
+  };
   const [search, setSearch] = useState("");
   const [noticeOpen, setNoticeOpen] = useState(false);
   const basicActive = BASIC_NAV.some((item) => pathname === item.to || pathname.startsWith(item.to + "/"));
@@ -65,14 +76,15 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen text-foreground flex">
-      <aside className={`${mobileOpen ? "fixed inset-y-0 left-0 z-50 flex" : "hidden"} md:static md:flex w-64 shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground`}>
-        <div className="h-16 px-5 flex items-center gap-3 border-b border-sidebar-border">
-          <img src={logo.url} alt="Novaris — Operador Logístico Integrado" className="h-10 w-auto" />
+      <aside className={`${mobileOpen ? "fixed inset-y-0 left-0 z-50 flex" : "hidden"} md:static md:flex w-64 shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground ${rail ? "md:w-14" : ""}`}>
+        <div className={`h-16 flex items-center gap-3 border-b border-sidebar-border ${rail ? "md:justify-center md:px-0" : "px-5"}`}>
+          <img src={logo.url} alt="Novaris — Operador Logístico Integrado" className={`${rail ? "md:hidden" : ""} h-10 w-auto`} />
+          <img src={simbolo.url} alt="Novaris" className={`${rail ? "md:block" : "hidden"} h-8 w-8 rounded`} />
           <Button className="md:hidden" size="icon" variant="ghost" aria-label="Fechar menu" onClick={() => setMobileOpen(false)}><X className="h-4 w-4" /></Button>
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          <div className="px-2 pb-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Núcleo</div>
+          <div className={`px-2 pb-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground ${rail ? "md:hidden" : ""}`}>Núcleo</div>
            {items.filter((item) => !["/tv", "/configuracoes", "/manual"].includes(item.to)).map((item) => {
             const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
             const Icon = item.icon;
@@ -80,15 +92,17 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Link
                 key={item.to}
                 to={item.to}
+                title={item.label}
                 className={[
                   "group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                  rail ? "md:justify-center md:px-0" : "",
                   active
                     ? "bg-sidebar-accent text-sidebar-primary border border-primary/30"
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent",
                 ].join(" ")}
               >
-                <Icon className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground"}`} />
-                <span className="flex-1 truncate">{item.label}</span>
+                <Icon className={`h-4 w-4 shrink-0 ${active ? "text-primary" : "text-muted-foreground"}`} />
+                <span className={`${rail ? "md:hidden" : ""} flex-1 truncate`}>{item.label}</span>
               </Link>
             );
           })}
@@ -96,14 +110,23 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div>
               <Button
                 variant="ghost"
-                className={`w-full justify-start gap-3 px-3 text-sm font-normal ${basicActive ? "bg-sidebar-accent text-sidebar-primary" : "text-sidebar-foreground/80"}`}
+                title={rail ? "Cadastros Básicos — clique para abrir o menu" : "Cadastros Básicos"}
+                className={`w-full justify-start gap-3 px-3 text-sm font-normal ${rail ? "md:justify-center md:px-0" : ""} ${basicActive ? "bg-sidebar-accent text-sidebar-primary" : "text-sidebar-foreground/80"}`}
                 aria-expanded={basicOpen}
                 aria-controls="cadastros-basicos-menu"
-                onClick={() => setBasicOpen((open) => !open)}
+                onClick={() => {
+                  if (rail) {
+                    setCollapsed(false);
+                    localStorage.setItem("novaris-sidebar-collapsed", "0");
+                    setBasicOpen(true);
+                  } else {
+                    setBasicOpen((open) => !open);
+                  }
+                }}
               >
-                <FolderOpen className={`h-4 w-4 ${basicActive ? "text-primary" : "text-muted-foreground"}`} />
-                <span className="flex-1 text-left">Cadastros Básicos</span>
-                <ChevronDown className={`h-4 w-4 transition-transform ${basicOpen ? "rotate-180" : ""}`} />
+                <FolderOpen className={`h-4 w-4 shrink-0 ${basicActive ? "text-primary" : "text-muted-foreground"}`} />
+                <span className={`${rail ? "md:hidden" : ""} flex-1 text-left`}>Cadastros Básicos</span>
+                <ChevronDown className={`${rail ? "md:hidden" : ""} h-4 w-4 transition-transform ${basicOpen ? "rotate-180" : ""}`} />
               </Button>
               {basicOpen && (
                 <div id="cadastros-basicos-menu" className="ml-5 mt-1 space-y-1 border-l border-sidebar-border pl-2">
@@ -119,17 +142,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           {items.filter((item) => ["/tv", "/configuracoes", "/manual"].includes(item.to)).map((item) => {
             const active = pathname.startsWith(item.to);
             const Icon = item.icon;
-            return <Link key={item.to} to={item.to} className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${active ? "bg-sidebar-accent text-sidebar-primary border border-primary/30" : "text-sidebar-foreground/80 hover:bg-sidebar-accent"}`}><Icon className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground"}`} /><span className="flex-1 truncate">{item.label}</span></Link>;
+            return <Link key={item.to} to={item.to} title={item.label} className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${rail ? "md:justify-center md:px-0" : ""} ${active ? "bg-sidebar-accent text-sidebar-primary border border-primary/30" : "text-sidebar-foreground/80 hover:bg-sidebar-accent"}`}><Icon className={`h-4 w-4 shrink-0 ${active ? "text-primary" : "text-muted-foreground"}`} /><span className={`${rail ? "md:hidden" : ""} flex-1 truncate`}>{item.label}</span></Link>;
           })}
         </nav>
 
         {user && (
-          <div className="p-3 border-t border-sidebar-border">
-            <div className="flex items-center gap-3 rounded-md px-2 py-2">
-              <div className="h-8 w-8 rounded-full bg-accent/20 border border-accent/40 grid place-items-center text-xs font-semibold text-accent">
+          <div className={`p-3 border-t border-sidebar-border ${rail ? "md:px-1" : ""}`}>
+            <div className={`flex items-center gap-3 rounded-md px-2 py-2 ${rail ? "md:flex-col md:px-1" : ""}`}>
+              <div className="h-8 w-8 shrink-0 rounded-full bg-accent/20 border border-accent/40 grid place-items-center text-xs font-semibold text-accent" title={rail ? `${user.nome} — ${ROLE_LABEL[role]}` : undefined}>
                 {user.nome.slice(0, 2).toUpperCase()}
               </div>
-              <div className="flex-1 min-w-0">
+              <div className={`${rail ? "md:hidden" : ""} flex-1 min-w-0`}>
                 <div className="text-sm truncate">{user.nome}</div>
                 <div className="text-[11px] text-muted-foreground">{ROLE_LABEL[role]}</div>
               </div>
@@ -144,6 +167,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 flex items-center gap-3 border-b border-border bg-background/80 backdrop-blur px-4 md:px-6 sticky top-0 z-20">
           <Button variant="ghost" size="icon" className="md:hidden shrink-0" aria-label="Abrir menu" onClick={() => setMobileOpen(true)}><Menu className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" className="hidden md:inline-flex shrink-0" aria-label={rail ? "Expandir menu lateral" : "Recolher menu lateral"} title={rail ? "Expandir menu lateral" : "Recolher menu lateral"} onClick={toggleSidebar}>
+            {rail ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+          </Button>
           <img src={simbolo.url} alt="Novaris" className="md:hidden h-8 w-8 rounded" />
           <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
             <Radio className="h-3.5 w-3.5 text-success" />
