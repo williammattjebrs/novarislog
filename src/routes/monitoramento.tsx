@@ -45,7 +45,6 @@ const MON_COLS = [
   { id: "datas", label: "Coleta / previsão" },
   { id: "status", label: "Status" },
   { id: "obs", label: "Último apontamento / registro rápido" },
-  { id: "comprovantes", label: "Comprovantes" },
   { id: "remetente", label: "Remetente" },
   { id: "destino", label: "Destinatário / cidade" },
   { id: "contratante", label: "Contratante do frete" },
@@ -59,6 +58,7 @@ const MON_COLS = [
   { id: "previsao", label: "Previsão (NF)" },
   { id: "entregueEm", label: "Entregue em" },
   { id: "geradaPor", label: "Gerada por" },
+  { id: "comprovantes", label: "Comprovantes" },
 ];
 const MON_COLS_PADRAO = ["nfs", "motorista", "clientes", "locais", "datas", "status", "obs", "comprovantes"];
 const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
