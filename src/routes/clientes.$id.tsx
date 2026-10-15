@@ -252,6 +252,13 @@ function ClienteDetalhe() {
           onSave={(t) => { tables.add({ ...t, clienteId: client.id }); setShowTable(false); }}
         />
       )}
+      {showEdit && (
+        <EditClientModal
+          client={client}
+          onClose={() => setShowEdit(false)}
+          onSave={(patch) => { clients.update(client.id, patch); setShowEdit(false); }}
+        />
+      )}
     </AppShell>
   );
 }
