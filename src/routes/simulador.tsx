@@ -27,7 +27,7 @@ function Page() {
           <p className="text-sm text-muted-foreground">Monte o preço a partir dos custos da operação e salve o resultado na tabela padrão.</p>
         </div>
         <Button variant="outline" size="sm" className="ml-auto" asChild>
-          <Link to="/clientes" search={{ tab: "clientes" }}><ArrowLeft className="h-4 w-4" /> Voltar para clientes</Link>
+          <Link to="/clientes"><ArrowLeft className="h-4 w-4" /> Voltar para clientes</Link>
         </Button>
       </div>
       <FreightSimulator />
