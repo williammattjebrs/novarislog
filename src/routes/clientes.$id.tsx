@@ -9,7 +9,7 @@ import { ArrowLeft, Plus, FileUp, Trash2, Check, Pencil } from "lucide-react";
 import {
   useClients, useFreightTables, useQuotations, newId,
 } from "@/lib/mock-store";
-import { fmtBRL, type FreightRow, type FreightTable, type Modalidade } from "@/lib/mock-data";
+import { fmtBRL, type Client, type FreightRow, type FreightTable, type Modalidade } from "@/lib/mock-data";
 import { parseFreightExcel } from "@/lib/excel-parser";
 
 export const Route = createFileRoute("/clientes/$id")({
