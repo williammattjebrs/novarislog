@@ -2,13 +2,13 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Users, PackageSearch, Radar, Wallet, Settings, UserCog,
-   Radio, Bell, Search, LogOut, BookOpen, Route as RouteIcon, Truck, Menu, X, MapPin, Upload, Building2, BarChart3, FolderOpen, ChevronDown,
+   Radio, Bell, Search, LogOut, BookOpen, Route as RouteIcon, Truck, Menu, X, MapPin, Upload, Building2, BarChart3, FolderOpen, ChevronDown, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import logo from "@/assets/novaris-logo.png.asset.json";
 import simbolo from "@/assets/novaris-simbolo.png.asset.json";
 import { useAuth, ROLE_LABEL, canAccess, type Role } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useClients, useOrders, useOrdensColeta, useEmpresas } from "@/lib/mock-store";
 import { useEmpresaFiltro } from "@/lib/empresa-filter";
 import { ocAtivaDaNf, isEmitida } from "@/lib/oc-model";
@@ -42,6 +42,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    if (localStorage.getItem("novaris-sidebar-collapsed") === "1") setCollapsed(true);
+  }, []);
+  const rail = collapsed;
+  const toggleSidebar = () => {
+    setCollapsed((c) => {
+      localStorage.setItem("novaris-sidebar-collapsed", c ? "0" : "1");
+      return !c;
+    });
+  };
   const [search, setSearch] = useState("");
   const [noticeOpen, setNoticeOpen] = useState(false);
   const basicActive = BASIC_NAV.some((item) => pathname === item.to || pathname.startsWith(item.to + "/"));
