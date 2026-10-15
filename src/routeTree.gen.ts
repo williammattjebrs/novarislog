@@ -24,6 +24,7 @@ import { Route as MotoristasRouteImport } from './routes/motoristas'
 import { Route as OrdensColetaRouteImport } from './routes/ordens-coleta'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as RotasRouteImport } from './routes/rotas'
+import { Route as SimuladorRouteImport } from './routes/simulador'
 import { Route as TvRouteImport } from './routes/tv'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
@@ -106,6 +107,11 @@ const RotasRoute = RotasRouteImport.update({
   path: '/rotas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SimuladorRoute = SimuladorRouteImport.update({
+  id: '/simulador',
+  path: '/simulador',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TvRoute = TvRouteImport.update({
   id: '/tv',
   path: '/tv',
@@ -153,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/ordens-coleta': typeof OrdensColetaRoute
   '/relatorios': typeof RelatoriosRoute
   '/rotas': typeof RotasRoute
+  '/simulador': typeof SimuladorRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
   '/clientes/$id': typeof ClientesIdRoute
@@ -176,6 +183,7 @@ export interface FileRoutesByTo {
   '/ordens-coleta': typeof OrdensColetaRoute
   '/relatorios': typeof RelatoriosRoute
   '/rotas': typeof RotasRoute
+  '/simulador': typeof SimuladorRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
   '/clientes/$id': typeof ClientesIdRoute
@@ -200,6 +208,7 @@ export interface FileRoutesById {
   '/ordens-coleta': typeof OrdensColetaRoute
   '/relatorios': typeof RelatoriosRoute
   '/rotas': typeof RotasRoute
+  '/simulador': typeof SimuladorRoute
   '/tv': typeof TvRoute
   '/usuarios': typeof UsuariosRoute
   '/clientes/$id': typeof ClientesIdRoute
@@ -225,6 +234,7 @@ export interface FileRouteTypes {
     | '/ordens-coleta'
     | '/relatorios'
     | '/rotas'
+    | '/simulador'
     | '/tv'
     | '/usuarios'
     | '/clientes/$id'
@@ -248,6 +258,7 @@ export interface FileRouteTypes {
     | '/ordens-coleta'
     | '/relatorios'
     | '/rotas'
+    | '/simulador'
     | '/tv'
     | '/usuarios'
     | '/clientes/$id'
@@ -271,6 +282,7 @@ export interface FileRouteTypes {
     | '/ordens-coleta'
     | '/relatorios'
     | '/rotas'
+    | '/simulador'
     | '/tv'
     | '/usuarios'
     | '/clientes/$id'
@@ -295,6 +307,7 @@ export interface RootRouteChildren {
   OrdensColetaRoute: typeof OrdensColetaRoute
   RelatoriosRoute: typeof RelatoriosRoute
   RotasRoute: typeof RotasRoute
+  SimuladorRoute: typeof SimuladorRoute
   TvRoute: typeof TvRoute
   UsuariosRoute: typeof UsuariosRoute
   ApiPublicAutomationRoute: typeof ApiPublicAutomationRoute
@@ -409,6 +422,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RotasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/simulador': {
+      id: '/simulador'
+      path: '/simulador'
+      fullPath: '/simulador'
+      preLoaderRoute: typeof SimuladorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tv': {
       id: '/tv'
       path: '/tv'
@@ -482,6 +502,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrdensColetaRoute: OrdensColetaRoute,
   RelatoriosRoute: RelatoriosRoute,
   RotasRoute: RotasRoute,
+  SimuladorRoute: SimuladorRoute,
   TvRoute: TvRoute,
   UsuariosRoute: UsuariosRoute,
   ApiPublicAutomationRoute: ApiPublicAutomationRoute,

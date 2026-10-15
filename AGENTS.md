@@ -28,3 +28,4 @@
 - Store delivery proofs in a private bucket with append-only NF-linked metadata scoped to emitted OCs and permission-gated signed reads; quick monitoring notes reuse the confirmed atomic OC/NF update flow so documents remain private and saves stay consistent.
 - Inline monitoring status changes reuse aplicarStatusOc and its confirmed atomic OC/NF commit; drafts cannot bypass emission through this control.
 - OCs may be emitted without NF (aguardandoNf, header collection location); NFs arriving later link only via the service-only tms_oc_link_nfs (moves them out of drafts) followed by a new document version without email, so late invoices never duplicate warehouse messages.
+- Expose the freight simulator as its own route (/simulador) opened by a persistent header button in AppShell, so pricing is reachable from any screen; the button renders only when the role's module permissions already allow that route, so a shortcut never expands access.

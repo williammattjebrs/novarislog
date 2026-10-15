@@ -73,3 +73,8 @@
 ## Acompanhamento de Coleta (13/10/2026)
 - [x] Coluna Notas moveida para logo depois de OC; alinhamentos revisados (células com mesmo respiro, colunas de texto truncadas com aviso ao passar o mouse, controles com largura fixa)
 - [x] OC sem NF: emitir antes da nota e vincular a NF depois (sugestão + manual, nova versão sem e-mail)
+
+## Simulador de frete (15/10/2026)
+- [x] Botão laranja fixo no topo (todas as telas) que abre a página própria /simulador
+- [x] Simulador também continua na aba de Clientes & CRM; manual e permissões atualizados
+- [x] Conferido em torre, ordens de coleta, acompanhamento, monitoramento, financeiro, clientes, relatórios e importação
