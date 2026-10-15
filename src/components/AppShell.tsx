@@ -147,12 +147,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         {user && (
-          <div className="p-3 border-t border-sidebar-border">
-            <div className="flex items-center gap-3 rounded-md px-2 py-2">
-              <div className="h-8 w-8 rounded-full bg-accent/20 border border-accent/40 grid place-items-center text-xs font-semibold text-accent">
+          <div className={`p-3 border-t border-sidebar-border ${rail ? "md:px-1" : ""}`}>
+            <div className={`flex items-center gap-3 rounded-md px-2 py-2 ${rail ? "md:flex-col md:px-1" : ""}`}>
+              <div className="h-8 w-8 shrink-0 rounded-full bg-accent/20 border border-accent/40 grid place-items-center text-xs font-semibold text-accent" title={rail ? `${user.nome} — ${ROLE_LABEL[role]}` : undefined}>
                 {user.nome.slice(0, 2).toUpperCase()}
               </div>
-              <div className="flex-1 min-w-0">
+              <div className={`${rail ? "md:hidden" : ""} flex-1 min-w-0`}>
                 <div className="text-sm truncate">{user.nome}</div>
                 <div className="text-[11px] text-muted-foreground">{ROLE_LABEL[role]}</div>
               </div>
@@ -167,6 +167,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 flex items-center gap-3 border-b border-border bg-background/80 backdrop-blur px-4 md:px-6 sticky top-0 z-20">
           <Button variant="ghost" size="icon" className="md:hidden shrink-0" aria-label="Abrir menu" onClick={() => setMobileOpen(true)}><Menu className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" className="hidden md:inline-flex shrink-0" aria-label={rail ? "Expandir menu lateral" : "Recolher menu lateral"} title={rail ? "Expandir menu lateral" : "Recolher menu lateral"} onClick={toggleSidebar}>
+            {rail ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+          </Button>
           <img src={simbolo.url} alt="Novaris" className="md:hidden h-8 w-8 rounded" />
           <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
             <Radio className="h-3.5 w-3.5 text-success" />
