@@ -143,28 +143,39 @@ function ClienteDetalhe() {
 
         {tab === "tabelas" && (
           <>
-            <div className="flex flex-wrap items-center gap-2">
-              <button onClick={() => setShowTable(true)} className="text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20">
-                <Plus className="h-3 w-3" /> nova tabela
-              </button>
-              <select
-                className="input h-8 text-xs max-w-sm"
-                value=""
-                onChange={(e) => {
-                  const src = tables.list.find((t) => t.id === e.target.value);
-                  if (!src) return;
-                  const dono = clients.list.find((c) => c.id === src.clienteId)?.nome ?? "sem cliente";
-                  if (!confirm(`Vincular a tabela "${src.nome}" (de ${dono}) a ${client.nome}? Será criada uma cópia própria do cliente; a tabela original não é alterada.`)) return;
-                  tables.add({ ...src, id: newId("TAB"), clienteId: client.id, criadoEm: new Date().toISOString() });
-                }}
-              >
-                <option value="">Vincular tabela existente…</option>
-                {tables.list.filter((t) => t.clienteId !== client.id).map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nome} · {t.origemUf}→{t.destinoUf} · {clients.list.find((c) => c.id === t.clienteId)?.nome ?? "sem cliente"}
-                  </option>
-                ))}
-              </select>
+            <div className="panel p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
+                <div className="text-xs font-medium mb-1">Criar tabela nova deste cliente</div>
+                <p className="text-[11px] text-muted-foreground mb-2">Cadastra uma tabela exclusiva de {client.nome}, sem mexer na tabela padrão.</p>
+                <button onClick={() => setShowTable(true)} className="text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20">
+                  <Plus className="h-3 w-3" /> nova tabela do cliente
+                </button>
+              </div>
+              <div className="rounded-md border border-border p-3">
+                <div className="text-xs font-medium mb-1">Vincular tabela existente</div>
+                <p className="text-[11px] text-muted-foreground mb-2">Copia uma tabela já cadastrada (de outro cliente ou a padrão) para este cliente. A original não é alterada.</p>
+                <select
+                  className="input h-8 text-xs w-full"
+                  value=""
+                  onChange={(e) => {
+                    const src = tables.list.find((t) => t.id === e.target.value);
+                    if (!src) return;
+                    const dono = clients.list.find((c) => c.id === src.clienteId)?.nome ?? "sem cliente";
+                    if (!confirm(`Vincular a tabela "${src.nome}" (de ${dono}) a ${client.nome}? Será criada uma cópia própria do cliente; a tabela original não é alterada.`)) return;
+                    tables.add({ ...src, id: newId("TAB"), clienteId: client.id, criadoEm: new Date().toISOString() });
+                  }}
+                >
+                  <option value="">Escolher tabela para vincular…</option>
+                  {tables.list.filter((t) => t.clienteId !== client.id).map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nome} · {t.origemUf}→{t.destinoUf} · {clients.list.find((c) => c.id === t.clienteId)?.nome ?? "sem cliente"}
+                    </option>
+                  ))}
+                </select>
+                {tables.list.filter((t) => t.clienteId !== client.id).length === 0 && (
+                  <p className="text-[11px] text-muted-foreground mt-1">Nenhuma outra tabela cadastrada para vincular.</p>
+                )}
+              </div>
             </div>
             <div className="space-y-3">
               {clientTables.map((t) => (
