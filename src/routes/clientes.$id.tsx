@@ -89,12 +89,26 @@ function ClienteDetalhe() {
         {tab === "dados" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="panel p-5">
-              <div className="font-display text-lg mb-3">Contato</div>
-              <Line label="Responsável" v={client.contato} />
+              <div className="flex items-center justify-between mb-3">
+                <div className="font-display text-lg">Dados & Contato</div>
+                <button onClick={() => setShowEdit(true)} className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                  <Pencil className="h-3 w-3" /> editar dados
+                </button>
+              </div>
+              <Line label="Responsável" v={client.responsavel || client.contato} />
+              <Line label="Aniversário do responsável" v={client.aniversarioResponsavel ? client.aniversarioResponsavel.split("-").reverse().join("/") : ""} />
+              <Line label="Contato" v={client.contato} />
               <Line label="Telefone" v={client.telefone} />
+              <Line label="Telefone 2" v={client.telefone2 ?? ""} />
               <Line label="E-mail" v={client.email} />
+              <Line label="E-mail financeiro" v={client.emailFinanceiro ?? ""} />
               <Line label="Segmento" v={client.segmento} />
-              <TrackingGroupEditor client={client.nome} defaultEmail={client.email} />
+              <Line label="Endereço" v={[client.endereco, client.numero, client.complemento].filter(Boolean).join(", ")} />
+              <Line label="Bairro" v={client.bairro ?? ""} />
+              <Line label="Cidade/UF" v={[client.cidade, client.uf].filter(Boolean).join("/")} />
+              <Line label="CEP" v={client.cep ?? ""} />
+              {client.observacao && <Line label="Observação" v={client.observacao} />}
+              <div className="mt-3"><TrackingGroupEditor client={client.nome} defaultEmail={client.email} /></div>
             </div>
             <div className="panel p-5">
               <div className="flex items-center justify-between mb-3">
