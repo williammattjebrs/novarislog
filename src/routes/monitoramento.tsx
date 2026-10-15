@@ -46,7 +46,25 @@ const MON_COLS = [
   { id: "status", label: "Status" },
   { id: "obs", label: "Último apontamento / registro rápido" },
   { id: "comprovantes", label: "Comprovantes" },
+  { id: "remetente", label: "Remetente" },
+  { id: "destino", label: "Destinatário / cidade" },
+  { id: "contratante", label: "Contratante do frete" },
+  { id: "peso", label: "Peso (kg)" },
+  { id: "volumes", label: "Volumes" },
+  { id: "valorNf", label: "Valor das NFs" },
+  { id: "frete", label: "Frete previsto" },
+  { id: "cteValor", label: "Valor CT-e" },
+  { id: "custo", label: "Custo motorista" },
+  { id: "coletadoEm", label: "Coletado em" },
+  { id: "previsao", label: "Previsão (NF)" },
+  { id: "entregueEm", label: "Entregue em" },
+  { id: "geradaPor", label: "Gerada por" },
 ];
+const MON_COLS_PADRAO = ["nfs", "motorista", "clientes", "locais", "datas", "status", "obs", "comprovantes"];
+const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const soma = (ns: Order[], f: (n: Order) => number | undefined) => ns.reduce((a, n) => a + (Number(f(n)) || 0), 0);
+const uniq = (xs: (string | undefined)[]) => [...new Set(xs.filter(Boolean))].join(" · ") || "—";
+const dt = (s?: string) => (s ? fmtDataHora(s) : "—");
 
 function MonitoramentoPage() {
   const orders = useOrders(); const ocs0 = useOrdensColeta(); const [empresaF] = useEmpresaFiltro(); const ocs = { ...ocs0, list: filtrarOcs(empresaF, ocs0.list) }; const mot = useMotoristas(); const vei = useVeiculos();
@@ -115,29 +133,18 @@ function MonitoramentoPage() {
   const sel = selected ? emitidas.find((o) => o.id === selected || o.orderIds.includes(selected)) : undefined;
   const nfsMonitoradas = orders.list.filter((n) => emitidas.some((oc) => oc.orderIds.includes(n.id)));
   const [modo, setModoS] = useState<"oc" | "cte" | "nf">("oc");
-  const [colsVis, setColsVis] = useState<string[]>(MON_COLS.map((c) => c.id));
+  const [colsVis, setColsVis] = useState<string[]>(MON_COLS_PADRAO);
   const [colsOpen, setColsOpen] = useState(false);
-  useEffect(() => {
-    try {
-      const r = JSON.parse(window.localStorage.getItem("novaris:monitoramento:visao") ?? "null");
-      if (r?.modo) setModoS(r.modo);
-      if (r?.cols?.[r.modo]) setColsVis(r.cols[r.modo]);
-    } catch { /* ignora */ }
-  }, []);
-  const salvarVisao = (m: string, cols: string[]) => {
-    try {
-      const r = JSON.parse(window.localStorage.getItem("novaris:monitoramento:visao") ?? "{}") || {};
-      window.localStorage.setItem("novaris:monitoramento:visao", JSON.stringify({ modo: m, cols: { ...(r.cols ?? {}), [m]: cols } }));
-    } catch { /* ignora */ }
-  };
-  const setModo = (m: "oc" | "cte" | "nf") => {
-    setModoS(m);
-    let cols = MON_COLS.map((c) => c.id);
-    try { const r = JSON.parse(window.localStorage.getItem("novaris:monitoramento:visao") ?? "{}"); if (r?.cols?.[m]) cols = r.cols[m]; } catch { /* ignora */ }
-    setColsVis(cols); salvarVisao(m, cols);
-  };
-  const toggleCol = (id: string) => { const next = colsVis.includes(id) ? colsVis.filter((c) => c !== id) : [...colsVis, id]; setColsVis(next); salvarVisao(modo, next); };
-  const show = (id: string) => colsVis.includes(id);
+  const [msgVisao, setMsgVisao] = useState("");
+  const visaoKey = user?.email ? `novaris:monitoramento:visao:${user.email.toLowerCase()}` : "novaris:monitoramento:visao";
+  const lerVisoes = (): { modo?: "oc" | "cte" | "nf"; cols?: Record<string, string[]> } => { try { return JSON.parse(window.localStorage.getItem(visaoKey) ?? "{}") || {}; } catch { return {}; } };
+  useEffect(() => { const r = lerVisoes(); const m = r.modo ?? "oc"; setModoS(m); setColsVis(r.cols?.[m] ?? MON_COLS_PADRAO); }, [visaoKey]);
+  const setModo = (m: "oc" | "cte" | "nf") => { setModoS(m); setColsVis(lerVisoes().cols?.[m] ?? MON_COLS_PADRAO); };
+  const toggleCol = (id: string) => setColsVis((c) => c.includes(id) ? c.filter((x) => x !== id) : [...c, id]);
+  const salvarVisao = () => { const r = lerVisoes(); window.localStorage.setItem(visaoKey, JSON.stringify({ modo, cols: { ...(r.cols ?? {}), [modo]: colsVis } })); setMsgVisao("Visão padrão salva"); setTimeout(() => setMsgVisao(""), 2500); };
+  const restaurarVisao = () => { setColsVis(MON_COLS_PADRAO); const r = lerVisoes(); const cols = { ...(r.cols ?? {}) }; delete cols[modo]; window.localStorage.setItem(visaoKey, JSON.stringify({ modo: r.modo, cols })); setMsgVisao("Colunas originais restauradas"); setTimeout(() => setMsgVisao(""), 2500); };
+  const colsDisp = MON_COLS.filter((c) => c.id !== "custo" || canSeeCosts);
+  const show = (id: string) => colsVis.includes(id) && (id !== "custo" || canSeeCosts);
   type Linha = { key: string; oc: (typeof filtered)[number]; ocs: (typeof filtered); nfs: Order[]; cte?: string };
   const linhas: Linha[] = (() => {
     const nfsDe = (oc: (typeof filtered)[number]) => oc.orderIds.map((id) => nfById.get(id)).filter(Boolean) as Order[];
@@ -202,10 +209,11 @@ function MonitoramentoPage() {
             <button key={m} onClick={() => setModo(m)} className={`px-3 py-1.5 rounded border ${modo === m ? "bg-primary/15 border-primary/40 text-primary" : "border-border hover:bg-muted"}`}>{m === "oc" ? "OC" : m === "cte" ? "CT-e" : "Nota (NF)"}</button>
           ))}
           <div className="relative ml-auto">
-            <button onClick={() => setColsOpen((v) => !v)} className="px-3 py-1.5 rounded border border-border hover:bg-muted">Colunas ({colsVis.length + 1}/{MON_COLS.length + 1})</button>
+            <button onClick={() => setColsOpen((v) => !v)} className="px-3 py-1.5 rounded border border-border hover:bg-muted">Colunas ({colsDisp.filter((c) => show(c.id)).length}/{colsDisp.length})</button>
             {colsOpen && (
-              <div className="absolute right-0 z-20 mt-1 w-56 panel p-2 space-y-1 shadow-lg">
-                {MON_COLS.map((c) => (
+              <div className="absolute right-0 z-20 mt-1 w-64 max-h-96 overflow-y-auto panel p-2 space-y-1 shadow-lg">
+                <div className="flex gap-2 pb-1 mb-1 border-b border-border"><button onClick={() => setColsVis(colsDisp.map((c) => c.id))} className="text-primary">Todas</button><button onClick={() => setColsVis([])} className="text-muted-foreground">Nenhuma</button></div>
+                {colsDisp.map((c) => (
                   <label key={c.id} className="flex items-center gap-2 px-1 py-0.5 cursor-pointer">
                     <input type="checkbox" checked={colsVis.includes(c.id)} onChange={() => toggleCol(c.id)} /> {c.label}
                   </label>
@@ -213,6 +221,9 @@ function MonitoramentoPage() {
               </div>
             )}
           </div>
+          <button onClick={salvarVisao} className="px-3 py-1.5 rounded border border-border hover:bg-muted">Salvar visão padrão</button>
+          <button onClick={restaurarVisao} className="px-3 py-1.5 rounded border border-border hover:bg-muted text-muted-foreground">Restaurar colunas</button>
+          {msgVisao && <span className="text-success">{msgVisao}</span>}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className={`panel overflow-x-auto ${sel ? "lg:col-span-2" : "lg:col-span-3"}`}>
@@ -242,11 +253,24 @@ function MonitoramentoPage() {
                       {show("datas") && <td className="px-3 py-3 text-xs whitespace-nowrap">{fmtDataHora(oc.dataHoraColeta)}<div className="text-muted-foreground">{fmtDataHora(oc.dataHoraEntrega)}</div></td>}
                       {show("status") && <td className="px-3 py-3 text-xs" onClick={(e) => e.stopPropagation()}>{ln.ocs.map((o) => <div key={o.id} className="mb-1">{ln.ocs.length > 1 && <div className="text-[10px] text-muted-foreground">OC {o.numero}</div>}<MonitoringQuickStatus oc={o} autor={user?.nome ?? "usuário"} /></div>)}</td>}
                       {show("obs") && <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}><p className="text-xs mb-2 whitespace-pre-wrap break-words max-w-80">{[...(oc.historico ?? [])].reverse().find((t) => t.tipo === "observacao" || t.tipo === "ocorrencia")?.texto ?? "—"}</p><MonitoringQuickNote oc={oc} autor={user?.nome ?? "usuário"} /></td>}
+                      {show("remetente") && <td className="px-3 py-3 text-xs">{uniq(ln.nfs.map((n) => n.remetente))}</td>}
+                      {show("destino") && <td className="px-3 py-3 text-xs">{ln.nfs.length ? ln.nfs.map((n) => <div key={n.id}>{n.destinatario} <span className="text-muted-foreground">({n.cidadeEntrega}/{n.ufEntrega})</span></div>) : "—"}</td>}
+                      {show("contratante") && <td className="px-3 py-3 text-xs">{uniq(ln.ocs.map((o) => o.contratanteNome))}</td>}
+                      {show("peso") && <td className="px-3 py-3 text-xs num text-right">{soma(ln.nfs, (n) => n.peso).toLocaleString("pt-BR")}</td>}
+                      {show("volumes") && <td className="px-3 py-3 text-xs num text-right">{soma(ln.nfs, (n) => n.volumes)}</td>}
+                      {show("valorNf") && <td className="px-3 py-3 text-xs num text-right whitespace-nowrap">{brl(soma(ln.nfs, (n) => n.valorNF))}</td>}
+                      {show("frete") && <td className="px-3 py-3 text-xs num text-right whitespace-nowrap">{brl(soma(ln.nfs, (n) => n.valorFrete))}</td>}
+                      {show("cteValor") && <td className="px-3 py-3 text-xs num text-right whitespace-nowrap">{ln.nfs.some((n) => n.cteValor) ? brl(modo === "cte" && ln.cte ? Number(ln.nfs[0]?.cteValor) || 0 : soma(ln.nfs, (n) => n.cteValor)) : "—"}</td>}
+                      {show("custo") && <td className="px-3 py-3 text-xs num text-right whitespace-nowrap">{brl(ln.ocs.reduce((a, o) => a + (Number(o.custoMotorista) || 0), 0))}</td>}
+                      {show("coletadoEm") && <td className="px-3 py-3 text-xs whitespace-nowrap">{uniq(ln.nfs.map((n) => n.coletadoEm && dt(n.coletadoEm)))}</td>}
+                      {show("previsao") && <td className="px-3 py-3 text-xs whitespace-nowrap">{uniq(ln.nfs.map((n) => n.previsaoEntrega && dt(n.previsaoEntrega)))}</td>}
+                      {show("entregueEm") && <td className="px-3 py-3 text-xs whitespace-nowrap">{uniq(ln.nfs.map((n) => n.entregueEm && dt(n.entregueEm)))}</td>}
+                      {show("geradaPor") && <td className="px-3 py-3 text-xs">{uniq(ln.ocs.map((o) => o.criadoPor))}</td>}
                       {show("comprovantes") && <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}><div className="space-y-2">{ln.nfs.map((n) => <DeliveryProofs key={n.id} nfId={n.id} numero={n.numeroNFe} />)}</div></td>}
                     </tr>
                   );
                 })}
-                {!linhas.length && <tr><td colSpan={colsVis.length + 1} className="py-8 text-center text-xs text-muted-foreground">Nenhum registro com esses filtros.</td></tr>}
+                {!linhas.length && <tr><td colSpan={colsVis.length + 2} className="py-8 text-center text-xs text-muted-foreground">Nenhum registro com esses filtros.</td></tr>}
               </tbody>
             </table>
           </div>
