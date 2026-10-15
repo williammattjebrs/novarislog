@@ -22,7 +22,7 @@ export const Route = createFileRoute("/clientes")({
   }),
   component: () => (
     <RoleGate path="/clientes">
-      <ClientesPage />
+      <ClientesLayout />
     </RoleGate>
   ),
 });
