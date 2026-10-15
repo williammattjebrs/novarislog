@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Users, PackageSearch, Radar, Wallet, Settings, UserCog,
-   Radio, Bell, Search, LogOut, BookOpen, Route as RouteIcon, Truck, Menu, X, MapPin, Upload, Building2, BarChart3, FolderOpen, ChevronDown, PanelLeftClose, PanelLeftOpen,
+   Radio, Bell, Search, LogOut, BookOpen, Route as RouteIcon, Truck, Menu, X, MapPin, Upload, Building2, BarChart3, FolderOpen, ChevronDown, PanelLeftClose, PanelLeftOpen, Calculator,
 } from "lucide-react";
 import logo from "@/assets/novaris-logo.png.asset.json";
 import simbolo from "@/assets/novaris-simbolo.png.asset.json";
@@ -181,6 +181,17 @@ export function AppShell({ children }: { children: ReactNode }) {
             <option value="__sem">Sem empresa vinculada</option>
           </select>
           <div className="flex-1" />
+          {user && canAccess(role, "/simulador", user.modulos) && (
+            <Button
+              size="sm"
+              className="shrink-0 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_0_1px_var(--primary)]"
+              title="Simular preço de frete — disponível em todas as telas"
+              aria-label="Abrir simulador de frete"
+              asChild
+            >
+              <Link to="/simulador"><Calculator className="h-4 w-4" /><span className="hidden sm:inline">Simulador de frete</span></Link>
+            </Button>
+          )}
           <Button variant="ghost" size="icon" asChild title="Manual de uso">
             <Link to="/manual" search={{ modulo: "torre" }} aria-label="Manual de uso"><BookOpen className="h-4 w-4" /></Link>
           </Button>
