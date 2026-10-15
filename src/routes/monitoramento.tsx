@@ -37,6 +37,17 @@ export const Route = createFileRoute("/monitoramento")({
   component: () => (<RoleGate path="/monitoramento"><MonitoramentoPage /></RoleGate>),
 });
 
+const MON_COLS = [
+  { id: "nfs", label: "Notas" },
+  { id: "motorista", label: "Motorista / placa" },
+  { id: "clientes", label: "Cliente coleta → descarga" },
+  { id: "locais", label: "Locais" },
+  { id: "datas", label: "Coleta / previsão" },
+  { id: "status", label: "Status" },
+  { id: "obs", label: "Último apontamento / registro rápido" },
+  { id: "comprovantes", label: "Comprovantes" },
+];
+
 function MonitoramentoPage() {
   const orders = useOrders(); const ocs0 = useOrdensColeta(); const [empresaF] = useEmpresaFiltro(); const ocs = { ...ocs0, list: filtrarOcs(empresaF, ocs0.list) }; const mot = useMotoristas(); const vei = useVeiculos();
   const [cfg] = useConfig(); const { user } = useAuth(); const canSeeCosts = financialAccess(user);
@@ -103,6 +114,49 @@ function MonitoramentoPage() {
   const legados = ocs.list.filter((o) => !isV2(o) && o.status !== "cancelada").length;
   const sel = selected ? emitidas.find((o) => o.id === selected || o.orderIds.includes(selected)) : undefined;
   const nfsMonitoradas = orders.list.filter((n) => emitidas.some((oc) => oc.orderIds.includes(n.id)));
+  const [modo, setModoS] = useState<"oc" | "cte" | "nf">("oc");
+  const [colsVis, setColsVis] = useState<string[]>(MON_COLS.map((c) => c.id));
+  const [colsOpen, setColsOpen] = useState(false);
+  useEffect(() => {
+    try {
+      const r = JSON.parse(window.localStorage.getItem("novaris:monitoramento:visao") ?? "null");
+      if (r?.modo) setModoS(r.modo);
+      if (r?.cols?.[r.modo]) setColsVis(r.cols[r.modo]);
+    } catch { /* ignora */ }
+  }, []);
+  const salvarVisao = (m: string, cols: string[]) => {
+    try {
+      const r = JSON.parse(window.localStorage.getItem("novaris:monitoramento:visao") ?? "{}") || {};
+      window.localStorage.setItem("novaris:monitoramento:visao", JSON.stringify({ modo: m, cols: { ...(r.cols ?? {}), [m]: cols } }));
+    } catch { /* ignora */ }
+  };
+  const setModo = (m: "oc" | "cte" | "nf") => {
+    setModoS(m);
+    let cols = MON_COLS.map((c) => c.id);
+    try { const r = JSON.parse(window.localStorage.getItem("novaris:monitoramento:visao") ?? "{}"); if (r?.cols?.[m]) cols = r.cols[m]; } catch { /* ignora */ }
+    setColsVis(cols); salvarVisao(m, cols);
+  };
+  const toggleCol = (id: string) => { const next = colsVis.includes(id) ? colsVis.filter((c) => c !== id) : [...colsVis, id]; setColsVis(next); salvarVisao(modo, next); };
+  const show = (id: string) => colsVis.includes(id);
+  type Linha = { key: string; oc: (typeof filtered)[number]; ocs: (typeof filtered); nfs: Order[]; cte?: string };
+  const linhas: Linha[] = useMemo(() => {
+    const nfsDe = (oc: (typeof filtered)[number]) => oc.orderIds.map((id) => nfById.get(id)).filter(Boolean) as Order[];
+    if (modo === "oc") return filtered.map((oc) => ({ key: oc.id, oc, ocs: [oc], nfs: nfsDe(oc) }));
+    if (modo === "nf") return filtered.flatMap((oc) => { const nfs = nfsDe(oc); return nfs.length ? nfs.map((n) => ({ key: `${oc.id}:${n.id}`, oc, ocs: [oc], nfs: [n] })) : [{ key: oc.id, oc, ocs: [oc], nfs: [] }]; });
+    const g = new Map<string, Linha>();
+    filtered.forEach((oc) => {
+      const nfs = nfsDe(oc);
+      if (!nfs.length) { g.set(`oc:${oc.id}`, { key: `oc:${oc.id}`, oc, ocs: [oc], nfs: [] }); return; }
+      nfs.forEach((n) => {
+        const k = n.cteNumero ? `cte:${n.cteNumero}` : `oc:${oc.id}`;
+        const cur = g.get(k) ?? { key: k, oc, ocs: [], nfs: [], cte: n.cteNumero || undefined };
+        if (!cur.ocs.includes(oc)) cur.ocs.push(oc);
+        cur.nfs.push(n); g.set(k, cur);
+      });
+    });
+    return [...g.values()];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modo, filtered.map((o) => o.id).join(","), nfById]);
 
   return (
     <AppShell>
@@ -143,28 +197,57 @@ function MonitoramentoPage() {
           {msgFiltro && <span className="text-xs text-success">{msgFiltro}</span>}
           <button onClick={() => setBulkOpen(true)} className="ml-auto text-xs px-3 py-1.5 rounded bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25 inline-flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> Atualizar cliente (por NF)</button>
         </div>
+        <div className="panel p-3 flex flex-wrap items-center gap-3 text-xs">
+          <span className="text-muted-foreground">Visualizar por:</span>
+          {(["oc", "cte", "nf"] as const).map((m) => (
+            <button key={m} onClick={() => setModo(m)} className={`px-3 py-1.5 rounded border ${modo === m ? "bg-primary/15 border-primary/40 text-primary" : "border-border hover:bg-muted"}`}>{m === "oc" ? "OC" : m === "cte" ? "CT-e" : "Nota (NF)"}</button>
+          ))}
+          <div className="relative ml-auto">
+            <button onClick={() => setColsOpen((v) => !v)} className="px-3 py-1.5 rounded border border-border hover:bg-muted">Colunas ({colsVis.length + 1}/{MON_COLS.length + 1})</button>
+            {colsOpen && (
+              <div className="absolute right-0 z-20 mt-1 w-56 panel p-2 space-y-1 shadow-lg">
+                {MON_COLS.map((c) => (
+                  <label key={c.id} className="flex items-center gap-2 px-1 py-0.5 cursor-pointer">
+                    <input type="checkbox" checked={colsVis.includes(c.id)} onChange={() => toggleCol(c.id)} /> {c.label}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className={`panel overflow-x-auto ${sel ? "lg:col-span-2" : "lg:col-span-3"}`}>
             <table className="w-full text-sm">
               <thead><tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                <th className="text-left font-normal px-4 py-2.5">OC / NFs</th><th className="text-left font-normal">Motorista / placa</th><th className="text-left font-normal">Cliente coleta → descarga</th><th className="text-left font-normal">Locais</th><th className="text-left font-normal">Coleta / previsão</th><th className="text-left font-normal">Status</th><th className="text-left font-normal px-3">Último apontamento / registro rápido</th>
+                <th className="text-left font-normal px-4 py-2.5">{modo === "oc" ? "OC" : modo === "cte" ? "CT-e" : "NF"}</th>
+                {MON_COLS.filter((c) => show(c.id)).map((c) => <th key={c.id} className="text-left font-normal px-3 py-2.5">{c.label}</th>)}
               </tr></thead>
               <tbody>
-                {filtered.map((oc) => {
+                {linhas.map((ln) => {
+                  const oc = ln.oc;
                   const m = mot.list.find((x) => x.id === oc.motoristaId); const v = vei.list.find((x) => x.id === oc.veiculoId);
+                  const ctes = [...new Set(ln.nfs.map((n) => n.cteNumero).filter(Boolean))] as string[];
+                  const ocNums = [...new Set(ln.ocs.map((o) => o.numero))];
                   return (
-                    <tr key={oc.id} onClick={() => setSelected(oc.id)} className={`border-t border-border hover:bg-elevated/50 cursor-pointer ${sel?.id === oc.id ? "bg-elevated/60" : ""}`}>
-                      <td className="px-4 py-3 num text-primary text-xs align-top">{(() => { const ctes = [...new Set(oc.orderIds.map((id) => nfById.get(id)?.cteNumero).filter(Boolean))] as string[]; return ctes.length ? (<><div className="text-sm">CT-e {ctes.join(" · ")}</div><div className="text-[10px] text-muted-foreground">OC {oc.numero}</div></>) : oc.numero; })()}<div className="text-[10px] text-muted-foreground">{oc.orderIds.length} NF</div><div className="space-y-2 mt-3" onClick={(e) => e.stopPropagation()}>{oc.orderIds.map((id) => { const n = nfById.get(id); return n ? <DeliveryProofs key={id} nfId={id} numero={n.numeroNFe} /> : null; })}</div></td>
-                      <td className="text-xs">{m?.nome ?? "—"}<div className="num">{v ? v.placa + (v.placaCarreta ? ` + ${v.placaCarreta}` : "") : "—"}</div></td>
-                      <td className="text-xs">{oc.clienteColetaNome} → {oc.clienteDescargaNome}</td>
-                      <td className="text-xs">{oc.localColeta} ({oc.cidadeColeta}/{oc.ufColeta}) → {oc.localEntrega} ({oc.cidadeEntrega}/{oc.ufEntrega})</td>
-                      <td className="text-xs">{fmtDataHora(oc.dataHoraColeta)}<div className="text-muted-foreground">{fmtDataHora(oc.dataHoraEntrega)}</div></td>
-                      <td className="text-xs"><MonitoringQuickStatus oc={oc} autor={user?.nome ?? "usuário"} /></td>
-                      <td className="px-3 py-3 align-top"><p className="text-xs mb-2 whitespace-pre-wrap break-words max-w-80">{[...(oc.historico ?? [])].reverse().find((t) => t.tipo === "observacao" || t.tipo === "ocorrencia")?.texto ?? "—"}</p><MonitoringQuickNote oc={oc} autor={user?.nome ?? "usuário"} /></td>
+                    <tr key={ln.key} onClick={() => setSelected(oc.id)} className={`border-t border-border hover:bg-elevated/50 cursor-pointer align-top ${sel?.id === oc.id ? "bg-elevated/60" : ""}`}>
+                      <td className="px-4 py-3 num text-primary text-xs">
+                        {modo === "nf" ? (<><div className="text-sm">NF {ln.nfs[0]?.numeroNFe}</div><div className="text-[10px] text-muted-foreground">OC {oc.numero}{ctes.length ? ` · CT-e ${ctes.join(" · ")}` : ""}</div></>)
+                          : modo === "cte" ? (<><div className="text-sm">{ln.cte ? `CT-e ${ln.cte}` : "Sem CT-e"}</div><div className="text-[10px] text-muted-foreground">OC {ocNums.join(" · ")}</div></>)
+                          : ctes.length ? (<><div className="text-sm">CT-e {ctes.join(" · ")}</div><div className="text-[10px] text-muted-foreground">OC {oc.numero}</div></>) : <div className="text-sm">{oc.numero}</div>}
+                        {modo !== "nf" && <div className="text-[10px] text-muted-foreground">{ln.nfs.length} NF</div>}
+                      </td>
+                      {show("nfs") && <td className="px-3 py-3 text-xs">{ln.nfs.length ? ln.nfs.map((n) => <div key={n.id} className="whitespace-nowrap"><span className="num">{n.numeroNFe}</span> <span className="text-muted-foreground">· {n.destinatario}</span> <span className={`ml-1 px-1 rounded border text-[10px] ${toneClass(statusTone(n.stage))}`}>{stageLabel(n.stage)}</span></div>) : <span className="text-muted-foreground">Aguardando NF</span>}</td>}
+                      {show("motorista") && <td className="px-3 py-3 text-xs">{m?.nome ?? "—"}<div className="num">{v ? v.placa + (v.placaCarreta ? ` + ${v.placaCarreta}` : "") : "—"}</div></td>}
+                      {show("clientes") && <td className="px-3 py-3 text-xs">{oc.clienteColetaNome} → {oc.clienteDescargaNome}</td>}
+                      {show("locais") && <td className="px-3 py-3 text-xs">{oc.localColeta} ({oc.cidadeColeta}/{oc.ufColeta}) → {oc.localEntrega} ({oc.cidadeEntrega}/{oc.ufEntrega})</td>}
+                      {show("datas") && <td className="px-3 py-3 text-xs whitespace-nowrap">{fmtDataHora(oc.dataHoraColeta)}<div className="text-muted-foreground">{fmtDataHora(oc.dataHoraEntrega)}</div></td>}
+                      {show("status") && <td className="px-3 py-3 text-xs" onClick={(e) => e.stopPropagation()}>{ln.ocs.map((o) => <div key={o.id} className="mb-1">{ln.ocs.length > 1 && <div className="text-[10px] text-muted-foreground">OC {o.numero}</div>}<MonitoringQuickStatus oc={o} autor={user?.nome ?? "usuário"} /></div>)}</td>}
+                      {show("obs") && <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}><p className="text-xs mb-2 whitespace-pre-wrap break-words max-w-80">{[...(oc.historico ?? [])].reverse().find((t) => t.tipo === "observacao" || t.tipo === "ocorrencia")?.texto ?? "—"}</p><MonitoringQuickNote oc={oc} autor={user?.nome ?? "usuário"} /></td>}
+                      {show("comprovantes") && <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}><div className="space-y-2">{ln.nfs.map((n) => <DeliveryProofs key={n.id} nfId={n.id} numero={n.numeroNFe} />)}</div></td>}
                     </tr>
                   );
                 })}
-                {!filtered.length && <tr><td colSpan={7} className="py-8 text-center text-xs text-muted-foreground">Nenhuma OC com esses filtros.</td></tr>}
+                {!linhas.length && <tr><td colSpan={colsVis.length + 1} className="py-8 text-center text-xs text-muted-foreground">Nenhum registro com esses filtros.</td></tr>}
               </tbody>
             </table>
           </div>
