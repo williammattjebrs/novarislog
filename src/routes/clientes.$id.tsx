@@ -5,7 +5,7 @@ import { RoleGate } from "@/components/RoleGate";
 import { useState, useRef } from "react";
 import { RouteRatesTable } from "@/components/RouteRatesTable";
 import { TrackingGroupEditor } from "@/components/TrackingGroupEditor";
-import { ArrowLeft, Plus, FileUp, Trash2, Check } from "lucide-react";
+import { ArrowLeft, Plus, FileUp, Trash2, Check, Pencil } from "lucide-react";
 import {
   useClients, useFreightTables, useQuotations, newId,
 } from "@/lib/mock-store";
@@ -38,6 +38,7 @@ function ClienteDetalhe() {
   const client = clients.list.find((c) => c.id === id);
   const [tab, setTab] = useState<"dados" | "rotas" | "tabelas" | "cotacoes">("dados");
   const [showTable, setShowTable] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
 
   if (!client) {
     return (
