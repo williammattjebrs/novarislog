@@ -35,6 +35,12 @@ const STAGES: { id: CRMStage; label: string }[] = [
   { id: "perdido", label: "Perdido" },
 ];
 
+// Quando uma rota filha (ex.: /clientes/$id) está ativa, renderiza só o detalhe.
+function ClientesLayout() {
+  const hasChild = useChildMatches().length > 0;
+  return hasChild ? <Outlet /> : <ClientesPage />;
+}
+
 function ClientesPage() {
   const clients = useClients();
   const tables = useFreightTables();
