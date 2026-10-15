@@ -139,7 +139,7 @@ function MonitoramentoPage() {
   const toggleCol = (id: string) => { const next = colsVis.includes(id) ? colsVis.filter((c) => c !== id) : [...colsVis, id]; setColsVis(next); salvarVisao(modo, next); };
   const show = (id: string) => colsVis.includes(id);
   type Linha = { key: string; oc: (typeof filtered)[number]; ocs: (typeof filtered); nfs: Order[]; cte?: string };
-  const linhas: Linha[] = useMemo(() => {
+  const linhas: Linha[] = (() => {
     const nfsDe = (oc: (typeof filtered)[number]) => oc.orderIds.map((id) => nfById.get(id)).filter(Boolean) as Order[];
     if (modo === "oc") return filtered.map((oc) => ({ key: oc.id, oc, ocs: [oc], nfs: nfsDe(oc) }));
     if (modo === "nf") return filtered.flatMap((oc) => { const nfs = nfsDe(oc); return nfs.length ? nfs.map((n) => ({ key: `${oc.id}:${n.id}`, oc, ocs: [oc], nfs: [n] })) : [{ key: oc.id, oc, ocs: [oc], nfs: [] }]; });
@@ -155,8 +155,7 @@ function MonitoramentoPage() {
       });
     });
     return [...g.values()];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modo, filtered.map((o) => o.id).join(","), nfById]);
+  })();
 
   return (
     <AppShell>
