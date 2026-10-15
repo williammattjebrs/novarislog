@@ -17,6 +17,8 @@ export function AcompanhamentoColeta() {
   const [empresaF] = useEmpresaFiltro();
   const [filtro, setFiltro] = useState<"pendentes" | "atrasadas" | "coletadas" | "todas">("pendentes");
   const [busca, setBusca] = useState("");
+  const { user } = useAuth();
+  const [autorF, setAutorF] = useState<"todas" | "minhas">("todas");
   const semCte = (oc: OrdemColeta) => oc.orderIds.some((id) => { const n = orders.list.find((x) => x.id === id); return n && !n.cteChave && !n.cteNumero; });
   const notasDaOc = (oc: OrdemColeta) => oc.orderIds.map((id) => orders.list.find((x) => x.id === id)).filter(Boolean) as { id: string; numeroNFe: string; chaveNFe?: string }[];
   const base = filtrarOcs(empresaF, ocs.list).filter((o) => isEmitida(o) && (["emitida", "em_coleta", "ocorrencia"].includes(o.status) || (o.status === "coletada" && semCte(o))));
