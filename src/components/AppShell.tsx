@@ -76,14 +76,15 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen text-foreground flex">
-      <aside className={`${mobileOpen ? "fixed inset-y-0 left-0 z-50 flex" : "hidden"} md:static md:flex w-64 shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground`}>
-        <div className="h-16 px-5 flex items-center gap-3 border-b border-sidebar-border">
-          <img src={logo.url} alt="Novaris — Operador Logístico Integrado" className="h-10 w-auto" />
+      <aside className={`${mobileOpen ? "fixed inset-y-0 left-0 z-50 flex" : "hidden"} md:static md:flex w-64 shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground ${rail ? "md:w-14" : ""}`}>
+        <div className={`h-16 flex items-center gap-3 border-b border-sidebar-border ${rail ? "md:justify-center md:px-0" : "px-5"}`}>
+          <img src={logo.url} alt="Novaris — Operador Logístico Integrado" className={`${rail ? "md:hidden" : ""} h-10 w-auto`} />
+          <img src={simbolo.url} alt="Novaris" className={`${rail ? "md:block" : "hidden"} h-8 w-8 rounded`} />
           <Button className="md:hidden" size="icon" variant="ghost" aria-label="Fechar menu" onClick={() => setMobileOpen(false)}><X className="h-4 w-4" /></Button>
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          <div className="px-2 pb-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Núcleo</div>
+          <div className={`px-2 pb-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground ${rail ? "md:hidden" : ""}`}>Núcleo</div>
            {items.filter((item) => !["/tv", "/configuracoes", "/manual"].includes(item.to)).map((item) => {
             const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
             const Icon = item.icon;
@@ -91,15 +92,17 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Link
                 key={item.to}
                 to={item.to}
+                title={item.label}
                 className={[
                   "group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                  rail ? "md:justify-center md:px-0" : "",
                   active
                     ? "bg-sidebar-accent text-sidebar-primary border border-primary/30"
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent",
                 ].join(" ")}
               >
-                <Icon className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground"}`} />
-                <span className="flex-1 truncate">{item.label}</span>
+                <Icon className={`h-4 w-4 shrink-0 ${active ? "text-primary" : "text-muted-foreground"}`} />
+                <span className={`${rail ? "md:hidden" : ""} flex-1 truncate`}>{item.label}</span>
               </Link>
             );
           })}
@@ -107,14 +110,23 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div>
               <Button
                 variant="ghost"
-                className={`w-full justify-start gap-3 px-3 text-sm font-normal ${basicActive ? "bg-sidebar-accent text-sidebar-primary" : "text-sidebar-foreground/80"}`}
+                title={rail ? "Cadastros Básicos — clique para abrir o menu" : "Cadastros Básicos"}
+                className={`w-full justify-start gap-3 px-3 text-sm font-normal ${rail ? "md:justify-center md:px-0" : ""} ${basicActive ? "bg-sidebar-accent text-sidebar-primary" : "text-sidebar-foreground/80"}`}
                 aria-expanded={basicOpen}
                 aria-controls="cadastros-basicos-menu"
-                onClick={() => setBasicOpen((open) => !open)}
+                onClick={() => {
+                  if (rail) {
+                    setCollapsed(false);
+                    localStorage.setItem("novaris-sidebar-collapsed", "0");
+                    setBasicOpen(true);
+                  } else {
+                    setBasicOpen((open) => !open);
+                  }
+                }}
               >
-                <FolderOpen className={`h-4 w-4 ${basicActive ? "text-primary" : "text-muted-foreground"}`} />
-                <span className="flex-1 text-left">Cadastros Básicos</span>
-                <ChevronDown className={`h-4 w-4 transition-transform ${basicOpen ? "rotate-180" : ""}`} />
+                <FolderOpen className={`h-4 w-4 shrink-0 ${basicActive ? "text-primary" : "text-muted-foreground"}`} />
+                <span className={`${rail ? "md:hidden" : ""} flex-1 text-left`}>Cadastros Básicos</span>
+                <ChevronDown className={`${rail ? "md:hidden" : ""} h-4 w-4 transition-transform ${basicOpen ? "rotate-180" : ""}`} />
               </Button>
               {basicOpen && (
                 <div id="cadastros-basicos-menu" className="ml-5 mt-1 space-y-1 border-l border-sidebar-border pl-2">
@@ -130,7 +142,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {items.filter((item) => ["/tv", "/configuracoes", "/manual"].includes(item.to)).map((item) => {
             const active = pathname.startsWith(item.to);
             const Icon = item.icon;
-            return <Link key={item.to} to={item.to} className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${active ? "bg-sidebar-accent text-sidebar-primary border border-primary/30" : "text-sidebar-foreground/80 hover:bg-sidebar-accent"}`}><Icon className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground"}`} /><span className="flex-1 truncate">{item.label}</span></Link>;
+            return <Link key={item.to} to={item.to} title={item.label} className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${rail ? "md:justify-center md:px-0" : ""} ${active ? "bg-sidebar-accent text-sidebar-primary border border-primary/30" : "text-sidebar-foreground/80 hover:bg-sidebar-accent"}`}><Icon className={`h-4 w-4 shrink-0 ${active ? "text-primary" : "text-muted-foreground"}`} /><span className={`${rail ? "md:hidden" : ""} flex-1 truncate`}>{item.label}</span></Link>;
           })}
         </nav>
 
