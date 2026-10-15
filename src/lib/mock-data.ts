@@ -32,6 +32,18 @@ export interface Client {
   grupoId?: string;
   observacao?: string;
   criadoEm: string;
+  // Dados complementares (editáveis no detalhe do cliente)
+  responsavel?: string;
+  aniversarioResponsavel?: string; // AAAA-MM-DD
+  telefone2?: string;
+  emailFinanceiro?: string;
+  endereco?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  uf?: string;
+  cep?: string;
 }
 
 // ---------- Tabelas de frete ----------

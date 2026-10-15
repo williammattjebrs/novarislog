@@ -5,11 +5,11 @@ import { RoleGate } from "@/components/RoleGate";
 import { useState, useRef } from "react";
 import { RouteRatesTable } from "@/components/RouteRatesTable";
 import { TrackingGroupEditor } from "@/components/TrackingGroupEditor";
-import { ArrowLeft, Plus, FileUp, Trash2, Check } from "lucide-react";
+import { ArrowLeft, Plus, FileUp, Trash2, Check, Pencil } from "lucide-react";
 import {
   useClients, useFreightTables, useQuotations, newId,
 } from "@/lib/mock-store";
-import { fmtBRL, type FreightRow, type FreightTable, type Modalidade } from "@/lib/mock-data";
+import { fmtBRL, type Client, type FreightRow, type FreightTable, type Modalidade } from "@/lib/mock-data";
 import { parseFreightExcel } from "@/lib/excel-parser";
 
 export const Route = createFileRoute("/clientes/$id")({
@@ -38,6 +38,7 @@ function ClienteDetalhe() {
   const client = clients.list.find((c) => c.id === id);
   const [tab, setTab] = useState<"dados" | "rotas" | "tabelas" | "cotacoes">("dados");
   const [showTable, setShowTable] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
 
   if (!client) {
     return (
@@ -89,12 +90,26 @@ function ClienteDetalhe() {
         {tab === "dados" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="panel p-5">
-              <div className="font-display text-lg mb-3">Contato</div>
-              <Line label="Responsável" v={client.contato} />
+              <div className="flex items-center justify-between mb-3">
+                <div className="font-display text-lg">Dados & Contato</div>
+                <button onClick={() => setShowEdit(true)} className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                  <Pencil className="h-3 w-3" /> editar dados
+                </button>
+              </div>
+              <Line label="Responsável" v={client.responsavel || client.contato} />
+              <Line label="Aniversário do responsável" v={client.aniversarioResponsavel ? client.aniversarioResponsavel.split("-").reverse().join("/") : ""} />
+              <Line label="Contato" v={client.contato} />
               <Line label="Telefone" v={client.telefone} />
+              <Line label="Telefone 2" v={client.telefone2 ?? ""} />
               <Line label="E-mail" v={client.email} />
+              <Line label="E-mail financeiro" v={client.emailFinanceiro ?? ""} />
               <Line label="Segmento" v={client.segmento} />
-              <TrackingGroupEditor client={client.nome} defaultEmail={client.email} />
+              <Line label="Endereço" v={[client.endereco, client.numero, client.complemento].filter(Boolean).join(", ")} />
+              <Line label="Bairro" v={client.bairro ?? ""} />
+              <Line label="Cidade/UF" v={[client.cidade, client.uf].filter(Boolean).join("/")} />
+              <Line label="CEP" v={client.cep ?? ""} />
+              {client.observacao && <Line label="Observação" v={client.observacao} />}
+              <div className="mt-3"><TrackingGroupEditor client={client.nome} defaultEmail={client.email} /></div>
             </div>
             <div className="panel p-5">
               <div className="flex items-center justify-between mb-3">
@@ -235,6 +250,13 @@ function ClienteDetalhe() {
         <NewTableModal
           onClose={() => setShowTable(false)}
           onSave={(t) => { tables.add({ ...t, clienteId: client.id }); setShowTable(false); }}
+        />
+      )}
+      {showEdit && (
+        <EditClientModal
+          client={client}
+          onClose={() => setShowEdit(false)}
+          onSave={(patch) => { clients.update(client.id, patch); setShowEdit(false); }}
         />
       )}
     </AppShell>
@@ -423,5 +445,58 @@ function F({ label, children, full }: { label: string; children: React.ReactNode
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{label}</div>
       {children}
     </label>
+  );
+}
+
+// Edição completa dos dados do cliente (o cadastro rápido continua enxuto).
+function EditClientModal({ client, onClose, onSave }: {
+  client: Client;
+  onClose: () => void;
+  onSave: (patch: Partial<Client>) => void;
+}) {
+  const [f, setF] = useState({
+    nome: client.nome, segmento: client.segmento,
+    responsavel: client.responsavel ?? client.contato, aniversarioResponsavel: client.aniversarioResponsavel ?? "",
+    contato: client.contato, telefone: client.telefone, telefone2: client.telefone2 ?? "",
+    email: client.email, emailFinanceiro: client.emailFinanceiro ?? "",
+    endereco: client.endereco ?? "", numero: client.numero ?? "", complemento: client.complemento ?? "",
+    bairro: client.bairro ?? "", cidade: client.cidade ?? "", uf: client.uf ?? "", cep: client.cep ?? "",
+    observacao: client.observacao ?? "",
+  });
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setF((p) => ({ ...p, [k]: e.target.value }));
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="panel w-full max-w-2xl p-5 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="font-display text-lg mb-3">Editar dados de {client.nome}</div>
+        <div className="grid grid-cols-2 gap-3">
+          <F label="Nome do cliente" full><input value={f.nome} onChange={set("nome")} className="input" /></F>
+          <F label="Segmento"><input value={f.segmento} onChange={set("segmento")} className="input" /></F>
+          <F label="Responsável"><input value={f.responsavel} onChange={set("responsavel")} className="input" /></F>
+          <F label="Aniversário do responsável"><input type="date" value={f.aniversarioResponsavel} onChange={set("aniversarioResponsavel")} className="input" /></F>
+          <F label="Contato"><input value={f.contato} onChange={set("contato")} className="input" /></F>
+          <F label="Telefone"><input value={f.telefone} onChange={set("telefone")} className="input" /></F>
+          <F label="Telefone 2"><input value={f.telefone2} onChange={set("telefone2")} className="input" /></F>
+          <F label="E-mail"><input value={f.email} onChange={set("email")} className="input" /></F>
+          <F label="E-mail financeiro"><input value={f.emailFinanceiro} onChange={set("emailFinanceiro")} className="input" /></F>
+          <F label="Endereço"><input value={f.endereco} onChange={set("endereco")} className="input" /></F>
+          <F label="Número"><input value={f.numero} onChange={set("numero")} className="input" /></F>
+          <F label="Complemento"><input value={f.complemento} onChange={set("complemento")} className="input" /></F>
+          <F label="Bairro"><input value={f.bairro} onChange={set("bairro")} className="input" /></F>
+          <F label="Cidade"><input value={f.cidade} onChange={set("cidade")} className="input" /></F>
+          <F label="UF"><input value={f.uf} onChange={set("uf")} maxLength={2} className="input" /></F>
+          <F label="CEP"><input value={f.cep} onChange={set("cep")} className="input" /></F>
+          <F label="Observação" full><textarea value={f.observacao} onChange={set("observacao")} className="input min-h-[60px]" /></F>
+        </div>
+        <div className="flex justify-end gap-2 mt-4">
+          <button onClick={onClose} className="text-sm px-3 py-1.5 rounded border border-border hover:bg-elevated">Cancelar</button>
+          <button
+            onClick={() => { if (!f.nome.trim()) return alert("Informe o nome do cliente."); onSave({ ...f, uf: f.uf.toUpperCase() }); }}
+            className="text-sm px-3 py-1.5 rounded bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25"
+          >Salvar</button>
+        </div>
+      </div>
+    </div>
   );
 }
