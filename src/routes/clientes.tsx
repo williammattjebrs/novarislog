@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useChildMatches } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useState, useMemo } from "react";
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/clientes")({
   }),
   component: () => (
     <RoleGate path="/clientes">
-      <ClientesPage />
+      <ClientesLayout />
     </RoleGate>
   ),
 });
@@ -34,6 +34,12 @@ const STAGES: { id: CRMStage; label: string }[] = [
   { id: "fechado", label: "Fechado" },
   { id: "perdido", label: "Perdido" },
 ];
+
+// Quando uma rota filha (ex.: /clientes/$id) está ativa, renderiza só o detalhe.
+function ClientesLayout() {
+  const hasChild = useChildMatches().length > 0;
+  return hasChild ? <Outlet /> : <ClientesPage />;
+}
 
 function ClientesPage() {
   const clients = useClients();
