@@ -25,7 +25,8 @@ export function AcompanhamentoColeta() {
   const atrasada = (o: OrdemColeta) => o.status !== "coletada" && Date.parse(o.previsaoColeta || o.dataHoraColeta) < Date.now();
   const q = busca.trim().toLowerCase();
   const lista = base.filter((o) => (filtro === "todas" || (filtro === "pendentes" && o.status !== "coletada") || (filtro === "coletadas" && o.status === "coletada") || (filtro === "atrasadas" && atrasada(o)))
-    && (!q || [o.numero, o.clienteColetaNome, o.localColeta, mot.list.find((m) => m.id === o.motoristaId)?.nome, vei.list.find((v) => v.id === o.veiculoId)?.placa, ...notasDaOc(o).flatMap((n) => [n.numeroNFe, n.chaveNFe ?? ""])].join(" ").toLowerCase().includes(q)))
+    && (autorF === "todas" || o.criadoPor === (user?.nome ?? ""))
+    && (!q || [o.numero, o.criadoPor, o.clienteColetaNome, o.localColeta, mot.list.find((m) => m.id === o.motoristaId)?.nome, vei.list.find((v) => v.id === o.veiculoId)?.placa, ...notasDaOc(o).flatMap((n) => [n.numeroNFe, n.chaveNFe ?? ""])].join(" ").toLowerCase().includes(q)))
     .sort((a, b) => (a.previsaoColeta || a.dataHoraColeta).localeCompare(b.previsaoColeta || b.dataHoraColeta));
   return (
     <div className="panel p-4 space-y-3">
@@ -34,6 +35,9 @@ export function AcompanhamentoColeta() {
         <span className="text-xs text-muted-foreground">{base.filter((o) => o.status !== "coletada").length} a coletar · {base.filter(atrasada).length} atrasada(s)</span>
         <select aria-label="Filtro do acompanhamento" className={inp + " ml-auto"} value={filtro} onChange={(e) => setFiltro(e.target.value as typeof filtro)}>
           <option value="pendentes">A coletar</option><option value="atrasadas">Atrasadas</option><option value="coletadas">Coletadas sem CT-e</option><option value="todas">Todas</option>
+        </select>
+        <select aria-label="Filtrar por quem gerou" className={inp} value={autorF} onChange={(e) => setAutorF(e.target.value as typeof autorF)}>
+          <option value="todas">Todas as OCs</option><option value="minhas">Só as minhas</option>
         </select>
         <input aria-label="Buscar no acompanhamento" className={inp + " w-64"} placeholder="OC, NF, cliente, motorista, placa" value={busca} onChange={(e) => setBusca(e.target.value)} />
       </div>
