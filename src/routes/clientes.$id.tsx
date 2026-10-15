@@ -143,9 +143,29 @@ function ClienteDetalhe() {
 
         {tab === "tabelas" && (
           <>
-            <button onClick={() => setShowTable(true)} className="text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20">
-              <Plus className="h-3 w-3" /> nova tabela
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button onClick={() => setShowTable(true)} className="text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20">
+                <Plus className="h-3 w-3" /> nova tabela
+              </button>
+              <select
+                className="input h-8 text-xs max-w-sm"
+                value=""
+                onChange={(e) => {
+                  const src = tables.list.find((t) => t.id === e.target.value);
+                  if (!src) return;
+                  const dono = clients.list.find((c) => c.id === src.clienteId)?.nome ?? "sem cliente";
+                  if (!confirm(`Vincular a tabela "${src.nome}" (de ${dono}) a ${client.nome}? Será criada uma cópia própria do cliente; a tabela original não é alterada.`)) return;
+                  tables.add({ ...src, id: newId("TAB"), clienteId: client.id, criadoEm: new Date().toISOString() });
+                }}
+              >
+                <option value="">Vincular tabela existente…</option>
+                {tables.list.filter((t) => t.clienteId !== client.id).map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nome} · {t.origemUf}→{t.destinoUf} · {clients.list.find((c) => c.id === t.clienteId)?.nome ?? "sem cliente"}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="space-y-3">
               {clientTables.map((t) => (
                 <TableCard key={t.id} table={t} onDelete={() => tables.remove(t.id)} onUpdate={(patch) => tables.update(t.id, patch)} />
