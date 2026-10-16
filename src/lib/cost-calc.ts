@@ -34,10 +34,12 @@ export function findFreightTable(
     if (t.vigenciaFim && t.vigenciaFim < now) return false;
     return true;
   });
-  // preferência: cidade específica > UF genérica
+  // preferência: tipo de caminhão exato > cidade específica > UF genérica
   matches.sort((a, b) => {
-    const scoreA = (a.origemCidade ? 1 : 0) + (a.destinoCidade ? 1 : 0);
-    const scoreB = (b.origemCidade ? 1 : 0) + (b.destinoCidade ? 1 : 0);
+    const tipoA = args.tipoCaminhao && a.tipoCaminhao === args.tipoCaminhao ? 2 : 0;
+    const tipoB = args.tipoCaminhao && b.tipoCaminhao === args.tipoCaminhao ? 2 : 0;
+    const scoreA = tipoA + (a.origemCidade ? 1 : 0) + (a.destinoCidade ? 1 : 0);
+    const scoreB = tipoB + (b.origemCidade ? 1 : 0) + (b.destinoCidade ? 1 : 0);
     return scoreB - scoreA;
   });
   return matches[0] ?? null;
