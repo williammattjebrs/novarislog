@@ -57,11 +57,11 @@ export const enviarAgoraOC = createServerFn({ method: "POST" })
 /** Vincula NF(s) que chegaram depois da coleta a uma OC emitida; gera nova versão do PDF sem reenviar e-mail. */
 export const vincularNfOC = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ ocId: z.string().min(1).max(120), nfIds: z.array(z.string().min(1).max(120)).min(1).max(50) }).parse(d))
+  .inputValidator((d: unknown) => z.object({ ocId: z.string().min(1).max(120), nfIds: z.array(z.string().min(1).max(120)).min(1).max(50), localColetaId: z.string().max(120).optional() }).parse(d))
   .handler(async ({ data, context }) => {
     const actor = await requireModule(context, "/ordens-coleta");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { vincularNfs } = await import("./oc.server");
-    try { return await vincularNfs(supabaseAdmin, actor, data.ocId, data.nfIds); }
+    try { return await vincularNfs(supabaseAdmin, actor, data.ocId, data.nfIds, data.localColetaId); }
     catch (e) { return { ok: false as const, erros: [e instanceof Error ? e.message : "Falha ao vincular"] }; }
   });
