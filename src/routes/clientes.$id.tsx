@@ -541,7 +541,7 @@ function NewTableModal({ onClose, onSave }: {
           <F label="Vigência fim"><input type="date" value={vigenciaFim} onChange={(e) => setVF(e.target.value)} className="input" /></F>
         </div>
         <p className="text-[11px] text-muted-foreground mt-3">
-          Após salvar, use o botão <b>Excel</b> no card da tabela para importar as faixas de peso (colunas: <span className="num">faixa_min · faixa_max · valor_kg · minimo</span>).
+          Após salvar, use o botão <b>Excel</b> no card da tabela para importar as faixas de peso — ou use a <b>importação em massa</b> para subir várias rotas e tipos de caminhão de uma vez.
         </p>
         <div className="flex justify-end gap-2 mt-4">
           <button onClick={onClose} className="text-sm px-3 py-1.5 rounded border border-border hover:bg-elevated">Cancelar</button>
