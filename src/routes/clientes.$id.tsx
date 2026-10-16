@@ -489,16 +489,18 @@ function NewTableModal({ onClose, onSave }: {
   const [vigenciaFim, setVF] = useState(new Date(Date.now() + 365 * 86400_000).toISOString().slice(0, 10));
 
   function submit() {
-    if (!nome.trim()) return;
+    if (!nome.trim()) return alert("Informe o nome da tabela.");
+    if (!origem || !destino) return alert("Selecione origem e destino na lista do IBGE.");
     const rows: FreightRow[] = modalidade === "fracionada"
       ? [{ faixaMin: 0, faixaMax: 500, valorKg: 0.5, minimo: 100 }]
       : [];
     onSave({
       id: newId("FT"),
       nome, modalidade,
-      origemUf, destinoUf,
-      origemCidade: origemCidade || undefined,
-      destinoCidade: destinoCidade || undefined,
+      tipoCaminhao: tipoCaminhao || undefined,
+      origemUf: origem.uf, destinoUf: destino.uf,
+      origemCidade: origem.nome,
+      destinoCidade: destino.nome,
       rows,
       adValorem: adV, gris, pedagio, prazoDias: prazo,
       vigenciaInicio, vigenciaFim,
@@ -523,10 +525,14 @@ function NewTableModal({ onClose, onSave }: {
           {modalidade === "lotacao" && (
             <F label="Valor da lotação (R$)"><input type="number" value={valorLotacao} onChange={(e) => setValorLotacao(Number(e.target.value))} className="input num" /></F>
           )}
-          <F label="UF origem"><input value={origemUf} onChange={(e) => setOrigemUf(e.target.value.toUpperCase())} maxLength={2} className="input" /></F>
-          <F label="UF destino"><input value={destinoUf} onChange={(e) => setDestinoUf(e.target.value.toUpperCase())} maxLength={2} className="input" /></F>
-          <F label="Cidade origem (opcional)"><input value={origemCidade} onChange={(e) => setOrigemCidade(e.target.value)} className="input" /></F>
-          <F label="Cidade destino (opcional)"><input value={destinoCidade} onChange={(e) => setDestinoCidade(e.target.value)} className="input" /></F>
+          <F label="Tipo de caminhão">
+            <select value={tipoCaminhao} onChange={(e) => setTipoCaminhao(e.target.value)} className="input">
+              <option value="">Qualquer veículo</option>
+              {TIPOS_CAMINHAO.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </F>
+          <F label="Cidade de origem (IBGE)"><CityPicker value={origem} onChange={setOrigem} placeholder="Pesquisar cidade de origem..." /></F>
+          <F label="Cidade de destino (IBGE)"><CityPicker value={destino} onChange={setDestino} placeholder="Pesquisar cidade de destino..." /></F>
           <F label="Ad valorem (%)"><input type="number" step="0.01" value={adV} onChange={(e) => setAdV(Number(e.target.value))} className="input num" /></F>
           <F label="GRIS (%)"><input type="number" step="0.01" value={gris} onChange={(e) => setGris(Number(e.target.value))} className="input num" /></F>
           <F label="Pedágio (R$)"><input type="number" step="0.01" value={pedagio} onChange={(e) => setPedagio(Number(e.target.value))} className="input num" /></F>
