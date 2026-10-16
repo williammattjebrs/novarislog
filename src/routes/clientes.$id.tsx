@@ -168,6 +168,13 @@ function ClienteDetalhe() {
                   <Plus className="h-3 w-3" /> nova tabela do cliente
                 </button>
               </div>
+              <div className="rounded-md border border-border p-3 md:col-span-2">
+                <div className="text-xs font-medium mb-1">Importar tabelas em massa (Excel modelo)</div>
+                <p className="text-[11px] text-muted-foreground mb-2">
+                  Uma planilha com várias rotas e tipos de caminhão (fracionado, Truck, Carreta, Bitrem…). As cidades são validadas pela base oficial do IBGE.
+                </p>
+                <BulkImport clientId={client.id} />
+              </div>
               <div className="rounded-md border border-border p-3">
                 <div className="text-xs font-medium mb-1">Vincular tabela existente</div>
                 <p className="text-[11px] text-muted-foreground mb-2">Copia uma tabela já cadastrada (de outro cliente ou a padrão) para este cliente. A original não é alterada.</p>
