@@ -272,6 +272,105 @@ function ClienteDetalhe() {
   );
 }
 
+// Importação em massa de tabelas via Excel modelo (várias rotas/tipos de caminhão de uma vez).
+function BulkImport({ clientId }: { clientId: string }) {
+  const tables = useFreightTables();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState<BulkResult | null>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setBusy(true);
+    setRes(null);
+    try {
+      const r = await parseFreightBulkExcel(f);
+      setRes(r);
+    } catch (err) {
+      alert("Falha ao ler o arquivo: " + (err as Error).message);
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  function confirmar() {
+    if (!res || res.tables.length === 0) return;
+    const now = new Date().toISOString();
+    res.tables.forEach((t) => tables.add({ ...t, id: newId("TAB"), clienteId: clientId, criadoEm: now }));
+    alert(`✓ ${res.tables.length} tabela(s) importada(s) para o cliente.`);
+    setRes(null);
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={downloadFreightTemplate} className="text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded border border-border hover:bg-elevated">
+          <FileDown className="h-3 w-3" /> baixar Excel modelo
+        </button>
+        <label className={`text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer ${busy ? "opacity-50 pointer-events-none" : ""}`}>
+          <Upload className="h-3 w-3" /> {busy ? "validando cidades no IBGE…" : "subir planilha preenchida"}
+          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} className="hidden" />
+        </label>
+      </div>
+      {res && (
+        <div className="rounded-md border border-border p-3 space-y-2 text-xs">
+          {res.erros.length > 0 && (
+            <div className="text-danger space-y-0.5">
+              <div className="font-medium">{res.erros.length} linha(s) com erro (não serão importadas):</div>
+              {res.erros.slice(0, 10).map((e, i) => <div key={i}>· {e}</div>)}
+              {res.erros.length > 10 && <div>… e mais {res.erros.length - 10}</div>}
+            </div>
+          )}
+          {res.avisos.length > 0 && (
+            <div className="text-amber-400 space-y-0.5">
+              {res.avisos.slice(0, 8).map((a, i) => <div key={i}>· {a}</div>)}
+              {res.avisos.length > 8 && <div>… e mais {res.avisos.length - 8}</div>}
+            </div>
+          )}
+          {res.tables.length > 0 && (
+            <>
+              <div className="font-medium">Prévia — {res.tables.length} tabela(s) prontas para importar:</div>
+              <div className="max-h-48 overflow-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <th className="text-left font-normal py-1">Tabela</th>
+                      <th className="text-left font-normal">Rota</th>
+                      <th className="text-left font-normal">Modalidade</th>
+                      <th className="text-left font-normal">Caminhão</th>
+                      <th className="text-right font-normal">Faixas/valor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {res.tables.map((t, i) => (
+                      <tr key={i} className="border-t border-border">
+                        <td className="py-1">{t.nome}</td>
+                        <td className="text-muted-foreground">{t.origemCidade}/{t.origemUf} → {t.destinoCidade}/{t.destinoUf}</td>
+                        <td>{t.modalidade === "lotacao" ? "Lotação" : "Fracionada"}</td>
+                        <td>{t.tipoCaminhao || "qualquer"}</td>
+                        <td className="text-right num">{t.modalidade === "lotacao" ? fmtBRL(t.valorLotacao ?? 0) : `${t.rows.length} faixa(s)`}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={confirmar} className="px-3 py-1.5 rounded bg-primary text-primary-foreground">Confirmar importação</button>
+                <button onClick={() => setRes(null)} className="px-3 py-1.5 rounded border border-border hover:bg-elevated">Descartar</button>
+              </div>
+            </>
+          )}
+          {res.tables.length === 0 && res.erros.length > 0 && (
+            <div className="text-muted-foreground">Nenhuma tabela válida encontrada. Corrija a planilha e envie novamente.</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Line({ label, v }: { label: string; v: string }) {
   return (
     <div className="flex justify-between text-sm py-1.5 border-b border-border last:border-0">
