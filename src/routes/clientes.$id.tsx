@@ -409,7 +409,7 @@ function TableCard({ table, onDelete, onUpdate }: {
         <div>
           <div className="font-medium">{table.nome}</div>
           <div className="text-xs text-muted-foreground">
-            {table.modalidade === "lotacao" ? "Lotação" : "Fracionada"} · {table.origemCidade || table.origemUf} → {table.destinoCidade || table.destinoUf} · vig. {table.vigenciaInicio} a {table.vigenciaFim}
+            {table.modalidade === "lotacao" ? "Lotação" : "Fracionada"}{table.tipoCaminhao ? ` · ${table.tipoCaminhao}` : ""} · {table.origemCidade || table.origemUf} → {table.destinoCidade || table.destinoUf} · vig. {table.vigenciaInicio} a {table.vigenciaFim}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -477,10 +477,9 @@ function NewTableModal({ onClose, onSave }: {
 }) {
   const [nome, setNome] = useState("");
   const [modalidade, setModalidade] = useState<Modalidade>("fracionada");
-  const [origemUf, setOrigemUf] = useState("SP");
-  const [destinoUf, setDestinoUf] = useState("SP");
-  const [origemCidade, setOrigemCidade] = useState("");
-  const [destinoCidade, setDestinoCidade] = useState("");
+  const [tipoCaminhao, setTipoCaminhao] = useState("");
+  const [origem, setOrigem] = useState<{ nome: string; uf: string } | null>(null);
+  const [destino, setDestino] = useState<{ nome: string; uf: string } | null>(null);
   const [adV, setAdV] = useState(0.15);
   const [gris, setGris] = useState(0.10);
   const [pedagio, setPedagio] = useState(0);
