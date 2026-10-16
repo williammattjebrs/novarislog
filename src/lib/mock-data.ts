@@ -76,6 +76,8 @@ export interface FreightTable {
   criadoEm: string;
   // lotação: valor fixo por viagem (opcional, se modalidade === "lotacao")
   valorLotacao?: number;
+  /** Tipo de caminhão da tabela (Truck, Carreta...). Vazio = vale para qualquer veículo. */
+  tipoCaminhao?: string;
 }
 
 // ---------- Rotas padrão / rotas do cliente ----------

@@ -16,12 +16,15 @@ export function findFreightTable(
     ufEntrega: string;
     cidadeEntrega?: string;
     modalidade?: "fracionada" | "lotacao";
+    tipoCaminhao?: string;
   },
 ): FreightTable | null {
   const now = new Date().toISOString().slice(0, 10);
   const matches = tables.filter((t) => {
     if (!t.ativa) return false;
     if (t.clienteId !== args.clienteId) return false;
+    // Tabela com tipo definido só atende esse tipo; tabela sem tipo atende qualquer veículo.
+    if (args.tipoCaminhao && t.tipoCaminhao && t.tipoCaminhao !== args.tipoCaminhao) return false;
     if (t.origemUf !== args.ufColeta) return false;
     if (t.destinoUf !== args.ufEntrega) return false;
     if (t.origemCidade && args.cidadeColeta && t.origemCidade.toLowerCase() !== args.cidadeColeta.toLowerCase()) return false;
