@@ -41,12 +41,31 @@ export async function emitOc(db: Admin, actor: { id: string; nome: string }, ocI
 }
 
 /** Vincula NFs chegadas depois a uma OC emitida e gera nova versão do documento, sem reenviar e-mail. */
-export async function vincularNfs(db: Admin, actor: { id: string; nome: string }, ocId: string, nfIds: string[]) {
+export async function vincularNfs(db: Admin, actor: { id: string; nome: string }, ocId: string, nfIds: string[], localColetaId?: string) {
   const { data, error } = await db.rpc("tms_oc_link_nfs", { p_actor: actor.id, p_actor_nome: actor.nome, p_oc_id: ocId, p_nf_ids: nfIds });
   if (error) return { ok: false as const, erros: [error.message] };
   const r = data as { ocVersion: number; vinculadas: number };
   if (!r.vinculadas) return { ok: false as const, erros: ["Nenhuma NF nova para vincular."] };
-  const e = await emitOc(db, actor, ocId, r.ocVersion, false);
+  // Persiste o local de coleta das NFs vinculadas: o escolhido ou o local original da OC (cabeçalho/snapshot).
+  let ocVersion = r.ocVersion;
+  const [oc] = await rows<OrdemColeta>(db, "ordensColeta", [ocId]);
+  if (oc) {
+    let local = localColetaId || oc.localColetaId || Object.values(oc.coletaPorNf ?? {}).find(Boolean) || "";
+    if (!local && oc.docVersion) {
+      const { data: last } = await db.from("tms_oc_documents").select("snapshot").eq("oc_id", ocId).eq("version", oc.docVersion).maybeSingle();
+      local = ((last?.snapshot as unknown as OcSnapshot | undefined)?.coleta?.local?.id) ?? "";
+    }
+    if (local) {
+      const coletaPorNf = { ...(oc.coletaPorNf ?? {}) };
+      for (const id of nfIds) if (oc.orderIds.includes(id)) coletaPorNf[id] = local;
+      const { __version, ...dados } = oc as OrdemColeta & { __version: number };
+      const novo = { ...dados, coletaPorNf, localColetaId: oc.localColetaId || local };
+      const { data: upd, error: e2 } = await db.from("app_records").update({ data: novo as never, version: __version + 1 }).eq("collection", "ordensColeta").eq("id", ocId).eq("version", __version).select("version").maybeSingle();
+      if (e2 || !upd) return { ok: false as const, erros: ["NF vinculada, mas não foi possível gravar o local de coleta; recarregue e use \"Gerar nova versão\"."] };
+      ocVersion = upd.version as number;
+    }
+  }
+  const e = await emitOc(db, actor, ocId, ocVersion, false);
   if (!e.ok) return { ok: false as const, erros: [`NF vinculada, mas a nova versão do PDF não foi gerada: ${e.erros.join(" ")} Use "Gerar nova versão".`] };
   return { ok: true as const, vinculadas: r.vinculadas, docVersion: e.docVersion };
 }

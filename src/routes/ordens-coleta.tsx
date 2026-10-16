@@ -158,11 +158,11 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
   const dest = destinatariosOc(lcs);
   const val = validarEmissao(draft, { nfs: orders.list, locais: locais.list, motoristas: mot.list, veiculos: vei.list, empresas: empresas.list });
   const vincularFn = useServerFn(vincularNfOC);
-  async function vincular(nfIds: string[]) {
+  async function vincular(nfIds: string[], localColetaId: string) {
     if (!confirm(`Vincular ${nfIds.length} NF à ${oc.numero}?\n\nSerá gerada uma nova versão do PDF, sem reenviar e-mail.`)) return;
     setBusy(true); setMsg(null);
     try {
-      const r = await vincularFn({ data: { ocId: oc.id, nfIds } });
+      const r = await vincularFn({ data: { ocId: oc.id, nfIds, localColetaId } });
       await refreshShared(); await loadDocs();
       setMsg(r.ok ? { tipo: "ok", texto: `${r.vinculadas} NF vinculada(s). Documento v${r.docVersion} gerado, sem envio de e-mail.` } : { tipo: "erro", texto: r.erros.join(" ") });
     } catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao vincular." }); }
@@ -426,8 +426,11 @@ function ConversaoLegado() {
 }
 
 /** NFs que podem entrar numa OC emitida: livres ou em rascunho. Sugestões primeiro (mesmo cliente da coleta/descarga). */
-function VincularNf({ oc, busy, onVincular }: { oc: OrdemColeta; busy: boolean; onVincular: (ids: string[]) => void }) {
-  const orders = useOrders(); const ocs = useOrdensColeta();
+function VincularNf({ oc, busy, onVincular }: { oc: OrdemColeta; busy: boolean; onVincular: (ids: string[], localColetaId: string) => void }) {
+  const orders = useOrders(); const ocs = useOrdensColeta(); const locais = useLocais();
+  const original = oc.localColetaId || Object.values(oc.coletaPorNf ?? {}).find(Boolean) || "";
+  const [local, setLocal] = useState(original);
+  useEffect(() => { setLocal(original); }, [original]);
   const [sel, setSel] = useState<string[]>([]); const [q, setQ] = useState("");
   const norm = (x?: string) => (x ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
   const parecido = (a?: string, b?: string) => { const x = norm(a), y = norm(b); return !!x && !!y && (x.includes(y.slice(0, 8)) || y.includes(x.slice(0, 8))); };
@@ -439,11 +442,16 @@ function VincularNf({ oc, busy, onVincular }: { oc: OrdemColeta; busy: boolean; 
   return (
     <div className="mt-3 rounded border border-primary/40 p-3 space-y-2 text-xs">
       <div className="font-semibold text-primary">Vincular NF que chegou depois da coleta</div>
+      <label className="block space-y-1"><span className="text-muted-foreground">Local de coleta das NFs vinculadas{original && local === original ? " (local original da OC)" : ""}</span>
+        <select aria-label="Local de coleta da NF vinculada" className={inp} value={local} onChange={(e) => setLocal(e.target.value)}>
+          <option value="">Selecione…</option>
+          {locais.list.map((l) => <option key={l.id} value={l.id}>{l.nome} · {l.cidade}/{l.uf}{l.id === original ? " (original)" : ""}</option>)}
+        </select></label>
       <input aria-label="Buscar NF para vincular" className={inp} placeholder="Buscar por número, chave, remetente ou destinatário" value={q} onChange={(e) => setQ(e.target.value)} />
       {!t && <div className="text-muted-foreground">Sugestões do mesmo cliente da coleta/descarga{vis.length ? "" : ": nenhuma — busque a nota acima"}.</div>}
       {vis.map(({ n, sug }) => <label key={n.id} className="flex gap-2 items-center"><input type="checkbox" checked={sel.includes(n.id)} onChange={(e) => setSel(e.target.checked ? [...sel, n.id] : sel.filter((x) => x !== n.id))} />
         <span className="num">NF {n.numeroNFe}</span><span className="text-muted-foreground">{n.remetente} → {n.destinatario}</span><span className="num text-muted-foreground">{(n.peso || 0).toLocaleString("pt-BR")} kg</span>{sug && <span className="text-success">sugerida</span>}</label>)}
-      <Button size="sm" disabled={busy || !sel.length} onClick={() => { onVincular(sel); setSel([]); }}>Vincular {sel.length || ""} NF</Button>
+      <Button size="sm" disabled={busy || !sel.length || !local} onClick={() => { onVincular(sel, local); setSel([]); }}>Vincular {sel.length || ""} NF</Button>
     </div>
   );
 }
