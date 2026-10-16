@@ -16,12 +16,15 @@ export function findFreightTable(
     ufEntrega: string;
     cidadeEntrega?: string;
     modalidade?: "fracionada" | "lotacao";
+    tipoCaminhao?: string;
   },
 ): FreightTable | null {
   const now = new Date().toISOString().slice(0, 10);
   const matches = tables.filter((t) => {
     if (!t.ativa) return false;
     if (t.clienteId !== args.clienteId) return false;
+    // Tabela com tipo definido só atende esse tipo; tabela sem tipo atende qualquer veículo.
+    if (args.tipoCaminhao && t.tipoCaminhao && t.tipoCaminhao !== args.tipoCaminhao) return false;
     if (t.origemUf !== args.ufColeta) return false;
     if (t.destinoUf !== args.ufEntrega) return false;
     if (t.origemCidade && args.cidadeColeta && t.origemCidade.toLowerCase() !== args.cidadeColeta.toLowerCase()) return false;
@@ -31,10 +34,12 @@ export function findFreightTable(
     if (t.vigenciaFim && t.vigenciaFim < now) return false;
     return true;
   });
-  // preferência: cidade específica > UF genérica
+  // preferência: tipo de caminhão exato > cidade específica > UF genérica
   matches.sort((a, b) => {
-    const scoreA = (a.origemCidade ? 1 : 0) + (a.destinoCidade ? 1 : 0);
-    const scoreB = (b.origemCidade ? 1 : 0) + (b.destinoCidade ? 1 : 0);
+    const tipoA = args.tipoCaminhao && a.tipoCaminhao === args.tipoCaminhao ? 2 : 0;
+    const tipoB = args.tipoCaminhao && b.tipoCaminhao === args.tipoCaminhao ? 2 : 0;
+    const scoreA = tipoA + (a.origemCidade ? 1 : 0) + (a.destinoCidade ? 1 : 0);
+    const scoreB = tipoB + (b.origemCidade ? 1 : 0) + (b.destinoCidade ? 1 : 0);
     return scoreB - scoreA;
   });
   return matches[0] ?? null;

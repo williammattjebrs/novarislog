@@ -5,12 +5,14 @@ import { RoleGate } from "@/components/RoleGate";
 import { useState, useRef } from "react";
 import { RouteRatesTable } from "@/components/RouteRatesTable";
 import { TrackingGroupEditor } from "@/components/TrackingGroupEditor";
-import { ArrowLeft, Plus, FileUp, Trash2, Check, Pencil } from "lucide-react";
+import { ArrowLeft, Plus, FileUp, Trash2, Check, Pencil, FileDown, Upload } from "lucide-react";
 import {
   useClients, useFreightTables, useQuotations, newId,
 } from "@/lib/mock-store";
-import { fmtBRL, type Client, type FreightRow, type FreightTable, type Modalidade } from "@/lib/mock-data";
+import { fmtBRL, TIPOS_CAMINHAO, type Client, type FreightRow, type FreightTable, type Modalidade } from "@/lib/mock-data";
 import { parseFreightExcel } from "@/lib/excel-parser";
+import { downloadFreightTemplate, parseFreightBulkExcel, type BulkResult } from "@/lib/freight-excel";
+import { CityPicker } from "@/components/CityPicker";
 
 export const Route = createFileRoute("/clientes/$id")({
   head: () => ({
@@ -166,6 +168,13 @@ function ClienteDetalhe() {
                   <Plus className="h-3 w-3" /> nova tabela do cliente
                 </button>
               </div>
+              <div className="rounded-md border border-border p-3 md:col-span-2">
+                <div className="text-xs font-medium mb-1">Importar tabelas em massa (Excel modelo)</div>
+                <p className="text-[11px] text-muted-foreground mb-2">
+                  Uma planilha com várias rotas e tipos de caminhão (fracionado, Truck, Carreta, Bitrem…). As cidades são validadas pela base oficial do IBGE.
+                </p>
+                <BulkImport clientId={client.id} />
+              </div>
               <div className="rounded-md border border-border p-3">
                 <div className="text-xs font-medium mb-1">Vincular tabela existente</div>
                 <p className="text-[11px] text-muted-foreground mb-2">Copia uma tabela já cadastrada (de outro cliente ou a padrão) para este cliente. A original não é alterada.</p>
@@ -263,6 +272,105 @@ function ClienteDetalhe() {
   );
 }
 
+// Importação em massa de tabelas via Excel modelo (várias rotas/tipos de caminhão de uma vez).
+function BulkImport({ clientId }: { clientId: string }) {
+  const tables = useFreightTables();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState<BulkResult | null>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setBusy(true);
+    setRes(null);
+    try {
+      const r = await parseFreightBulkExcel(f);
+      setRes(r);
+    } catch (err) {
+      alert("Falha ao ler o arquivo: " + (err as Error).message);
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  function confirmar() {
+    if (!res || res.tables.length === 0) return;
+    const now = new Date().toISOString();
+    res.tables.forEach((t) => tables.add({ ...t, id: newId("TAB"), clienteId: clientId, criadoEm: now }));
+    alert(`✓ ${res.tables.length} tabela(s) importada(s) para o cliente.`);
+    setRes(null);
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={downloadFreightTemplate} className="text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded border border-border hover:bg-elevated">
+          <FileDown className="h-3 w-3" /> baixar Excel modelo
+        </button>
+        <label className={`text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer ${busy ? "opacity-50 pointer-events-none" : ""}`}>
+          <Upload className="h-3 w-3" /> {busy ? "validando cidades no IBGE…" : "subir planilha preenchida"}
+          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} className="hidden" />
+        </label>
+      </div>
+      {res && (
+        <div className="rounded-md border border-border p-3 space-y-2 text-xs">
+          {res.erros.length > 0 && (
+            <div className="text-danger space-y-0.5">
+              <div className="font-medium">{res.erros.length} linha(s) com erro (não serão importadas):</div>
+              {res.erros.slice(0, 10).map((e, i) => <div key={i}>· {e}</div>)}
+              {res.erros.length > 10 && <div>… e mais {res.erros.length - 10}</div>}
+            </div>
+          )}
+          {res.avisos.length > 0 && (
+            <div className="text-amber-400 space-y-0.5">
+              {res.avisos.slice(0, 8).map((a, i) => <div key={i}>· {a}</div>)}
+              {res.avisos.length > 8 && <div>… e mais {res.avisos.length - 8}</div>}
+            </div>
+          )}
+          {res.tables.length > 0 && (
+            <>
+              <div className="font-medium">Prévia — {res.tables.length} tabela(s) prontas para importar:</div>
+              <div className="max-h-48 overflow-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <th className="text-left font-normal py-1">Tabela</th>
+                      <th className="text-left font-normal">Rota</th>
+                      <th className="text-left font-normal">Modalidade</th>
+                      <th className="text-left font-normal">Caminhão</th>
+                      <th className="text-right font-normal">Faixas/valor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {res.tables.map((t, i) => (
+                      <tr key={i} className="border-t border-border">
+                        <td className="py-1">{t.nome}</td>
+                        <td className="text-muted-foreground">{t.origemCidade}/{t.origemUf} → {t.destinoCidade}/{t.destinoUf}</td>
+                        <td>{t.modalidade === "lotacao" ? "Lotação" : "Fracionada"}</td>
+                        <td>{t.tipoCaminhao || "qualquer"}</td>
+                        <td className="text-right num">{t.modalidade === "lotacao" ? fmtBRL(t.valorLotacao ?? 0) : `${t.rows.length} faixa(s)`}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={confirmar} className="px-3 py-1.5 rounded bg-primary text-primary-foreground">Confirmar importação</button>
+                <button onClick={() => setRes(null)} className="px-3 py-1.5 rounded border border-border hover:bg-elevated">Descartar</button>
+              </div>
+            </>
+          )}
+          {res.tables.length === 0 && res.erros.length > 0 && (
+            <div className="text-muted-foreground">Nenhuma tabela válida encontrada. Corrija a planilha e envie novamente.</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Line({ label, v }: { label: string; v: string }) {
   return (
     <div className="flex justify-between text-sm py-1.5 border-b border-border last:border-0">
@@ -301,7 +409,7 @@ function TableCard({ table, onDelete, onUpdate }: {
         <div>
           <div className="font-medium">{table.nome}</div>
           <div className="text-xs text-muted-foreground">
-            {table.modalidade === "lotacao" ? "Lotação" : "Fracionada"} · {table.origemCidade || table.origemUf} → {table.destinoCidade || table.destinoUf} · vig. {table.vigenciaInicio} a {table.vigenciaFim}
+            {table.modalidade === "lotacao" ? "Lotação" : "Fracionada"}{table.tipoCaminhao ? ` · ${table.tipoCaminhao}` : ""} · {table.origemCidade || table.origemUf} → {table.destinoCidade || table.destinoUf} · vig. {table.vigenciaInicio} a {table.vigenciaFim}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -369,10 +477,9 @@ function NewTableModal({ onClose, onSave }: {
 }) {
   const [nome, setNome] = useState("");
   const [modalidade, setModalidade] = useState<Modalidade>("fracionada");
-  const [origemUf, setOrigemUf] = useState("SP");
-  const [destinoUf, setDestinoUf] = useState("SP");
-  const [origemCidade, setOrigemCidade] = useState("");
-  const [destinoCidade, setDestinoCidade] = useState("");
+  const [tipoCaminhao, setTipoCaminhao] = useState("");
+  const [origem, setOrigem] = useState<{ nome: string; uf: string } | null>(null);
+  const [destino, setDestino] = useState<{ nome: string; uf: string } | null>(null);
   const [adV, setAdV] = useState(0.15);
   const [gris, setGris] = useState(0.10);
   const [pedagio, setPedagio] = useState(0);
@@ -382,16 +489,18 @@ function NewTableModal({ onClose, onSave }: {
   const [vigenciaFim, setVF] = useState(new Date(Date.now() + 365 * 86400_000).toISOString().slice(0, 10));
 
   function submit() {
-    if (!nome.trim()) return;
+    if (!nome.trim()) return alert("Informe o nome da tabela.");
+    if (!origem || !destino) return alert("Selecione origem e destino na lista do IBGE.");
     const rows: FreightRow[] = modalidade === "fracionada"
       ? [{ faixaMin: 0, faixaMax: 500, valorKg: 0.5, minimo: 100 }]
       : [];
     onSave({
       id: newId("FT"),
       nome, modalidade,
-      origemUf, destinoUf,
-      origemCidade: origemCidade || undefined,
-      destinoCidade: destinoCidade || undefined,
+      tipoCaminhao: tipoCaminhao || undefined,
+      origemUf: origem.uf, destinoUf: destino.uf,
+      origemCidade: origem.nome,
+      destinoCidade: destino.nome,
       rows,
       adValorem: adV, gris, pedagio, prazoDias: prazo,
       vigenciaInicio, vigenciaFim,
@@ -416,10 +525,14 @@ function NewTableModal({ onClose, onSave }: {
           {modalidade === "lotacao" && (
             <F label="Valor da lotação (R$)"><input type="number" value={valorLotacao} onChange={(e) => setValorLotacao(Number(e.target.value))} className="input num" /></F>
           )}
-          <F label="UF origem"><input value={origemUf} onChange={(e) => setOrigemUf(e.target.value.toUpperCase())} maxLength={2} className="input" /></F>
-          <F label="UF destino"><input value={destinoUf} onChange={(e) => setDestinoUf(e.target.value.toUpperCase())} maxLength={2} className="input" /></F>
-          <F label="Cidade origem (opcional)"><input value={origemCidade} onChange={(e) => setOrigemCidade(e.target.value)} className="input" /></F>
-          <F label="Cidade destino (opcional)"><input value={destinoCidade} onChange={(e) => setDestinoCidade(e.target.value)} className="input" /></F>
+          <F label="Tipo de caminhão">
+            <select value={tipoCaminhao} onChange={(e) => setTipoCaminhao(e.target.value)} className="input">
+              <option value="">Qualquer veículo</option>
+              {TIPOS_CAMINHAO.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </F>
+          <F label="Cidade de origem (IBGE)"><CityPicker value={origem} onChange={setOrigem} placeholder="Pesquisar cidade de origem..." /></F>
+          <F label="Cidade de destino (IBGE)"><CityPicker value={destino} onChange={setDestino} placeholder="Pesquisar cidade de destino..." /></F>
           <F label="Ad valorem (%)"><input type="number" step="0.01" value={adV} onChange={(e) => setAdV(Number(e.target.value))} className="input num" /></F>
           <F label="GRIS (%)"><input type="number" step="0.01" value={gris} onChange={(e) => setGris(Number(e.target.value))} className="input num" /></F>
           <F label="Pedágio (R$)"><input type="number" step="0.01" value={pedagio} onChange={(e) => setPedagio(Number(e.target.value))} className="input num" /></F>
@@ -428,7 +541,7 @@ function NewTableModal({ onClose, onSave }: {
           <F label="Vigência fim"><input type="date" value={vigenciaFim} onChange={(e) => setVF(e.target.value)} className="input" /></F>
         </div>
         <p className="text-[11px] text-muted-foreground mt-3">
-          Após salvar, use o botão <b>Excel</b> no card da tabela para importar as faixas de peso (colunas: <span className="num">faixa_min · faixa_max · valor_kg · minimo</span>).
+          Após salvar, use o botão <b>Excel</b> no card da tabela para importar as faixas de peso — ou use a <b>importação em massa</b> para subir várias rotas e tipos de caminhão de uma vez.
         </p>
         <div className="flex justify-end gap-2 mt-4">
           <button onClick={onClose} className="text-sm px-3 py-1.5 rounded border border-border hover:bg-elevated">Cancelar</button>
