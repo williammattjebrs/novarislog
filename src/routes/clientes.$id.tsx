@@ -5,12 +5,14 @@ import { RoleGate } from "@/components/RoleGate";
 import { useState, useRef } from "react";
 import { RouteRatesTable } from "@/components/RouteRatesTable";
 import { TrackingGroupEditor } from "@/components/TrackingGroupEditor";
-import { ArrowLeft, Plus, FileUp, Trash2, Check, Pencil } from "lucide-react";
+import { ArrowLeft, Plus, FileUp, Trash2, Check, Pencil, FileDown, Upload } from "lucide-react";
 import {
   useClients, useFreightTables, useQuotations, newId,
 } from "@/lib/mock-store";
-import { fmtBRL, type Client, type FreightRow, type FreightTable, type Modalidade } from "@/lib/mock-data";
+import { fmtBRL, TIPOS_CAMINHAO, type Client, type FreightRow, type FreightTable, type Modalidade } from "@/lib/mock-data";
 import { parseFreightExcel } from "@/lib/excel-parser";
+import { downloadFreightTemplate, parseFreightBulkExcel, type BulkResult } from "@/lib/freight-excel";
+import { CityPicker } from "@/components/CityPicker";
 
 export const Route = createFileRoute("/clientes/$id")({
   head: () => ({
