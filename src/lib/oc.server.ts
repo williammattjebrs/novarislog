@@ -84,11 +84,11 @@ export function ocEmailHtml(s: OcSnapshot & { versao?: number }, nfs = s.nfs) {
   const placa = esc(s.veiculo.placa + (s.veiculo.placaCarreta ? ` / ${s.veiculo.placaCarreta}` : ""));
    // Estes dados pertencem à mesma OC e são iguais para todas as NFs deste armazém.
    // Mesclar só as linhas de notas; o rodapé permanece fora do rowspan.
-   const compartilhados = [placa, esc(s.motorista.nome), esc(s.motorista.cpf), esc(s.veiculo.tipo), esc(fmtExtenso(s.coleta.dataHora)), esc(s.instrucoes)]
+   const compartilhados = [placa, esc(s.motorista.nome), esc(s.motorista.cpf), esc(s.veiculo.tipo), esc(s.instrucoes)]
      .map((valor) => `<td${nfs.length ? ` rowspan="${nfs.length}"` : ""} style="${td};vertical-align:middle">${valor}</td>`).join("");
    const linhas = nfs.length
-     ? nfs.map((n, index) => `<tr><td style="${td}">${esc(n.numero)}</td>${index === 0 ? compartilhados : ""}</tr>`).join("")
-     : `<tr><td style="${td}">A informar após a coleta</td>${compartilhados}</tr>`;
+     ? nfs.map((n, index) => `<tr><td style="${td}">${esc(n.numero)}</td>${index === 0 ? compartilhados : ""}<td style="${td}">${esc(fmtExtenso(n.coletaDataHora || s.coleta.dataHora))}</td></tr>`).join("")
+     : `<tr><td style="${td}">A informar após a coleta</td>${compartilhados}<td style="${td}">${esc(fmtExtenso(s.coleta.dataHora))}</td></tr>`;
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;color:#111">
 <p>Olá equipe, uma nova solicitação de carregamento foi feita, confira abaixo:</p>
 <h2 style="margin:16px 0 8px">Informações Gerais</h2>
@@ -96,7 +96,7 @@ export function ocEmailHtml(s: OcSnapshot & { versao?: number }, nfs = s.nfs) {
 <p style="margin:4px 0"><b>Data do preenchimento:</b> ${esc(fmtExtenso(s.emitidoEm))}.</p>
 <h3 style="text-align:center;color:#5a4a42;font-size:20px;margin:12px 0">Tabela de entregas</h3>
 <table cellspacing="0" style="border-collapse:collapse;width:100%">
-<tr><th style="${th}">NF</th><th style="${th}">Placas</th><th style="${th}">Motorista</th><th style="${th}">CPF</th><th style="${th}">Tipo de veículo</th><th style="${th}">Previsão de chegada</th><th style="${th}">Observações</th></tr>
+<tr><th style="${th}">NF</th><th style="${th}">Placas</th><th style="${th}">Motorista</th><th style="${th}">CPF</th><th style="${th}">Tipo de veículo</th><th style="${th}">Observações</th><th style="${th}">Previsão de chegada</th></tr>
 ${linhas}
 <tr><td style="${td}">Entregas: ${nfs.length}</td><td style="${td}">Peso total: ${peso.toLocaleString("pt-BR")}kg</td><td colspan="5" style="${td}">Criado por: ${esc(s.emitidoPor)}</td></tr>
 </table>

@@ -39,6 +39,7 @@ export const enderecoCompleto = (l?: Pick<LocalOperacional, "endereco" | "numero
 const EMAIL = /^[^\s@;,]+@[^\s@;,]+\.[^\s@;,]+$/;
 export type Destinatario = { email: string; papeis: string[] };
 /** Local de coleta efetivo de uma NF dentro da OC (por NF; senão o padrão do cabeçalho). */
+export const horaColetaDaNf = (oc: Pick<OrdemColeta, "horaColetaPorNf" | "dataHoraColeta">, nfId: string) => oc.horaColetaPorNf?.[nfId] || oc.dataHoraColeta || "";
 export const localColetaDaNf = (oc: Pick<OrdemColeta, "coletaPorNf" | "localColetaId">, nfId: string) => oc.coletaPorNf?.[nfId] || oc.localColetaId || "";
 /** E-mail vai somente aos locais de coleta; papel "coleta:<id>" permite enviar a cada um só as NFs dele. */
 export function destinatariosOc(coletas: (LocalOperacional | undefined)[]) {
@@ -63,7 +64,7 @@ export type OcSnapshot = {
   clienteColeta: { nome: string }; clienteDescarga: { nome: string }; contratante: { nome: string };
   coleta: { local: SnapLocal; dataHora: string }; descarga: { local: SnapLocal; dataHora: string };
   motorista: { nome: string; cpf: string; telefone: string }; veiculo: { placa: string; placaCarreta?: string; tipo: string };
-  nfs: { id: string; numero: string; chave: string; remetente: string; destinatario: string; peso: number; volumes: number; coletaLocalId?: string; entregaLocalId?: string; entregaLocal?: string }[];
+  nfs: { id: string; numero: string; chave: string; remetente: string; destinatario: string; peso: number; volumes: number; coletaLocalId?: string; coletaDataHora?: string; entregaLocalId?: string; entregaLocal?: string }[];
   /** Todos os locais de coleta da OC (a OC pode coletar em vários armazéns). */
   coletas?: SnapLocal[];
   totais: { peso: number; volumes: number }; instrucoes: string;
@@ -103,7 +104,8 @@ export function validarEmissao(oc: OrdemColeta, ctx: { nfs: Order[]; locais: Loc
   const semEntrega = Object.entries(oc.entregaPorNf ?? {}).filter(([id, v]) => v && oc.orderIds.includes(id) && !ctx.locais.some((x) => x.id === v));
   if (semEntrega.length) erros.push(`Local de entrega não encontrado em ${semEntrega.length} NF(s).`);
   if (ld && (!ld.endereco?.trim() || !ld.cidade)) erros.push(`Local de descarga ${ld.nome} sem endereço completo.`);
-  if (!oc.dataHoraColeta) erros.push("Informe data e hora da coleta.");
+  if (oc.orderIds.length) { const semHora = oc.orderIds.filter((id) => !horaColetaDaNf(oc, id)); if (semHora.length) erros.push(`Informe data e hora da coleta de ${semHora.length} NF(s).`); }
+  else if (!oc.dataHoraColeta) erros.push("Informe data e hora da coleta.");
   return { erros, m, v, lc, ld, lcs, empresa };
 }
 
@@ -111,7 +113,7 @@ export function buildSnapshot(oc: OrdemColeta, ctx: { nfs: Order[]; locais: Loca
   const { erros, m, v, lc, ld, lcs, empresa } = validarEmissao(oc, ctx);
   if (erros.length || !m || !v || !lc) return { erros, snapshot: null };
   const nfs = oc.orderIds.map((id) => ctx.nfs.find((n) => n.id === id)!).map((n) => ({
-    id: n.id, numero: String(n.numeroNFe), chave: n.chaveNFe ?? "", remetente: n.remetente, destinatario: n.destinatario, peso: Number(n.peso) || 0, volumes: Number(n.volumes) || 0, coletaLocalId: localColetaDaNf(oc, n.id),
+    id: n.id, numero: String(n.numeroNFe), chave: n.chaveNFe ?? "", remetente: n.remetente, destinatario: n.destinatario, peso: Number(n.peso) || 0, volumes: Number(n.volumes) || 0, coletaLocalId: localColetaDaNf(oc, n.id), coletaDataHora: horaColetaDaNf(oc, n.id),
     ...(() => { const le = ctx.locais.find((l) => l.id === oc.entregaPorNf?.[n.id]); return le ? { entregaLocalId: le.id, entregaLocal: `${le.nome} · ${enderecoCompleto(le)}` } : {}; })(),
   }));
   const { destinatarios, pendencias } = destinatariosOc(lcs);
@@ -120,7 +122,7 @@ export function buildSnapshot(oc: OrdemColeta, ctx: { nfs: Order[]; locais: Loca
     ...(oc.contratacao ? { contratacao: { tipo: oc.contratacao, custo: Number(oc.custoMotorista) || 0 } } : {}),
     ocId: oc.id, numero: oc.numero, emitidoEm: ctx.agora ?? new Date().toISOString(), emitidoPor: ctx.emitidoPor,
     clienteColeta: { nome: oc.clienteColetaNome ?? "" }, clienteDescarga: { nome: oc.clienteDescargaNome ?? "" }, contratante: { nome: oc.contratanteNome || oc.clienteColetaNome || "" },
-    coleta: { local: snapLocal(lc), dataHora: oc.dataHoraColeta }, coletas: lcs.map(snapLocal), descarga: { local: ld ? snapLocal(ld) : { id: "", nome: oc.localEntrega?.trim() || "A definir", endereco: "", cidade: oc.cidadeEntrega || "A definir", uf: oc.ufEntrega || "-", contatos: "", emails: [] }, dataHora: oc.dataHoraEntrega ?? "" },
+    coleta: { local: snapLocal(lc), dataHora: nfs.map((n) => n.coletaDataHora || "").filter(Boolean).sort()[0] || oc.dataHoraColeta }, coletas: lcs.map(snapLocal), descarga: { local: ld ? snapLocal(ld) : { id: "", nome: oc.localEntrega?.trim() || "A definir", endereco: "", cidade: oc.cidadeEntrega || "A definir", uf: oc.ufEntrega || "-", contatos: "", emails: [] }, dataHora: oc.dataHoraEntrega ?? "" },
     motorista: { nome: m.nome, cpf: m.cpf, telefone: m.telefone }, veiculo: { placa: v.placa, placaCarreta: v.placaCarreta, tipo: v.tipo },
     nfs, totais: { peso: nfs.reduce((s, n) => s + n.peso, 0), volumes: nfs.reduce((s, n) => s + n.volumes, 0) },
     instrucoes: oc.instrucoes ?? oc.observacao ?? "", destinatarios, pendenciasEnvio: pendencias,

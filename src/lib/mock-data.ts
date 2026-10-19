@@ -267,6 +267,8 @@ export interface OrdemColeta {
   coletaPorNf?: Record<string, string>;
   /** Local de entrega por NF (opcional; senão o local de descarga do cabeçalho). */
   entregaPorNf?: Record<string, string>;
+  /** Data/hora de coleta por NF (id da NF -> ISO). Cabeçalho guarda a mais cedo. */
+  horaColetaPorNf?: Record<string, string>;
   clienteDescargaId?: string; clienteDescargaNome?: string; localDescargaId?: string;
   contratanteId?: string; contratanteNome?: string;
   instrucoes?: string; historico?: TimelineEntry[];
