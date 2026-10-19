@@ -12,9 +12,10 @@ import type { OrdemColeta, Order } from "@/lib/mock-data";
 const inp = "w-full bg-input/40 border border-border rounded px-2 py-1.5 text-sm";
 export const numeroOc = () => { const d = new Date(); return `OC-${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`; };
 
-export function LocalSelect({ value, onChange, clienteId, label }: { value: string; onChange: (id: string) => void; clienteId?: string; label: string }) {
+export function LocalSelect({ value, onChange, clienteId, label, somenteCliente }: { value: string; onChange: (id: string) => void; clienteId?: string; label: string; somenteCliente?: boolean }) {
   const locais = useLocais();
-  const ativos = locais.list;
+  const ativos = somenteCliente ? locais.list.filter((l) => (clienteId && l.clienteIds.includes(clienteId)) || l.id === value) : locais.list;
+  const [vincular, setVincular] = useState(true);
   const sorted = [...ativos].sort((a, b) => Number(b.clienteIds.includes(clienteId ?? "")) - Number(a.clienteIds.includes(clienteId ?? "")) || a.nome.localeCompare(b.nome));
   const [novo, setNovo] = useState(false);
   const [f, setF] = useState({ nome: "", endereco: "", cidade: "", uf: "", emails: "" });
@@ -23,9 +24,11 @@ export function LocalSelect({ value, onChange, clienteId, label }: { value: stri
     if (!f.nome.trim() || !f.cidade.trim() || !f.uf.trim()) return setErr("Nome, cidade e UF são obrigatórios.");
     const emails = f.emails.split(/[;,\s]+/).map((e) => e.trim().toLowerCase()).filter((e) => /^[^\s@;,]+@[^\s@;,]+\.[^\s@;,]+$/.test(e));
     const existente = locais.list.find((x) => x.nome.trim().toLowerCase() === f.nome.trim().toLowerCase() && x.cidade.trim().toLowerCase() === f.cidade.trim().toLowerCase());
-    if (existente) { onChange(existente.id); setNovo(false); setErr(""); return; }
+    if (existente) {
+      if (vincular && clienteId && !existente.clienteIds.includes(clienteId)) { try { await locais.update(existente.id, { ...existente, clienteIds: [...existente.clienteIds, clienteId], atualizadoEm: new Date().toISOString() }); } catch (e) { setErr(e instanceof Error ? e.message : "Falha ao vincular local."); return; } }
+      onChange(existente.id); setNovo(false); setErr(""); return; }
     const id = newId("LOC");
-    try { await locais.add({ id, nome: f.nome.trim(), endereco: f.endereco.trim(), cidade: f.cidade.trim(), uf: f.uf.trim().toUpperCase().slice(0, 2), emails, contatos: "", clienteIds: clienteId ? [clienteId] : [], ativo: true, criadoEm: new Date().toISOString() }); }
+    try { await locais.add({ id, nome: f.nome.trim(), endereco: f.endereco.trim(), cidade: f.cidade.trim(), uf: f.uf.trim().toUpperCase().slice(0, 2), emails, contatos: "", clienteIds: clienteId && vincular ? [clienteId] : [], ativo: true, criadoEm: new Date().toISOString() }); }
     catch (e) { setErr(e instanceof Error ? e.message : "Falha ao salvar local."); return; }
     onChange(id); setNovo(false); setF({ nome: "", endereco: "", cidade: "", uf: "", emails: "" }); setErr("");
   }
@@ -39,6 +42,7 @@ export function LocalSelect({ value, onChange, clienteId, label }: { value: stri
         <input className={`${inp} max-w-[70px]`} placeholder="UF" maxLength={2} value={f.uf} onChange={(e) => setF({ ...f, uf: e.target.value.toUpperCase() })} />
       </div>
       <input className={inp} placeholder="E-mails do local (separados por vírgula)" value={f.emails} onChange={(e) => setF({ ...f, emails: e.target.value })} />
+      {clienteId && <label className="text-xs flex items-center gap-1"><input type="checkbox" checked={vincular} onChange={(e) => setVincular(e.target.checked)} /> Vincular este local ao cliente{somenteCliente ? " (necessário para aparecer na lista)" : ""}</label>}
       {err && <div className="text-xs text-danger">{err}</div>}
       <div className="flex gap-1"><Button size="sm" onClick={salvar}>Salvar e vincular</Button><Button size="sm" variant="outline" onClick={() => setNovo(false)}>Voltar</Button></div>
     </div>
@@ -46,6 +50,7 @@ export function LocalSelect({ value, onChange, clienteId, label }: { value: stri
   return (
     <select aria-label={label} className={inp} value={value} onChange={(e) => e.target.value === "__novo__" ? setNovo(true) : onChange(e.target.value)}>
       <option value="">{label}…</option>
+      {somenteCliente && !sorted.length && <option disabled value="__vazio__">Nenhum local vinculado a este cliente</option>}
       {sorted.map((l) => <option key={l.id} value={l.id}>{l.nome} · {l.cidade}/{l.uf}{l.emails.length ? "" : " · sem e-mail"}</option>)}
       <option value="__novo__">+ Cadastrar novo local…</option>
     </select>
