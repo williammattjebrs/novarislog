@@ -18,11 +18,13 @@ describe('client cash detail',()=>{
    {id:'2',numero:'N2',clienteNome:'Eixo',valor:500,competencia:'2026-10-02',vencimento:'2026-10-31',movements:[]},
    {id:'3',numero:'N3',clienteNome:'Novatrigo',valor:800,competencia:'2026-10-03',vencimento:'2026-10-20',movements:[{type:'baixa',value:800,date:'2026-10-06'}]},
    {id:'4',numero:'N4',clienteNome:'Novatrigo',valor:700,competencia:'2026-09-03',vencimento:'2026-09-20',movements:[{type:'baixa',value:200,date:'2026-09-10'}]},
-   {id:'5',numero:'N5',clienteNome:'  ',valor:300,competencia:'2026-10-04',vencimento:'2026-10-30',movements:[]},
+   {id:'5',numero:'N5',clienteNome:'(sem cliente) PASTIFICIO SELMI S A',valor:300,competencia:'2026-10-04',vencimento:'2026-10-30',movements:[]},
+   {id:'6',numero:'N6',clienteNome:'  ',valor:250,competencia:'2026-10-05',vencimento:'2026-10-30',movements:[]},
   ];
   const {rows,totais}=clientCashDetail('2026-10',invoices);
   const eixo=rows.find(r=>r.cliente==='Eixo')!;
   const nova=rows.find(r=>r.cliente==='Novatrigo')!;
+  const selmi=rows.find(r=>r.cliente==='PASTIFICIO SELMI S A')!;
   const sem=rows.find(r=>r.cliente==='Sem cliente')!;
   expect(eixo.faturado).toBe(1500);
   expect(eixo.recebido).toBe(400);
@@ -30,11 +32,13 @@ describe('client cash detail',()=>{
   expect(nova.faturado).toBe(800);
   expect(nova.recebido).toBe(800);
   expect(nova.aReceber).toBe(500);
-  expect(sem.aReceber).toBe(300);
+  expect(selmi.aReceber).toBe(300);
+  expect(sem.aReceber).toBe(250);
+  expect(rows.map(r=>r.cliente)).not.toContain('(sem cliente) PASTIFICIO SELMI S A');
   expect(rows[0].cliente).toBe('Eixo');
-  expect(totais.faturado).toBe(2600);
+  expect(totais.faturado).toBe(2850);
   expect(totais.recebido).toBe(1200);
-  expect(totais.aReceber).toBe(1900);
+  expect(totais.aReceber).toBe(2150);
  });
  it('keeps reversals out of what the client actually paid',()=>{
   const invoices:any=[{id:'1',clienteNome:'Eixo',valor:1000,competencia:'2026-10-01',movements:[{type:'baixa',value:600,date:'2026-10-05'},{type:'estorno',value:200,date:'2026-10-08'}]}];

@@ -247,31 +247,28 @@ export function DreBalancete({ invoices, expenses, orders, cfg }: {
                   <thead>
                     <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
                       <th className="px-3 py-2 text-left font-normal">Cliente</th>
-                      <th className="whitespace-nowrap px-3 py-2 text-right font-normal">Faturado no mês</th>
-                      <th className="whitespace-nowrap px-3 py-2 text-right font-normal">Recebido no mês</th>
-                      <th className="whitespace-nowrap px-3 py-2 text-right font-normal">A receber</th>
-                      <th className="whitespace-nowrap px-3 py-2 pr-4 text-right font-normal">% a receber</th>
+                      <th className="whitespace-nowrap px-2 py-2 text-right font-normal">Faturado</th>
+                      <th className="whitespace-nowrap px-2 py-2 text-right font-normal">Recebido</th>
+                      <th className="whitespace-nowrap px-3 py-2 pr-4 text-right font-normal">A receber</th>
                     </tr>
                   </thead>
                   <tbody>
                     {det.rows.map((c) => (
                       <tr key={c.cliente} className="border-t border-border">
                         <td className="px-3 py-2 align-middle text-xs">{c.cliente}</td>
-                        <td className="num whitespace-nowrap px-3 py-2 align-middle text-right text-xs">{fmtBRL(c.faturado)}</td>
-                        <td className="num whitespace-nowrap px-3 py-2 align-middle text-right text-xs text-success">{fmtBRL(c.recebido)}</td>
-                        <td className="num whitespace-nowrap px-3 py-2 align-middle text-right text-xs">{fmtBRL(c.aReceber)}</td>
-                        <td className="num whitespace-nowrap px-3 py-2 align-middle text-right text-xs pr-4 text-muted-foreground">{det.totais.aReceber > 0 ? `${((c.aReceber / det.totais.aReceber) * 100).toFixed(1)}%` : "—"}</td>
+                        <td className="num whitespace-nowrap px-2 py-2 align-middle text-right text-xs">{fmtBRL(c.faturado)}</td>
+                        <td className="num whitespace-nowrap px-2 py-2 align-middle text-right text-xs text-success">{fmtBRL(c.recebido)}</td>
+                        <td className="num whitespace-nowrap px-3 py-2 pr-4 align-middle text-right text-xs">{fmtBRL(c.aReceber)}</td>
                       </tr>
                     ))}
                     {!det.rows.length && (
-                      <tr><td colSpan={5} className="px-3 py-6 text-center text-xs text-muted-foreground">Nenhum cliente no período.</td></tr>
+                      <tr><td colSpan={4} className="px-3 py-6 text-center text-xs text-muted-foreground">Nenhum cliente no período.</td></tr>
                     )}
                     <tr className="border-t border-border font-semibold">
                       <td className="px-3 py-2 align-middle text-xs">Total</td>
-                      <td className="num whitespace-nowrap px-3 py-2 align-middle text-right text-xs">{fmtBRL(det.totais.faturado)}</td>
-                      <td className="num whitespace-nowrap px-3 py-2 align-middle text-right text-xs">{fmtBRL(det.totais.recebido)}</td>
-                      <td className="num whitespace-nowrap px-3 py-2 align-middle text-right text-xs">{fmtBRL(det.totais.aReceber)}</td>
-                      <td className="px-3 py-2 pr-4" />
+                      <td className="num whitespace-nowrap px-2 py-2 align-middle text-right text-xs">{fmtBRL(det.totais.faturado)}</td>
+                      <td className="num whitespace-nowrap px-2 py-2 align-middle text-right text-xs">{fmtBRL(det.totais.recebido)}</td>
+                      <td className="num whitespace-nowrap px-3 py-2 pr-4 align-middle text-right text-xs">{fmtBRL(det.totais.aReceber)}</td>
                     </tr>
                   </tbody>
                 </table>
