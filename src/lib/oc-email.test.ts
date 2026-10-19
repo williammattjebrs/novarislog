@@ -22,7 +22,7 @@ describe("E-mail de agendamento ao armazém", () => {
     expect(html.match(/João &amp; José/g)).toHaveLength(1);
     expect(html).toContain("Atenção &lt;lacre&gt;");
     expect(html).toContain(">8393</td>");
-    expect(html).toContain(">8394</td></tr>");
+    expect(html).toMatch(/>8394<\/td><td[^>]*>[^<]+<\/td><\/tr>/);
     expect(html).not.toContain("8395");
     expect(html).toContain("Entregas: 2");
     expect(html).toContain('colspan="5"');
