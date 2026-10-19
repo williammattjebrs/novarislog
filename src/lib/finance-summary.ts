@@ -30,7 +30,7 @@ export function clientCashDetail(month: string, invoices: Invoice[]) {
   };
   const map = new Map<string, ClientCashRow>();
   const row = (nome?: string) => {
-    const k = (nome ?? "").trim() || "Sem cliente";
+    const k = (nome ?? "").replace(/^\(sem cliente\)\s*/i, "").trim() || "Sem cliente";
     let r = map.get(k);
     if (!r) { r = { cliente: k, faturado: 0, recebido: 0, aReceber: 0 }; map.set(k, r); }
     return r;
