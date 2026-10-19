@@ -17,12 +17,12 @@ const snapshot: OcSnapshot = {
 describe("E-mail de agendamento ao armazém", () => {
   it("mantém as NFs individuais e mescla seis colunas apenas nas linhas do armazém", () => {
     const html = ocEmailHtml(snapshot, nfsDoDestinatario(snapshot, ["coleta:L1"]));
-    expect(html.match(/rowspan="2"/g)).toHaveLength(6);
+    expect(html.match(/rowspan="2"/g)).toHaveLength(5);
     expect(html.match(/ABC1D23 \/ DEF4G56/g)).toHaveLength(1);
     expect(html.match(/João &amp; José/g)).toHaveLength(1);
     expect(html).toContain("Atenção &lt;lacre&gt;");
     expect(html).toContain(">8393</td>");
-    expect(html).toContain(">8394</td></tr>");
+    expect(html).toMatch(/>8394<\/td><td[^>]*>[^<]+<\/td><\/tr>/);
     expect(html).not.toContain("8395");
     expect(html).toContain("Entregas: 2");
     expect(html).toContain('colspan="5"');
@@ -30,7 +30,7 @@ describe("E-mail de agendamento ao armazém", () => {
   });
   it("funciona com uma NF e veículo sem carreta", () => {
     const html = ocEmailHtml({ ...snapshot, veiculo: { placa: "ABC1D23", tipo: "Truck" } }, snapshot.nfs.slice(0, 1));
-    expect(html.match(/rowspan="1"/g)).toHaveLength(6);
+    expect(html.match(/rowspan="1"/g)).toHaveLength(5);
     expect(html).not.toContain(" / ");
     expect(html).toContain("Entregas: 1");
   });

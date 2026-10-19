@@ -30,7 +30,7 @@ describe("OC v2", () => {
   it("valida obrigatórios antes de emitir", () => {
     const oc = { ...ocEixo([nf(1)]), motoristaId: undefined, dataHoraColeta: "" };
     const r = buildSnapshot(oc, { nfs: [nf(1)], locais: [alilog, novatrigo], motoristas: [mot], veiculos: [vei], emitidoPor: "t" });
-    expect(r.snapshot).toBeNull(); expect(r.erros).toContain("Informe o motorista."); expect(r.erros).toContain("Informe data e hora da coleta.");
+    expect(r.snapshot).toBeNull(); expect(r.erros).toContain("Informe o motorista."); expect(r.erros).toContain("Informe data e hora da coleta de 1 NF(s).");
   });
   it("destinatários deduplicados e pendência para local sem e-mail", () => {
     const r = destinatariosOc([alilog, alilog, { ...novatrigo, emails: [] }]);
@@ -87,5 +87,14 @@ describe("OC · empresa e custo", () => {
     expect(e).toContain("Escolha a empresa emissora da OC.");
     expect(e).toContain("Informe a contratação: terceiro ou frota própria.");
     expect(validarEmissao({ ...oc, empresaId: "E1", contratacao: "frota" }, { ...base, empresas: [{ id: "E1", nome: "RTM", ativa: true, criadoEm: "" }] }).erros).toContain("Informe o custo da frota própria.");
+  });
+});
+
+import { horaColetaDaNf } from "./oc-model";
+describe("horário de coleta por NF", () => {
+  it("usa o horário da NF e cai no cabeçalho quando ausente", () => {
+    const oc = { dataHoraColeta: "2026-10-20T08:00:00.000Z", horaColetaPorNf: { a: "2026-10-21T14:00:00.000Z" } };
+    expect(horaColetaDaNf(oc, "a")).toBe("2026-10-21T14:00:00.000Z");
+    expect(horaColetaDaNf(oc, "b")).toBe("2026-10-20T08:00:00.000Z");
   });
 });

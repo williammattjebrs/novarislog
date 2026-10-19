@@ -89,7 +89,7 @@ export async function renderOcPdf(s: OcSnapshot & { versao?: number }) {
     text(`Coleta - ${l.nome} (${qtd} NF)`, { b: true }); text(l.endereco, { size: 9 });
     if (l.contatos) text(`Contato: ${l.contatos}`, { size: 9, color: GRAY });
   }
-  text(`Data/hora da coleta: ${fmtDataHora(s.coleta.dataHora)}`, { size: 10, b: true }); y -= 4;
+  text(s.nfs.length > 1 && new Set(s.nfs.map((n) => n.coletaDataHora || s.coleta.dataHora)).size > 1 ? `Data/hora da coleta: por NF (primeira ${fmtDataHora(s.coleta.dataHora)})` : `Data/hora da coleta: ${fmtDataHora(s.coleta.dataHora)}`, { size: 10, b: true }); y -= 4;
   text(`Descarga - ${s.descarga.local.nome}`, { b: true }); text(s.descarga.local.endereco, { size: 9 });
   if (s.descarga.local.contatos) text(`Contato: ${s.descarga.local.contatos}`, { size: 9, color: GRAY });
   text(`Previsão de descarga: ${fmtDataHora(s.descarga.dataHora)}`, { size: 10, b: true });
@@ -111,7 +111,7 @@ export async function renderOcPdf(s: OcSnapshot & { versao?: number }) {
   row(cols.map((c) => c.t), true);
   onNewPage = () => { onNewPage = null; row(cols.map((c) => c.t), true); onNewPage = repeat; };
   const repeat = onNewPage;
-  for (const n of s.nfs) row([n.numero, nomeLocal.get(n.coletaLocalId ?? s.coleta.local.id) ?? s.coleta.local.nome, n.remetente, n.entregaLocal ? `${n.destinatario} · Entrega: ${n.entregaLocal}` : n.destinatario, String(n.volumes), n.peso.toLocaleString("pt-BR")]);
+  for (const n of s.nfs) row([n.numero, `${nomeLocal.get(n.coletaLocalId ?? s.coleta.local.id) ?? s.coleta.local.nome} · ${fmtDataHora(n.coletaDataHora || s.coleta.dataHora)}`, n.remetente, n.entregaLocal ? `${n.destinatario} · Entrega: ${n.entregaLocal}` : n.destinatario, String(n.volumes), n.peso.toLocaleString("pt-BR")]);
   onNewPage = null;
 
   if (s.instrucoes) { section("Instruções"); text(s.instrucoes, { size: 9 }); }
