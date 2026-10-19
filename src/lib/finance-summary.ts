@@ -21,3 +21,30 @@ export function financeSummary(month: string, invoices: Invoice[], expenses: Exp
     custosPendentes:monthlyOrders.filter(o=>!costKnown(o) && !expenses.some(e=>e.orderId===o.id)).length,
   };
 }
+export type ClientCashRow = { cliente: string; faturado: number; recebido: number; aReceber: number };
+// Detalhamento por cliente do resumo de caixa: faturado e recebido no mês e saldo a receber até o fim do mês.
+export function clientCashDetail(month: string, invoices: Invoice[]) {
+  const cashOf = (i: Invoice, pred: (m: string) => boolean) => {
+    const legacy = i.recebidoEm && pred(monthKey(i.recebidoEm)) ? (i.valorRecebido ?? (i.status === "paga" && !i.movements ? i.valor : 0)) : 0;
+    return legacy + (i.movements ?? []).filter((m) => pred(monthKey(m.date))).reduce((v, m) => v + (m.type === "estorno" ? -m.value : m.value), 0);
+  };
+  const map = new Map<string, ClientCashRow>();
+  const row = (nome?: string) => {
+    const k = (nome ?? "").replace(/^\(sem cliente\)\s*/i, "").trim() || "Sem cliente";
+    let r = map.get(k);
+    if (!r) { r = { cliente: k, faturado: 0, recebido: 0, aReceber: 0 }; map.set(k, r); }
+    return r;
+  };
+  for (const i of invoices) {
+    const r = row(i.clienteNome);
+    const em = monthKey(i.competencia ?? i.emissao);
+    if (em === month) r.faturado += i.valor;
+    r.recebido += cashOf(i, (m) => m === month);
+    if (em && em <= month) r.aReceber += Math.max(0, i.valor - cashOf(i, (m) => m <= month));
+  }
+  const rows = [...map.values()]
+    .filter((r) => r.faturado || r.recebido || r.aReceber)
+    .sort((a, b) => b.aReceber - a.aReceber || b.recebido - a.recebido || a.cliente.localeCompare(b.cliente));
+  const totais = rows.reduce((t, r) => ({ faturado: t.faturado + r.faturado, recebido: t.recebido + r.recebido, aReceber: t.aReceber + r.aReceber }), { faturado: 0, recebido: 0, aReceber: 0 });
+  return { rows, totais };
+}

@@ -1,12 +1,12 @@
 // Conciliação (baixa de recebimentos/pagamentos) + Balancete e DRE mensal.
 import { useState } from "react";
-import { CheckCircle2, Undo2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, Undo2 } from "lucide-react";
 import { fmtBRL, monthKey, type Expense, type Invoice, type Order, type AppConfig } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth";
 import { addPayment, paidAmount, reversePayment, type Movement } from "@/lib/reliability";
 import { Button } from "@/components/ui/button";
 import { calcOrderCost } from "@/lib/cost-calc";
-import { costKnown } from '@/lib/finance-summary';
+import { clientCashDetail, costKnown } from '@/lib/finance-summary';
 
 type Inv = Invoice & { id?: string };
 const today = () => new Date().toISOString().slice(0, 10);
@@ -152,6 +152,7 @@ export function DreBalancete({ invoices, expenses, orders, cfg }: {
   invoices: Inv[]; expenses: Expense[]; orders: Order[]; cfg: AppConfig;
 }) {
   const [mes, setMes] = useState(new Date().toISOString().slice(0, 7));
+  const [abrirCli, setAbrirCli] = useState(true);
 
   // ---------- DRE (competência) ----------
   const receitaBruta = invoices.filter((i) => monthKey(i.competencia ?? i.emissao) === mes).reduce((s, i) => s + i.valor, 0);
@@ -187,6 +188,7 @@ export function DreBalancete({ invoices, expenses, orders, cfg }: {
   const fimMes = mes;
   const aReceber = invoices.filter(i => monthKey(i.competencia ?? i.emissao)<=fimMes).reduce((sum,i)=>sum+Math.max(0,i.valor-cash([i],m=>m<=fimMes)),0);
   const aPagar = expenses.filter(e => monthKey(e.competencia ?? e.vencimento)<=fimMes).reduce((sum,e)=>sum+Math.max(0,e.valor-cash([e],m=>m<=fimMes)),0);
+  const det = clientCashDetail(mes, invoices);
 
   const Row = ({ l, v, strong, indent, tone }: { l: string; v: number; strong?: boolean; indent?: boolean; tone?: string }) => (
     <div className={`flex justify-between py-1.5 text-sm border-b border-border ${strong ? "font-semibold" : ""}`}>
@@ -228,6 +230,51 @@ export function DreBalancete({ invoices, expenses, orders, cfg }: {
           <div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-4">Passivo</div>
           <Bal l="Contas a pagar" v={aPagar} />
           <Bal l="Patrimônio (ativo − passivo)" v={saldoFinal + aReceber - aPagar} strong />
+          <div className="mt-4 border-t border-border pt-3">
+            <button
+              type="button"
+              onClick={() => setAbrirCli((v) => !v)}
+              aria-expanded={abrirCli}
+              className="flex w-full items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
+            >
+              <span>Detalhamento por cliente</span>
+              <span className="num text-[10px] normal-case">{det.rows.length}</span>
+              <ChevronDown className={`ml-auto h-3.5 w-3.5 transition-transform ${abrirCli ? "rotate-180" : ""}`} />
+            </button>
+            {abrirCli && (
+              <div className="mt-2 overflow-x-auto rounded-md border border-border">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                      <th className="px-3 py-2 text-left font-normal">Cliente</th>
+                      <th className="whitespace-nowrap px-2 py-2 text-right font-normal">Faturado</th>
+                      <th className="whitespace-nowrap px-2 py-2 text-right font-normal">Recebido</th>
+                      <th className="whitespace-nowrap px-3 py-2 pr-4 text-right font-normal">A receber</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {det.rows.map((c) => (
+                      <tr key={c.cliente} className="border-t border-border">
+                        <td className="px-3 py-2 align-middle text-xs">{c.cliente}</td>
+                        <td className="num whitespace-nowrap px-2 py-2 align-middle text-right text-xs">{fmtBRL(c.faturado)}</td>
+                        <td className="num whitespace-nowrap px-2 py-2 align-middle text-right text-xs text-success">{fmtBRL(c.recebido)}</td>
+                        <td className="num whitespace-nowrap px-3 py-2 pr-4 align-middle text-right text-xs">{fmtBRL(c.aReceber)}</td>
+                      </tr>
+                    ))}
+                    {!det.rows.length && (
+                      <tr><td colSpan={4} className="px-3 py-6 text-center text-xs text-muted-foreground">Nenhum cliente no período.</td></tr>
+                    )}
+                    <tr className="border-t border-border font-semibold">
+                      <td className="px-3 py-2 align-middle text-xs">Total</td>
+                      <td className="num whitespace-nowrap px-2 py-2 align-middle text-right text-xs">{fmtBRL(det.totais.faturado)}</td>
+                      <td className="num whitespace-nowrap px-2 py-2 align-middle text-right text-xs">{fmtBRL(det.totais.recebido)}</td>
+                      <td className="num whitespace-nowrap px-3 py-2 pr-4 align-middle text-right text-xs">{fmtBRL(det.totais.aReceber)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
           <p className="text-[10px] text-muted-foreground mt-2">Caixa considera apenas o que foi conciliado (recebido/pago) na aba Conciliação.</p>
         </div>
       </div>
