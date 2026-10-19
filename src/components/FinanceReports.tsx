@@ -188,6 +188,7 @@ export function DreBalancete({ invoices, expenses, orders, cfg }: {
   const fimMes = mes;
   const aReceber = invoices.filter(i => monthKey(i.competencia ?? i.emissao)<=fimMes).reduce((sum,i)=>sum+Math.max(0,i.valor-cash([i],m=>m<=fimMes)),0);
   const aPagar = expenses.filter(e => monthKey(e.competencia ?? e.vencimento)<=fimMes).reduce((sum,e)=>sum+Math.max(0,e.valor-cash([e],m=>m<=fimMes)),0);
+  const det = clientCashDetail(mes, invoices);
 
   const Row = ({ l, v, strong, indent, tone }: { l: string; v: number; strong?: boolean; indent?: boolean; tone?: string }) => (
     <div className={`flex justify-between py-1.5 text-sm border-b border-border ${strong ? "font-semibold" : ""}`}>
