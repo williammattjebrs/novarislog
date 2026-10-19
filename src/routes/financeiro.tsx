@@ -17,6 +17,13 @@ import { fmtBRL, statusTone, toneClass, type Expense, type ExpenseType, type Exp
 import { financeSummary, costKnown } from "@/lib/finance-summary";
 import { financialState } from "@/lib/reliability";
 
+// Datas de despesa chegam em ISO (OCs) ou dd/mm/aaaa (cadastro manual): exibe sempre dd/mm/aaaa.
+const fmtData = (v?: string) => {
+  const t = (v ?? "").trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : t || "—";
+};
+
 export const Route = createFileRoute("/financeiro")({
   head: () => ({
     meta: [
@@ -200,23 +207,25 @@ function FinanceiroPage() {
               <MiniStat label="Administrativas" v={fmtBRL(porTipo.administrativa)} />
             </div>
             <div className="panel p-4">
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Grupos de despesa</div>
-              <div className="flex flex-wrap gap-2 items-center">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-3">Grupos de despesa</div>
+              <div className="flex flex-wrap items-center gap-2">
                 {expGroups.list.map((g) => {
                   const tot = expenses.list.filter((e) => e.grupo === g.nome).reduce((s, e) => s + e.valor, 0);
                   return (
-                    <span key={g.id} className="inline-flex items-center gap-2 text-xs border border-border rounded px-2 py-1">
-                      {g.nome} <span className="num text-muted-foreground">{fmtBRL(tot)}</span>
+                    <span key={g.id} className="inline-flex h-8 items-center gap-3 rounded-md border border-border px-3 text-xs">
+                      <span className="whitespace-nowrap">{g.nome}</span>
+                      <span className="num whitespace-nowrap text-muted-foreground">{fmtBRL(tot)}</span>
                       <button
+                        aria-label={`Excluir grupo ${g.nome}`}
                         onClick={() => {
                           if (window.confirm(`Excluir o grupo "${g.nome}"?`)) expGroups.set(expGroups.list.filter((x) => x.id !== g.id));
                         }}
-                        className="text-muted-foreground hover:text-danger"
+                        className="-mr-1 grid h-4 w-4 place-items-center rounded leading-none text-muted-foreground hover:text-danger"
                       >×</button>
                     </span>
                   );
                 })}
-                <input value={novoGrupo} onChange={(e) => setNovoGrupo(e.target.value)} placeholder="Novo grupo (ex.: Marketing)" className="input max-w-[220px] py-1 text-xs" />
+                <input value={novoGrupo} onChange={(e) => setNovoGrupo(e.target.value)} placeholder="Novo grupo (ex.: Marketing)" className="input h-8 max-w-[220px] py-0 text-xs" />
                 <button
                   onClick={() => {
                     const n = novoGrupo.trim();
@@ -224,7 +233,7 @@ function FinanceiroPage() {
                     expGroups.set([...expGroups.list, { id: newId("EG"), nome: n }]);
                     setNovoGrupo("");
                   }}
-                  className="text-xs px-2 py-1 rounded bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25"
+                  className="inline-flex h-8 items-center rounded-md border border-primary/40 bg-primary/15 px-3 text-xs text-primary hover:bg-primary/25"
                 >+ Criar grupo</button>
               </div>
             </div>
@@ -232,27 +241,27 @@ function FinanceiroPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                    <th className="text-left font-normal px-4 py-2.5">Descrição</th>
-                    <th className="text-left font-normal">Grupo</th>
-                    <th className="text-left font-normal">Tipo</th>
-                    <th className="text-left font-normal">Área</th>
-                    <th className="text-left font-normal">Fornecedor</th>
-                    <th className="text-right font-normal">Valor</th>
-                    <th className="text-left font-normal">Vencimento</th>
-                    <th className="text-left font-normal pr-4">Status</th>
+                    <th className="w-[28%] px-4 py-2.5 text-left font-normal">Descrição</th>
+                    <th className="w-[11%] px-3 py-2.5 text-left font-normal">Grupo</th>
+                    <th className="w-[11%] px-3 py-2.5 text-left font-normal">Tipo</th>
+                    <th className="w-[10%] px-3 py-2.5 text-left font-normal">Área</th>
+                    <th className="w-[17%] px-3 py-2.5 text-left font-normal">Fornecedor</th>
+                    <th className="w-[11%] whitespace-nowrap px-3 py-2.5 text-right font-normal">Valor</th>
+                    <th className="w-[10%] whitespace-nowrap px-3 py-2.5 text-right font-normal">Vencimento</th>
+                    <th className="w-[9%] py-2.5 pl-3 pr-4 text-left font-normal">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {despesasF.map((e) => (
                     <tr key={e.id} className="border-t border-border cursor-pointer hover:bg-elevated/50" title="Clique para informar pagamento" onClick={() => setBaixa({ kind: "pag", id: e.id })}>
-                      <td className="px-4 py-2.5 text-xs">{e.descricao}</td>
-                      <td className="text-xs">{e.grupo ?? "—"}</td>
-                      <td className="text-xs">{e.tipo.replace("_", " ")}</td>
-                      <td className="text-xs">{e.area}</td>
-                      <td className="text-xs">{e.fornecedor}</td>
-                      <td className="text-right num">{fmtBRL(e.valor)}</td>
-                      <td className="num text-xs">{e.vencimento}</td>
-                      <td className="pr-4"><span className={`text-[11px] px-2 py-0.5 rounded border ${toneClass(statusTone(e.status))}`}>{e.status}</span></td>
+                      <td className="px-4 py-2.5 align-middle text-xs">{e.descricao}</td>
+                      <td className="px-3 py-2.5 align-middle text-xs">{e.grupo ?? "—"}</td>
+                      <td className="px-3 py-2.5 align-middle text-xs">{e.tipo.replace("_", " ")}</td>
+                      <td className="px-3 py-2.5 align-middle text-xs">{e.area}</td>
+                      <td className="px-3 py-2.5 align-middle text-xs">{e.fornecedor}</td>
+                      <td className="num whitespace-nowrap px-3 py-2.5 align-middle text-right text-xs">{fmtBRL(e.valor)}</td>
+                      <td className="num whitespace-nowrap px-3 py-2.5 align-middle text-right text-xs">{fmtData(e.vencimento)}</td>
+                      <td className="py-2.5 pl-3 pr-4 align-middle"><span className={`inline-flex items-center whitespace-nowrap rounded border px-2 py-0.5 text-[11px] ${toneClass(statusTone(e.status))}`}>{e.status}</span></td>
                     </tr>
                   ))}
                   {despesasF.length === 0 && (
