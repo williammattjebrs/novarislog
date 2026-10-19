@@ -111,7 +111,7 @@ export async function renderOcPdf(s: OcSnapshot & { versao?: number }) {
   row(cols.map((c) => c.t), true);
   onNewPage = () => { onNewPage = null; row(cols.map((c) => c.t), true); onNewPage = repeat; };
   const repeat = onNewPage;
-  for (const n of s.nfs) row([n.numero, nomeLocal.get(n.coletaLocalId ?? s.coleta.local.id) ?? s.coleta.local.nome, n.remetente, n.destinatario, String(n.volumes), n.peso.toLocaleString("pt-BR")]);
+  for (const n of s.nfs) row([n.numero, nomeLocal.get(n.coletaLocalId ?? s.coleta.local.id) ?? s.coleta.local.nome, n.remetente, n.entregaLocal ? `${n.destinatario} · Entrega: ${n.entregaLocal}` : n.destinatario, String(n.volumes), n.peso.toLocaleString("pt-BR")]);
   onNewPage = null;
 
   if (s.instrucoes) { section("Instruções"); text(s.instrucoes, { size: 9 }); }

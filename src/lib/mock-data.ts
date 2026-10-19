@@ -265,6 +265,8 @@ export interface OrdemColeta {
   clienteColetaId?: string; clienteColetaNome?: string; localColetaId?: string;
   /** Local de coleta por NF (id da NF -> id do local). Ausente usa localColetaId como padrão. */
   coletaPorNf?: Record<string, string>;
+  /** Local de entrega por NF (opcional; senão o local de descarga do cabeçalho). */
+  entregaPorNf?: Record<string, string>;
   clienteDescargaId?: string; clienteDescargaNome?: string; localDescargaId?: string;
   contratanteId?: string; contratanteNome?: string;
   instrucoes?: string; historico?: TimelineEntry[];

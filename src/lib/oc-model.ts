@@ -63,7 +63,7 @@ export type OcSnapshot = {
   clienteColeta: { nome: string }; clienteDescarga: { nome: string }; contratante: { nome: string };
   coleta: { local: SnapLocal; dataHora: string }; descarga: { local: SnapLocal; dataHora: string };
   motorista: { nome: string; cpf: string; telefone: string }; veiculo: { placa: string; placaCarreta?: string; tipo: string };
-  nfs: { id: string; numero: string; chave: string; remetente: string; destinatario: string; peso: number; volumes: number; coletaLocalId?: string }[];
+  nfs: { id: string; numero: string; chave: string; remetente: string; destinatario: string; peso: number; volumes: number; coletaLocalId?: string; entregaLocalId?: string; entregaLocal?: string }[];
   /** Todos os locais de coleta da OC (a OC pode coletar em vários armazéns). */
   coletas?: SnapLocal[];
   totais: { peso: number; volumes: number }; instrucoes: string;
@@ -100,6 +100,8 @@ export function validarEmissao(oc: OrdemColeta, ctx: { nfs: Order[]; locais: Loc
   if (!oc.orderIds.length && !lc) erros.push("Informe o local de coleta.");
   lcs.filter((l) => !l.endereco?.trim() || !l.cidade).forEach((l) => erros.push(`Local de coleta ${l.nome} sem endereço completo.`));
   // Local de entrega é opcional; se informado, precisa de endereço completo.
+  const semEntrega = Object.entries(oc.entregaPorNf ?? {}).filter(([id, v]) => v && oc.orderIds.includes(id) && !ctx.locais.some((x) => x.id === v));
+  if (semEntrega.length) erros.push(`Local de entrega não encontrado em ${semEntrega.length} NF(s).`);
   if (ld && (!ld.endereco?.trim() || !ld.cidade)) erros.push(`Local de descarga ${ld.nome} sem endereço completo.`);
   if (!oc.dataHoraColeta) erros.push("Informe data e hora da coleta.");
   return { erros, m, v, lc, ld, lcs, empresa };
@@ -110,6 +112,7 @@ export function buildSnapshot(oc: OrdemColeta, ctx: { nfs: Order[]; locais: Loca
   if (erros.length || !m || !v || !lc) return { erros, snapshot: null };
   const nfs = oc.orderIds.map((id) => ctx.nfs.find((n) => n.id === id)!).map((n) => ({
     id: n.id, numero: String(n.numeroNFe), chave: n.chaveNFe ?? "", remetente: n.remetente, destinatario: n.destinatario, peso: Number(n.peso) || 0, volumes: Number(n.volumes) || 0, coletaLocalId: localColetaDaNf(oc, n.id),
+    ...(() => { const le = ctx.locais.find((l) => l.id === oc.entregaPorNf?.[n.id]); return le ? { entregaLocalId: le.id, entregaLocal: `${le.nome} · ${enderecoCompleto(le)}` } : {}; })(),
   }));
   const { destinatarios, pendencias } = destinatariosOc(lcs);
   const snapshot: OcSnapshot = {

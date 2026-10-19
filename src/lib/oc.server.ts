@@ -19,7 +19,7 @@ export async function emitOc(db: Admin, actor: { id: string; nome: string }, ocI
   if (!oc) throw new Error("OC não encontrada.");
   if (oc.__version !== expectedVersion) throw new Error("CONFLICT: a OC foi alterada por outro operador; recarregue.");
   const [nfs, locais, motoristas, veiculos, empresas] = await Promise.all([
-    rows<Order>(db, "orders", oc.orderIds), rows<LocalOperacional>(db, "locais", [...new Set([...oc.orderIds.map((id) => localColetaDaNf(oc, id)), oc.localColetaId ?? "", oc.localDescargaId ?? ""])].filter(Boolean)),
+    rows<Order>(db, "orders", oc.orderIds), rows<LocalOperacional>(db, "locais", [...new Set([...oc.orderIds.map((id) => localColetaDaNf(oc, id)), oc.localColetaId ?? "", oc.localDescargaId ?? "", ...Object.values(oc.entregaPorNf ?? {})])].filter(Boolean)),
     rows<Motorista>(db, "motoristas", [oc.motoristaId ?? ""]), rows<Veiculo>(db, "veiculos", [oc.veiculoId ?? ""]),
     rows<Empresa>(db, "companies"),
   ]);
