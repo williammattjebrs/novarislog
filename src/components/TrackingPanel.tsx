@@ -60,7 +60,8 @@ export function TrackingPanel({
     try {
       const group = readTrackingGroup(order.clienteNome);
       const recipients = group.emails.length ? group.emails : [email.trim()];
-      await send({ data: { cliente: order.clienteNome, destinatarios: recipients, ordens: trackingPayload([preview ?? order]) } });
+      const empresaId = ocs.list.find((o) => o.status !== "cancelada" && o.orderIds.includes(order.id))?.empresaId;
+      await send({ data: { cliente: order.clienteNome, empresaId, destinatarios: recipients, ordens: trackingPayload([preview ?? order]) } });
       onUpdate({ emailCliente: email, timeline: [...order.timeline, entry(`Atualização de rastreio aceita pela Microsoft para envio a ${recipients.join("; ")}`, "sistema")] });
       setFeedback("Atualização aceita pela Microsoft para envio ao grupo do cliente.");
     } catch (error) { setFeedback(error instanceof Error ? error.message : "Falha ao preparar e-mail."); }

@@ -21,7 +21,7 @@ export const Route = createFileRoute("/empresas")({
 });
 
 const inp = "w-full bg-input/40 border border-border rounded px-2 py-1.5 text-sm";
-const vazio = (): Empresa => ({ id: "", nome: "", razaoSocial: "", cnpj: "", endereco: "", cidade: "", uf: "", telefone: "", email: "", site: "", logoDataUrl: "", ativa: true, criadoEm: "" });
+const vazio = (): Empresa => ({ emailEnvio: "", id: "", nome: "", razaoSocial: "", cnpj: "", endereco: "", cidade: "", uf: "", telefone: "", email: "", site: "", logoDataUrl: "", ativa: true, criadoEm: "" });
 
 /** Reduz o logo para no máximo 360px e grava como PNG embutido (vai no PDF e na tela). */
 async function lerLogo(file: File): Promise<string> {
@@ -70,6 +70,9 @@ function Page() {
           <input aria-label="Telefone" className={inp} placeholder="Telefone" value={f.telefone} onChange={set("telefone")} />
           <input aria-label="E-mail" className={inp} placeholder="E-mail" value={f.email} onChange={set("email")} />
           <input aria-label="Site" className={inp} placeholder="Site" value={f.site} onChange={set("site")} />
+          <label className="md:col-span-3 text-xs text-muted-foreground space-y-1"><span>E-mail de envio (remetente das OCs e atualizações desta empresa)</span>
+            <input aria-label="E-mail de envio" type="email" className={inp} placeholder="ex.: operacao@empresa.com.br" value={f.emailEnvio ?? ""} onChange={set("emailEnvio")} />
+            <span className="block">Precisa ser uma conta Microsoft 365 conectada ao sistema. Sem este e-mail, os envios desta empresa ficam bloqueados.</span></label>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {f.logoDataUrl ? <img src={f.logoDataUrl} alt={`Logo ${f.nome}`} className="h-14 max-w-40 object-contain bg-foreground/90 rounded p-1" /> : <div className="h-14 w-28 grid place-items-center border border-dashed border-border rounded text-xs text-muted-foreground">sem logo</div>}

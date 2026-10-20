@@ -293,6 +293,8 @@ export interface OrdemColeta {
 export interface Empresa {
   id: string; nome: string; razaoSocial?: string; cnpj?: string; endereco?: string; cidade?: string; uf?: string;
   telefone?: string; email?: string; site?: string; logoDataUrl?: string; ativa: boolean; criadoEm: string;
+  /** Caixa Microsoft conectada usada como remetente dos e-mails desta empresa. */
+  emailEnvio?: string;
 }
 /** Local operacional (armazém/estabelecimento físico). Pode atender vários donos de carga. */
 export interface LocalOperacional {
