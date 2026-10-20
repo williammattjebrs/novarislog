@@ -179,8 +179,20 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
     } catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha ao salvar." }); }
     finally { setBusy(false); }
   }
+  async function reenviarEmail() {
+    if (!oc.docVersion) return;
+    if (!confirm(`Reenviar agora o e-mail da ${oc.numero} (v${oc.docVersion}) aos armazéns cadastrados? (e-mail real)`)) return;
+    setBusy(true); setMsg(null);
+    try {
+      await requeue({ data: { ocId: oc.id, version: oc.docVersion } });
+      const s = await enviarAgora({ data: { ocId: oc.id } });
+      setMsg({ tipo: s.falhas || s.incertos ? "erro" : "ok", texto: s.reservados ? `E-mail: ${s.aceitos} aceito(s) pelo provedor, ${s.falhas} falha(s), ${s.incertos} incerto(s).` : "Nenhum destinatário com e-mail para esta versão." });
+    } catch (e) { setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : "Falha no envio." }); }
+    finally { setBusy(false); await loadDocs(); }
+  }
   async function doEmitir() {
-    if (dirty) return setMsg({ tipo: "erro", texto: "Salve as alterações antes de emitir." });
+    if (val.erros.length) return setMsg({ tipo: "erro", texto: `Não é possível emitir: ${val.erros.join(" ")}` });
+    if (dirty) { await salvar(); return setMsg({ tipo: "ok", texto: "Alterações salvas. Clique novamente para emitir/gerar o documento." }); }
     if (!oc.docVersion && !confirm(`Emitir ${oc.numero}?\n\nO PDF completo abre no WhatsApp do motorista ${m?.nome ?? ""}.\nCada armazém de coleta recebe por e-mail só as notas dele:\n${dest.destinatarios.map((d) => `• ${d.email} (${d.papeis.join(", ")})`).join("\n") || "(nenhum destinatário)"}${dest.pendencias.length ? `\n\nPendências: ${dest.pendencias.join("; ")}` : ""}`)) return;
     setBusy(true); setMsg(null);
     try {
@@ -358,9 +370,10 @@ function OcDetalhe({ ocId, onClose }: { ocId: string; onClose: () => void }) {
         {msg && <div role="status" className={`text-sm ${msg.tipo === "ok" ? "text-success" : "text-danger"}`}>{msg.texto}</div>}
         <div className="flex flex-wrap gap-2">
           {editavel && <Button variant="outline" disabled={busy || !dirty} onClick={salvar}>{busy ? "Gravando…" : "Salvar"}</Button>}
-          {editavel && oc.status === "rascunho" && <Button disabled={busy || dirty || val.erros.length > 0} onClick={doEmitir}><FileText className="h-4 w-4" /> Emitir OC</Button>}
+          {editavel && oc.status === "rascunho" && <Button disabled={busy} onClick={doEmitir}><FileText className="h-4 w-4" /> Emitir OC</Button>}
           {editavel && emitida && <>
-            <Button disabled={busy || dirty || val.erros.length > 0 || (!!oc.docVersion && !oc.conteudoPendenteRevisao)} onClick={doEmitir}><FileText className="h-4 w-4" /> {oc.docVersion ? "Gerar nova versão" : "Gerar documento"}</Button>
+            <Button disabled={busy || (!!oc.docVersion && !oc.conteudoPendenteRevisao && !dirty)} title={oc.docVersion && !oc.conteudoPendenteRevisao ? "Sem alterações: use Reimprimir OC ou Reenviar e-mail" : undefined} onClick={doEmitir}><FileText className="h-4 w-4" /> {oc.docVersion ? "Gerar nova versão" : "Gerar documento"}</Button>
+            {!!oc.docVersion && <Button variant="outline" disabled={busy} onClick={reenviarEmail}><Send className="h-4 w-4" /> Reenviar e-mail</Button>}
             {!!oc.docVersion && <label className="text-xs flex items-center gap-1"><input type="checkbox" checked={enviarRev} onChange={(e) => setEnviarRev(e.target.checked)} /> enviar a revisão aos destinatários</label>}
           </>}
           {editavel && emitida && <label className="flex items-center gap-2 text-sm">Status
