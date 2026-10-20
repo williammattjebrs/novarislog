@@ -13,13 +13,17 @@ export function MonitoringQuickStatus({ oc, autor }: { oc: OrdemColeta; autor: s
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [sent, setSent] = useState<string[]>([]);
+  const send = useServerFn(sendTrackingUpdate);
   async function change(status: OCStatus) {
     if (busy || status === oc.status || !isEmitida(oc)) return;
-    setBusy(true); setError(""); setSaved(false);
+    setBusy(true); setError(""); setSaved(false); setSent([]);
     try {
       const label = OC_STATUS.find((s) => s.id === status)?.label ?? status;
       await aplicarStatusOc(oc, status, label, autor);
       setSaved(true);
+      const orders = (getList<Order>("orders") ?? []).filter((o) => oc.orderIds.includes(o.id));
+      if (orders.length) setSent(await sendTrackingOnUpdate(orders, send));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível salvar o status.");
     } finally { setBusy(false); }
@@ -31,6 +35,7 @@ export function MonitoringQuickStatus({ oc, autor }: { oc: OrdemColeta; autor: s
     </select>
     {busy && <p role="status" className="text-xs text-muted-foreground">Salvando…</p>}
     {!busy && saved && <p role="status" className="text-xs text-success">Status salvo.</p>}
+    {!busy && sent.length > 0 && <p role="status" className="text-xs text-info">Atualização enviada ao grupo de: {sent.join(", ")}.</p>}
     {error && <p role="alert" className="text-xs text-danger break-words">{error}</p>}
   </div>;
 }
