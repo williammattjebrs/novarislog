@@ -194,6 +194,51 @@ export type Database = {
         }
         Relationships: []
       }
+      tms_company_mail: {
+        Row: {
+          atualizado_em: string
+          email_envio: string
+          empresa_id: string
+          host: string
+          nome_remetente: string
+          port: number
+          provedor: string
+          secure: boolean
+          senha: string
+          ultimo_status: string | null
+          ultimo_teste: string | null
+          usuario: string
+        }
+        Insert: {
+          atualizado_em?: string
+          email_envio?: string
+          empresa_id: string
+          host?: string
+          nome_remetente?: string
+          port?: number
+          provedor?: string
+          secure?: boolean
+          senha?: string
+          ultimo_status?: string | null
+          ultimo_teste?: string | null
+          usuario?: string
+        }
+        Update: {
+          atualizado_em?: string
+          email_envio?: string
+          empresa_id?: string
+          host?: string
+          nome_remetente?: string
+          port?: number
+          provedor?: string
+          secure?: boolean
+          senha?: string
+          ultimo_status?: string | null
+          ultimo_teste?: string | null
+          usuario?: string
+        }
+        Relationships: []
+      }
       tms_delivery_proofs: {
         Row: {
           content_type: string
