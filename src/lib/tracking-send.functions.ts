@@ -8,7 +8,7 @@ const rowSchema = z.object({ numeroNFe: z.string().max(60), destinatario: z.stri
 
 export const sendTrackingUpdate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => z.object({ cliente: z.string().min(1).max(300), destinatarios: z.array(z.string().trim().email().max(254)).min(1).max(30), ordens: z.array(rowSchema).min(1).max(200) }).parse(data))
+  .inputValidator((data: unknown) => z.object({ cliente: z.string().min(1).max(300), empresaId: z.string().max(100).optional(), destinatarios: z.array(z.string().trim().email().max(254)).min(1).max(30), ordens: z.array(rowSchema).min(1).max(200) }).parse(data))
   .handler(async ({ data, context }) => {
     const { data: active } = await context.supabase.rpc("tms_active");
     if (!active) throw new Error("Usuário inativo ou sem acesso.");
@@ -18,7 +18,9 @@ export const sendTrackingUpdate = createServerFn({ method: "POST" })
     ]);
     if (!roles?.some((r) => ["admin", "operacao", "comercial"].includes(r.role)) && !modules?.some((m) => ["/monitoramento", "/clientes"].includes(m.module))) throw new Error("Sem permissão para enviar atualizações.");
     const mail = buildTrackingEmail(data.ordens as unknown as Order[], data.cliente);
-    const { graphSendTracking } = await import("@/lib/graph-mail.server");
-    await graphSendTracking(Array.from(new Set(data.destinatarios.map((r) => r.toLowerCase()))), mail.title, mail.html);
+    const { graphSendTracking, remetenteDaEmpresa } = await import("@/lib/graph-mail.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const remetente = await remetenteDaEmpresa(supabaseAdmin as never, data.empresaId);
+    await graphSendTracking(remetente, Array.from(new Set(data.destinatarios.map((r) => r.toLowerCase()))), mail.title, mail.html);
     return { accepted: true, mensagem: "Atualização aceita pela Microsoft para envio." };
   });
