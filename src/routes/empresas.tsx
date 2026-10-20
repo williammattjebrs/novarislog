@@ -5,6 +5,7 @@ import { Building2, Plus, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { Button } from "@/components/ui/button";
+import { CompanyMailForm } from "@/components/CompanyMailForm";
 import { useEmpresas, newId } from "@/lib/mock-store";
 import { commitLists, getList } from "@/lib/shared-db";
 import type { Empresa } from "@/lib/mock-data";
@@ -70,9 +71,6 @@ function Page() {
           <input aria-label="Telefone" className={inp} placeholder="Telefone" value={f.telefone} onChange={set("telefone")} />
           <input aria-label="E-mail" className={inp} placeholder="E-mail" value={f.email} onChange={set("email")} />
           <input aria-label="Site" className={inp} placeholder="Site" value={f.site} onChange={set("site")} />
-          <label className="md:col-span-3 text-xs text-muted-foreground space-y-1"><span>E-mail de envio (remetente das OCs e atualizações desta empresa)</span>
-            <input aria-label="E-mail de envio" type="email" className={inp} placeholder="ex.: operacao@empresa.com.br" value={f.emailEnvio ?? ""} onChange={set("emailEnvio")} />
-            <span className="block">Precisa ser uma conta Microsoft 365 conectada ao sistema. Sem este e-mail, os envios desta empresa ficam bloqueados.</span></label>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {f.logoDataUrl ? <img src={f.logoDataUrl} alt={`Logo ${f.nome}`} className="h-14 max-w-40 object-contain bg-foreground/90 rounded p-1" /> : <div className="h-14 w-28 grid place-items-center border border-dashed border-border rounded text-xs text-muted-foreground">sem logo</div>}
@@ -80,6 +78,7 @@ function Page() {
           {f.logoDataUrl && <button className="text-xs text-danger" onClick={() => setF({ ...f, logoDataUrl: "" })}>remover logo</button>}
           <label className="text-sm flex items-center gap-1 ml-auto"><input type="checkbox" checked={f.ativa} onChange={(e) => setF({ ...f, ativa: e.target.checked })} /> ativa</label>
         </div>
+        {f.id ? <CompanyMailForm empresaId={f.id} /> : <p className="text-xs text-muted-foreground">Salve a empresa para cadastrar o e-mail de envio.</p>}
         <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setF(null)}>Cancelar</Button><Button disabled={busy} onClick={salvar}>{busy ? "Gravando…" : "Salvar"}</Button></div>
       </div>}
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
