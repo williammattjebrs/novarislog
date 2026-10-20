@@ -103,48 +103,59 @@ ${linhas}
 <p style="margin-top:28px">Atenciosamente;<br><b>Equipe de Monitoramento ${esc(s.empresa?.nome ?? "Novaris")}.</b>${s.empresa?.telefone || s.empresa?.email ? `<br>${esc([s.empresa?.telefone, s.empresa?.email].filter(Boolean).join(" · "))}` : ""}<br><i>Esta mensagem é enviada automaticamente pelo TMS.</i></p></body></html>`;
 }
 
-export type Sender = (remetente: string, to: string, subject: string, html: string) => Promise<void>;
+export type Sender = (remetente: string, to: string[], subject: string, html: string) => Promise<void>;
 
-/** Processa a fila com reserva durável (SKIP LOCKED): cada destinatário/versão é enviado por uma única execução. */
-export async function processOcOutbox(db: Admin, ocId: string | null, send: Sender, limit = 20) {
+type OutRow = { id: string; oc_id: string; doc_version: number; email: string; papeis: string[] };
+/** Processa a fila com reserva durável (SKIP LOCKED). Destinatários do mesmo armazém/versão recebem UM único e-mail juntos. */
+export async function processOcOutbox(db: Admin, ocId: string | null, send: Sender, limit = 200) {
   const { data: claimed, error } = await db.rpc("tms_oc_email_claim", { p_oc_id: ocId as string, p_limit: limit });
   if (error) throw new Error(error.message);
-  let aceitos = 0, falhas = 0, incertos = 0;
+  const rows = (claimed ?? []) as OutRow[];
   const snapCache = new Map<string, OcSnapshot>();
-  for (const row of (claimed ?? []) as { id: string; oc_id: string; doc_version: number; email: string; papeis: string[] }[]) {
-    try {
-      const key = `${row.oc_id}:${row.doc_version}`;
-      let snap = snapCache.get(key);
-      if (!snap) {
-        const { data: doc, error: e1 } = await db.from("tms_oc_documents").select("snapshot").eq("oc_id", row.oc_id).eq("version", row.doc_version).single();
-        if (e1 || !doc) throw new Error("Documento da versão não encontrado");
-        snap = doc.snapshot as unknown as OcSnapshot; snapCache.set(key, snap);
-      }
-      const s = { ...snap, versao: row.doc_version };
-      const remetente = s.empresa?.id ?? "";
-      // Um e-mail por armazém de coleta, mesmo quando o mesmo endereço atende mais de um local.
-      const locaisColeta = (row.papeis ?? []).filter((p) => p.startsWith("coleta:"));
-      const grupos = locaisColeta.length ? locaisColeta.map((p) => [p]) : [row.papeis ?? []];
-      for (const papeis of grupos) {
-        const nfs = nfsDoDestinatario(s, papeis);
-        if (!nfs.length && s.nfs.length) continue;
-        const localId = papeis[0]?.startsWith("coleta:") ? papeis[0].slice(7) : "";
-        const nomeLocal = (localId && (s.nfs.find((n) => n.coletaLocalId === localId) as { coletaLocalNome?: string } | undefined)?.coletaLocalNome) || "";
-        await send(remetente, row.email, `Solicitação de carregamento · ${s.numero}${nomeLocal ? ` · ${nomeLocal}` : ""} · ${nfs.length} NF(s) · ${s.veiculo.placa}${s.veiculo.placaCarreta ? ` / ${s.veiculo.placaCarreta}` : ""}`, ocEmailHtml(s, nfs));
-      }
-      await db.rpc("tms_oc_email_finish", { p_id: row.id, p_status: "aceito", p_error: "" }); aceitos++;
-    } catch (e) {
-      const incerto = e instanceof Error && e.name === "EnvioIncertoError";
-      await db.rpc("tms_oc_email_finish", { p_id: row.id, p_status: incerto ? "incerto" : "falha", p_error: e instanceof Error ? e.message : "Falha no envio" });
-      if (incerto) incertos++; else falhas++;
+  // Grupo = OC + versão + armazém de coleta (ou papéis gerais quando não há armazém).
+  const grupos = new Map<string, { key: string; papeis: string[]; rows: OutRow[] }>();
+  for (const row of rows) {
+    const locais = (row.papeis ?? []).filter((p) => p.startsWith("coleta:"));
+    for (const papeis of locais.length ? locais.map((p) => [p]) : [["geral"]]) {
+      const g = `${row.oc_id}:${row.doc_version}:${papeis[0]}`;
+      const atual = grupos.get(g) ?? { key: `${row.oc_id}:${row.doc_version}`, papeis: papeis[0] === "geral" ? row.papeis ?? [] : papeis, rows: [] };
+      atual.rows.push(row); grupos.set(g, atual);
     }
   }
-  return { reservados: (claimed ?? []).length, aceitos, falhas, incertos };
+  const erroPorLinha = new Map<string, { msg: string; incerto: boolean }>();
+  for (const g of grupos.values()) {
+    try {
+      let snap = snapCache.get(g.key);
+      if (!snap) {
+        const [oc, ver] = [g.rows[0].oc_id, g.rows[0].doc_version];
+        const { data: doc, error: e1 } = await db.from("tms_oc_documents").select("snapshot").eq("oc_id", oc).eq("version", ver).single();
+        if (e1 || !doc) throw new Error("Documento da versão não encontrado");
+        snap = doc.snapshot as unknown as OcSnapshot; snapCache.set(g.key, snap);
+      }
+      const s = { ...snap, versao: g.rows[0].doc_version };
+      const nfs = nfsDoDestinatario(s, g.papeis);
+      if (!nfs.length && s.nfs.length) continue;
+      const localId = g.papeis[0]?.startsWith("coleta:") ? g.papeis[0].slice(7) : "";
+      const nomeLocal = (localId && (s.nfs.find((n) => n.coletaLocalId === localId) as { coletaLocalNome?: string } | undefined)?.coletaLocalNome) || "";
+      const to = [...new Set(g.rows.map((r) => r.email.toLowerCase()))];
+      await send(s.empresa?.id ?? "", to, `Solicitação de carregamento · ${s.numero}${nomeLocal ? ` · ${nomeLocal}` : ""} · ${nfs.length} NF(s) · ${s.veiculo.placa}${s.veiculo.placaCarreta ? ` / ${s.veiculo.placaCarreta}` : ""}`, ocEmailHtml(s, nfs));
+    } catch (e) {
+      const incerto = e instanceof Error && e.name === "EnvioIncertoError";
+      for (const r of g.rows) erroPorLinha.set(r.id, { msg: e instanceof Error ? e.message : "Falha no envio", incerto });
+    }
+  }
+  let aceitos = 0, falhas = 0, incertos = 0;
+  for (const row of rows) {
+    const err = erroPorLinha.get(row.id);
+    await db.rpc("tms_oc_email_finish", { p_id: row.id, p_status: err ? (err.incerto ? "incerto" : "falha") : "aceito", p_error: err?.msg ?? "" });
+    if (!err) aceitos++; else if (err.incerto) incertos++; else falhas++;
+  }
+  return { reservados: rows.length, aceitos, falhas, incertos };
 }
 
 /** Remetente = empresa emissora da OC (Microsoft 365 ou SMTP próprio). */
 export const graphSender: Sender = async (empresaId, to, subject, html) => {
   const { sendAsEmpresa } = await import("./company-mail.server");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  await sendAsEmpresa(supabaseAdmin as never, empresaId, [to], subject, html);
+  await sendAsEmpresa(supabaseAdmin as never, empresaId, to, subject, html);
 };
