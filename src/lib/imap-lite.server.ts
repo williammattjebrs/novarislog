@@ -13,7 +13,7 @@ function withTimeout<T>(p: Promise<T>, ms = 30000): Promise<T> {
   });
 }
 
-async function connectRaw(host: string, port: number, secure: boolean): Promise<Conn> {
+export async function connectRaw(host: string, port: number, secure: boolean): Promise<Conn> {
   try {
     const modName = "cloudflare:sockets";
     const { connect } = await import(/* @vite-ignore */ modName);

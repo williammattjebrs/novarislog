@@ -121,8 +121,7 @@ export async function processOcOutbox(db: Admin, ocId: string | null, send: Send
         snap = doc.snapshot as unknown as OcSnapshot; snapCache.set(key, snap);
       }
       const s = { ...snap, versao: row.doc_version };
-      const { remetenteDaEmpresa } = await import("./graph-mail.server");
-      const remetente = await remetenteDaEmpresa(db as never, s.empresa?.id);
+      const remetente = s.empresa?.id ?? "";
       // Um e-mail por armazém de coleta, mesmo quando o mesmo endereço atende mais de um local.
       const locaisColeta = (row.papeis ?? []).filter((p) => p.startsWith("coleta:"));
       const grupos = locaisColeta.length ? locaisColeta.map((p) => [p]) : [row.papeis ?? []];
@@ -143,8 +142,9 @@ export async function processOcOutbox(db: Admin, ocId: string | null, send: Send
   return { reservados: (claimed ?? []).length, aceitos, falhas, incertos };
 }
 
-export const graphSender: Sender = async (remetente, to, subject, html) => {
-  const { graphSendMail, EnvioIncertoError } = await import("./graph-mail.server");
-  try { await graphSendMail(remetente, to, subject, html); }
-  catch (e) { if (e instanceof EnvioIncertoError) { const x = new Error(e.message); x.name = "EnvioIncertoError"; throw x; } throw e; }
+/** Remetente = empresa emissora da OC (Microsoft 365 ou SMTP próprio). */
+export const graphSender: Sender = async (empresaId, to, subject, html) => {
+  const { sendAsEmpresa } = await import("./company-mail.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await sendAsEmpresa(supabaseAdmin as never, empresaId, [to], subject, html);
 };

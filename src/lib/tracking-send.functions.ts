@@ -18,9 +18,8 @@ export const sendTrackingUpdate = createServerFn({ method: "POST" })
     ]);
     if (!roles?.some((r) => ["admin", "operacao", "comercial"].includes(r.role)) && !modules?.some((m) => ["/monitoramento", "/clientes"].includes(m.module))) throw new Error("Sem permissão para enviar atualizações.");
     const mail = buildTrackingEmail(data.ordens as unknown as Order[], data.cliente);
-    const { graphSendTracking, remetenteDaEmpresa } = await import("@/lib/graph-mail.server");
+    const { sendAsEmpresa } = await import("@/lib/company-mail.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const remetente = await remetenteDaEmpresa(supabaseAdmin as never, data.empresaId);
-    await graphSendTracking(remetente, Array.from(new Set(data.destinatarios.map((r) => r.toLowerCase()))), mail.title, mail.html);
-    return { accepted: true, mensagem: "Atualização aceita pela Microsoft para envio." };
+    await sendAsEmpresa(supabaseAdmin as never, data.empresaId, Array.from(new Set(data.destinatarios.map((r) => r.toLowerCase()))), mail.title, mail.html);
+    return { accepted: true, mensagem: "Atualização aceita pelo servidor de e-mail para envio." };
   });

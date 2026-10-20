@@ -69,16 +69,6 @@ export async function graphSendMail(remetente: string, to: string, subject: stri
   if (!response.ok) { const body = await response.text(); console.error(`Microsoft envio [${response.status}]: ${body}`); throw new Error(`Microsoft [${response.status}]: ${body.slice(0, 200)}`); }
 }
 
-/** E-mail de envio da empresa do grupo (cadastro atual). */
-export async function remetenteDaEmpresa(db: { from: (t: string) => any }, empresaId: string | null | undefined) {
-  if (!empresaId) throw new Error("Defina a empresa emissora para escolher o remetente do e-mail.");
-  const { data } = await db.from("app_records").select("data").eq("collection", "companies").eq("id", empresaId).maybeSingle();
-  const emp = data?.data as { nome?: string; emailEnvio?: string } | undefined;
-  if (!emp) throw new Error("Empresa emissora não encontrada.");
-  if (!emp.emailEnvio?.trim()) throw new Error(`A empresa ${emp.nome ?? ""} não tem e-mail de envio cadastrado. Cadastre em Empresas do grupo.`);
-  return emp.emailEnvio.trim();
-}
-
 export function microsoftDisponivel(host: string | null | undefined) {
   return !!process.env.MICROSOFT_OUTLOOK_API_KEY && /office365|outlook\.(com|office)/i.test(host ?? "");
 }
