@@ -103,7 +103,7 @@ ${linhas}
 <p style="margin-top:28px">Atenciosamente;<br><b>Equipe de Monitoramento ${esc(s.empresa?.nome ?? "Novaris")}.</b>${s.empresa?.telefone || s.empresa?.email ? `<br>${esc([s.empresa?.telefone, s.empresa?.email].filter(Boolean).join(" · "))}` : ""}<br><i>Esta mensagem é enviada automaticamente pelo TMS.</i></p></body></html>`;
 }
 
-export type Sender = (to: string, subject: string, html: string) => Promise<void>;
+export type Sender = (remetente: string, to: string, subject: string, html: string) => Promise<void>;
 
 /** Processa a fila com reserva durável (SKIP LOCKED): cada destinatário/versão é enviado por uma única execução. */
 export async function processOcOutbox(db: Admin, ocId: string | null, send: Sender, limit = 20) {
@@ -121,6 +121,8 @@ export async function processOcOutbox(db: Admin, ocId: string | null, send: Send
         snap = doc.snapshot as unknown as OcSnapshot; snapCache.set(key, snap);
       }
       const s = { ...snap, versao: row.doc_version };
+      const { remetenteDaEmpresa } = await import("./graph-mail.server");
+      const remetente = await remetenteDaEmpresa(db as never, s.empresa?.id);
       // Um e-mail por armazém de coleta, mesmo quando o mesmo endereço atende mais de um local.
       const locaisColeta = (row.papeis ?? []).filter((p) => p.startsWith("coleta:"));
       const grupos = locaisColeta.length ? locaisColeta.map((p) => [p]) : [row.papeis ?? []];
@@ -129,7 +131,7 @@ export async function processOcOutbox(db: Admin, ocId: string | null, send: Send
         if (!nfs.length && s.nfs.length) continue;
         const localId = papeis[0]?.startsWith("coleta:") ? papeis[0].slice(7) : "";
         const nomeLocal = (localId && (s.nfs.find((n) => n.coletaLocalId === localId) as { coletaLocalNome?: string } | undefined)?.coletaLocalNome) || "";
-        await send(row.email, `Solicitação de carregamento · ${s.numero}${nomeLocal ? ` · ${nomeLocal}` : ""} · ${nfs.length} NF(s) · ${s.veiculo.placa}${s.veiculo.placaCarreta ? ` / ${s.veiculo.placaCarreta}` : ""}`, ocEmailHtml(s, nfs));
+        await send(remetente, row.email, `Solicitação de carregamento · ${s.numero}${nomeLocal ? ` · ${nomeLocal}` : ""} · ${nfs.length} NF(s) · ${s.veiculo.placa}${s.veiculo.placaCarreta ? ` / ${s.veiculo.placaCarreta}` : ""}`, ocEmailHtml(s, nfs));
       }
       await db.rpc("tms_oc_email_finish", { p_id: row.id, p_status: "aceito", p_error: "" }); aceitos++;
     } catch (e) {
@@ -141,8 +143,8 @@ export async function processOcOutbox(db: Admin, ocId: string | null, send: Send
   return { reservados: (claimed ?? []).length, aceitos, falhas, incertos };
 }
 
-export const graphSender: Sender = async (to, subject, html) => {
+export const graphSender: Sender = async (remetente, to, subject, html) => {
   const { graphSendMail, EnvioIncertoError } = await import("./graph-mail.server");
-  try { await graphSendMail(to, subject, html); }
+  try { await graphSendMail(remetente, to, subject, html); }
   catch (e) { if (e instanceof EnvioIncertoError) { const x = new Error(e.message); x.name = "EnvioIncertoError"; throw x; } throw e; }
 };

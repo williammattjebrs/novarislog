@@ -3,10 +3,43 @@
 
 const GATEWAY = "https://connector-gateway.lovable.dev/microsoft_outlook";
 
-export async function graphSendTracking(recipients: string[], subject: string, html: string) {
-  const key = process.env.MICROSOFT_OUTLOOK_API_KEY;
+/** Chaves das contas Microsoft conectadas ao projeto (uma por empresa do grupo). */
+function chavesMicrosoft() {
+  return Object.keys(process.env).filter((k) => /^MICROSOFT_OUTLOOK_API_KEY(_\d+)?$/.test(k)).sort().map((k) => process.env[k]!).filter(Boolean);
+}
+const contaCache = new Map<string, string>();
+/** Caixas de e-mail das contas Microsoft conectadas, para escolher o remetente de cada empresa. */
+export async function contasMicrosoft() {
   const lovable = process.env.LOVABLE_API_KEY;
-  if (!key || !lovable) throw new Error("Conexão Microsoft não configurada.");
+  if (!lovable) throw new Error("Conexão Microsoft não configurada.");
+  const out: { email: string; key: string }[] = [];
+  for (const key of chavesMicrosoft()) {
+    let email = contaCache.get(key);
+    if (!email) {
+      try {
+        const r = await fetch(`${GATEWAY}/me?$select=mail,userPrincipalName`, { headers: { Authorization: `Bearer ${lovable}`, "X-Connection-Api-Key": key, Accept: "application/json" } });
+        if (!r.ok) { console.error(`Microsoft conta [${r.status}]: ${await r.text()}`); continue; }
+        const j = (await r.json()) as { mail?: string; userPrincipalName?: string };
+        email = (j.mail || j.userPrincipalName || "").toLowerCase();
+        if (email) contaCache.set(key, email);
+      } catch (e) { console.error("Microsoft conta:", e); continue; }
+    }
+    if (email) out.push({ email, key });
+  }
+  return out;
+}
+/** Conexão Microsoft cuja caixa é o remetente da empresa. Sem correspondência, o envio é bloqueado. */
+async function chavePara(remetente: string) {
+  const alvo = remetente.trim().toLowerCase();
+  if (!alvo) throw new Error("A empresa não tem e-mail de envio cadastrado. Cadastre em Empresas do grupo.");
+  const conta = (await contasMicrosoft()).find((c) => c.email === alvo);
+  if (!conta) throw new Error(`Nenhuma conta Microsoft conectada corresponde ao e-mail de envio ${alvo}. Conecte essa conta para enviar por esta empresa.`);
+  return conta.key;
+}
+
+export async function graphSendTracking(remetente: string, recipients: string[], subject: string, html: string) {
+  const key = await chavePara(remetente);
+  const lovable = process.env.LOVABLE_API_KEY!;
   const response = await fetch(`${GATEWAY}/me/sendMail`, {
     method: "POST",
     headers: { Authorization: `Bearer ${lovable}`, "X-Connection-Api-Key": key, "Content-Type": "application/json; charset=utf-8" },
@@ -21,10 +54,9 @@ export async function graphSendTracking(recipients: string[], subject: string, h
 
 export class EnvioIncertoError extends Error {}
 /** Envio individual com anexos. Resposta HTTP de erro = falha definitiva; erro de rede = resultado incerto. */
-export async function graphSendMail(to: string, subject: string, html: string, attachments: { name: string; base64: string; contentType: string }[] = []) {
-  const key = process.env.MICROSOFT_OUTLOOK_API_KEY;
-  const lovable = process.env.LOVABLE_API_KEY;
-  if (!key || !lovable) throw new Error("Conexão Microsoft não configurada.");
+export async function graphSendMail(remetente: string, to: string, subject: string, html: string, attachments: { name: string; base64: string; contentType: string }[] = []) {
+  const key = await chavePara(remetente);
+  const lovable = process.env.LOVABLE_API_KEY!;
   let response: Response;
   try {
     response = await fetch(`${GATEWAY}/me/sendMail`, {
@@ -35,6 +67,16 @@ export async function graphSendMail(to: string, subject: string, html: string, a
     });
   } catch (e) { throw new EnvioIncertoError(e instanceof Error ? e.message : "Sem resposta do provedor"); }
   if (!response.ok) { const body = await response.text(); console.error(`Microsoft envio [${response.status}]: ${body}`); throw new Error(`Microsoft [${response.status}]: ${body.slice(0, 200)}`); }
+}
+
+/** E-mail de envio da empresa do grupo (cadastro atual). */
+export async function remetenteDaEmpresa(db: { from: (t: string) => any }, empresaId: string | null | undefined) {
+  if (!empresaId) throw new Error("Defina a empresa emissora para escolher o remetente do e-mail.");
+  const { data } = await db.from("app_records").select("data").eq("collection", "companies").eq("id", empresaId).maybeSingle();
+  const emp = data?.data as { nome?: string; emailEnvio?: string } | undefined;
+  if (!emp) throw new Error("Empresa emissora não encontrada.");
+  if (!emp.emailEnvio?.trim()) throw new Error(`A empresa ${emp.nome ?? ""} não tem e-mail de envio cadastrado. Cadastre em Empresas do grupo.`);
+  return emp.emailEnvio.trim();
 }
 
 export function microsoftDisponivel(host: string | null | undefined) {
