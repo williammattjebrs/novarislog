@@ -68,17 +68,16 @@ export async function runScheduler(dryRun: boolean) {
     if(!orders.length)continue;
     const id=await claim(`tracking:${group.id}`,group.intervalMin);if(!id)continue;
     try {
-      const {graphSendTracking,remetenteDaEmpresa}=await import('./graph-mail.server');
+      const {sendAsEmpresa}=await import('./company-mail.server');
       const ocsAll=list<OrdemColeta>('ordensColeta');
       // Um e-mail por empresa emissora, saindo da caixa de envio de cada uma.
       const porEmpresa=new Map<string,Order[]>();
       for(const o of orders){const e=ocsAll.find(x=>x.status!=='cancelada'&&x.orderIds.includes(o.id))?.empresaId??'';porEmpresa.set(e,[...(porEmpresa.get(e)??[]),o]);}
       for(const [empresaId,grupo] of porEmpresa){
-        const remetente=await remetenteDaEmpresa(db as never,empresaId);
         const email=buildTrackingEmail(enrichTrackingOrders(grupo,ocsAll),grupo[0].clienteNome);
-        await graphSendTracking(remetente,[...new Set(group.emails)],email.title,email.html);
+        await sendAsEmpresa(db as never,empresaId,[...new Set(group.emails)],email.title,email.html);
       }
-      accepted++;await finish(id,'accepted',{provider:'Microsoft',delivered:false});
+      accepted++;await finish(id,'accepted',{provider:'empresa',delivered:false});
     }catch(e){await finish(id,'uncertain',{},e instanceof Error?e.message:'Resultado de envio desconhecido; revisão manual necessária');}
   }
   let ocEmails={reservados:0,aceitos:0,falhas:0,incertos:0};
