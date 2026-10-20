@@ -8,7 +8,7 @@ import { TrackingEmailPreview } from "@/components/TrackingEmailPreview";
 import { Button } from "@/components/ui/button";
 import { useServerFn } from "@tanstack/react-start";
 import { sendTrackingUpdate } from "@/lib/tracking-send.functions";
-import { readTrackingGroup, trackingPayload } from "@/lib/tracking-groups";
+import { readTrackingGroup, sendTrackingOnUpdate, trackingPayload } from "@/lib/tracking-groups";
 
 const SITUACOES = [
   "Aguardando coleta", "Coletado", "Em trânsito", "Em transferência (CD)", "Saiu para entrega",
@@ -44,6 +44,12 @@ export function TrackingPanel({
     if (tpl.autoEnvio && email && tpl.estagiosAuto.includes(order.stage)) tl.push(entry(`E-mail automático de rastreio preparado para ${email}`, "sistema"));
     onUpdate({ rastreio, emailCliente: email, timeline: tl, atualizadoEm: new Date().toISOString() });
     if (tpl.autoEnvio && email && tpl.estagiosAuto.includes(order.stage)) abrirEmail(next);
+    const group = readTrackingGroup(order.clienteNome);
+    if (group.automatic && (group.trigger ?? "interval") === "onUpdate" && group.emails.length) {
+      void sendTrackingOnUpdate([next], send).then((sent) => {
+        if (sent.length) onUpdate({ timeline: [...tl, entry(`Atualização de rastreio aceita pela Microsoft para envio a ${group.emails.join("; ")} (envio a cada atualização)`, "sistema")] });
+      }).catch(() => onUpdate({ timeline: [...tl, entry("Falha no envio automático da atualização de rastreio; reenvie manualmente.", "sistema")] }));
+    }
   }
 
   function abrirEmail(o: Order = order) {

@@ -30,15 +30,16 @@ export function BulkClientUpdate({ orders, autor, onClose, onSent }: {
   const send = useServerFn(sendTrackingUpdate);
   const [automatic, setAutomatic] = useState(false);
   const [intervalMin, setIntervalMin] = useState(60);
+  const [trigger, setTrigger] = useState<"interval" | "onUpdate">("interval");
   const [busy, setBusy] = useState(false);
-  useEffect(() => { const group = readTrackingGroup(cliente); setEmail(group.emails.join("; ")); setAutomatic(group.automatic); setIntervalMin(group.intervalMin); }, [cliente]);
+  useEffect(() => { const group = readTrackingGroup(cliente); setEmail(group.emails.join("; ")); setAutomatic(group.automatic); setIntervalMin(group.intervalMin); setTrigger(group.trigger ?? "interval"); }, [cliente]);
   function recipients() {
     const emails = Array.from(new Set((email || emailSugerido).split(/[;,\s]+/).map((v) => v.trim().toLowerCase()).filter(Boolean)));
     if (!emails.length || emails.length > 30 || emails.some((e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))) throw new Error("Informe de 1 a 30 e-mails válidos, separados por ponto e vírgula.");
     return emails;
   }
   async function saveGroup() {
-    try { const old = readTrackingGroup(cliente); await saveTrackingGroup(cliente, { emails: recipients(), automatic, intervalMin, lastSent: old.lastSent }); setFeedback("Grupo salvo. Envio periódico aguarda ativação de produção."); }
+    try { const old = readTrackingGroup(cliente); await saveTrackingGroup(cliente, { emails: recipients(), automatic, intervalMin, trigger, lastSent: old.lastSent }); setFeedback(trigger === "onUpdate" ? "Grupo salvo. A atualização será enviada a cada mudança de status." : "Grupo salvo. Envio periódico aguarda ativação de produção."); }
     catch (error) { setFeedback(error instanceof Error ? error.message : "Falha ao salvar grupo."); }
   }
   function trocarCliente(c: string) { setCliente(c); setMarcadas(null); setEmail(""); }
@@ -56,7 +57,7 @@ export function BulkClientUpdate({ orders, autor, onClose, onSent }: {
     try {
       const emails = recipients();
       await send({ data: { cliente, destinatarios: emails, ordens: trackingPayload(escolhidas) } });
-      await saveTrackingGroup(cliente, { emails, automatic, intervalMin, lastSent: new Date().toISOString() });
+      await saveTrackingGroup(cliente, { emails, automatic, intervalMin, trigger, lastSent: new Date().toISOString() });
       onSent(escolhidas.map((o) => o.id), { quando: new Date().toISOString(), autor, tipo: "sistema", texto: `Atualização em tabela aceita pela Microsoft para envio a ${emails.join("; ")} (${escolhidas.length} notas)` }, emails[0] ?? "");
       setFeedback("Atualização aceita pela Microsoft para envio ao grupo. Confira a caixa de enviados para acompanhar.");
     } catch (error) { setFeedback(error instanceof Error ? error.message : "Falha no envio."); }
@@ -82,9 +83,10 @@ export function BulkClientUpdate({ orders, autor, onClose, onSent }: {
         </div>
         <div className="flex flex-wrap items-center gap-3 mb-3 text-xs">
           <label className="flex items-center gap-2"><input type="checkbox" checked={automatic} onChange={(e) => setAutomatic(e.target.checked)} /> Envio automático</label>
-          <label className="flex items-center gap-2">A cada <select aria-label="Intervalo de envio" value={intervalMin} onChange={(e) => setIntervalMin(Number(e.target.value))} className="input w-auto"><option value={15}>15 minutos</option><option value={30}>30 minutos</option><option value={60}>1 hora</option><option value={120}>2 horas</option><option value={240}>4 horas</option><option value={1440}>24 horas</option></select></label>
+          {automatic && <select aria-label="Momento do envio automático" value={trigger} onChange={(e) => setTrigger(e.target.value as "interval" | "onUpdate")} className="input w-auto"><option value="interval">A cada intervalo de tempo</option><option value="onUpdate">A cada atualização de status</option></select>}
+          {automatic && trigger === "interval" && <label className="flex items-center gap-2">A cada <select aria-label="Intervalo de envio" value={intervalMin} onChange={(e) => setIntervalMin(Number(e.target.value))} className="input w-auto"><option value={15}>15 minutos</option><option value={30}>30 minutos</option><option value={60}>1 hora</option><option value={120}>2 horas</option><option value={240}>4 horas</option><option value={1440}>24 horas</option></select></label>}
           <Button variant="outline" size="sm" onClick={saveGroup}>Salvar grupo</Button>
-          <span className="text-muted-foreground">Envio periódico no servidor · aguarda ativação de produção.</span>
+          <span className="text-muted-foreground">{automatic && trigger === "onUpdate" ? "Envia ao salvar uma atualização de status." : "Envio periódico no servidor · aguarda ativação de produção."}</span>
         </div>
         <div className="flex items-center justify-between text-xs mb-2">
           <label className="inline-flex items-center gap-2"><input type="checkbox" checked={soAbertas} onChange={(e) => { setSoAbertas(e.target.checked); setMarcadas(null); }} /> Só notas não entregues</label>

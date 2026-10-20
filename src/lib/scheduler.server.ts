@@ -15,7 +15,8 @@ export async function runScheduler(dryRun: boolean) {
   }
   const list=<T,>(key:string)=>(records??[]).filter(r=>r.collection===key).map(r=>r.data as T);
   const {data:inbox}=await db.from('email_inbox_config').select('ativo,intervalo_min').eq('id',1).maybeSingle();
-  const groups=list<{id:string;automatic:boolean;emails:string[];intervalMin:number}>('trackingGroups').filter(g=>g.automatic&&g.emails.length);
+  // Grupos "a cada atualização" são enviados no momento do apontamento; aqui só os periódicos.
+  const groups=list<{id:string;automatic:boolean;emails:string[];intervalMin:number;trigger?:string}>('trackingGroups').filter(g=>g.automatic&&g.emails.length&&(g.trigger??'interval')==='interval');
   const {count:ocPending}=await db.from('tms_oc_email_outbox').select('id',{count:'exact',head:true}).in('status',['pendente','falha']);
   if(dryRun)return {dryRun:true,inboxEnabled:!!inbox?.ativo,trackingGroups:groups.length,ocEmailsPendentes:ocPending??0};
   const actor=process.env['SCHEDULER_ACTOR_ID'];
