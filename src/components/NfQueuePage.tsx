@@ -5,14 +5,14 @@ import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useState, useRef, useMemo, useEffect } from "react";
 import { FileUp, FileCheck2, Package, Truck, AlertTriangle, ArrowRight, Link2, Search, Download, Printer } from "lucide-react";
-import { useOrders, useClients, useFreightTables, useRouteRates, useQuotations, useInvoices, useConfig, useOrdensColeta, newId } from "@/lib/mock-store";
+import { useOrders, useClients, useFreightTables, useRouteRates, useQuotations, useInvoices, useConfig, useOrdensColeta, useCteDocuments, newId } from "@/lib/mock-store";
 import { CriarOcPanel } from "@/components/CriarOcPanel";
 import { AcompanhamentoColeta } from "@/components/AcompanhamentoColeta";
 import { useEmpresaFiltro, filtrarNfs } from "@/lib/empresa-filter";
 import { ocAtivaDaNf } from "@/lib/oc-model";
 import { OC_STATUS } from "@/lib/mock-data";
 import {
-  ORDER_STAGES, statusTone, toneClass, stageLabel, fmtBRL,
+  ORDER_STAGES, statusTone, toneClass, stageLabel, fmtBRL, fmtDate,
   type Order, type OrderStage,
 } from "@/lib/mock-data";
 import { parseNFe, parseCTe, readFileText } from "@/lib/xml-parser";
@@ -55,6 +55,7 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
   const routeRates = useRouteRates();
   const quotes = useQuotations();
   const invoices = useInvoices();
+  const ctes = useCteDocuments();
   const [cfg] = useConfig();
   const { user } = useAuth();
   const autor = user?.nome ?? "sistema";
@@ -107,7 +108,7 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
     if (nfeInput.current) nfeInput.current.value = "";
   }
 
-  async function importNFeTexts(texts: string[]) {
+  async function importNFeTexts(texts: string[], origem: "manual" | "email" = "manual") {
     // Sem cliente cadastrado para o CNPJ, a ordem entra como "(sem cliente)" na fila de tratamento.
     await sharedReady;
     let ok = 0, fail = 0, dup = 0;
@@ -215,6 +216,8 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
             texto: `NF-e ${p.numero} importada · ${valorFrete > 0 ? `valorizada por ${origemValor} (${refValor})` : "sem match de tabela — aguarda vinculação"}`,
           },
         ],
+        importadoEm: new Date().toISOString(),
+        importOrigem: origem,
         criadoEm: new Date().toISOString(),
         atualizadoEm: new Date().toISOString(),
       };
@@ -256,7 +259,7 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
   async function importFromEmail(xmls: { chave: string; tipo: "nfe" | "cte"; xml: string }[]) {
     const nfes = xmls.filter((x) => x.tipo === "nfe");
     const ctes = xmls.filter((x) => x.tipo === "cte");
-    const rn = nfes.length ? await importNFeTexts(nfes.map((x) => x.xml)) : { ok: 0, fail: 0, dup: 0, corrigidas: [] };
+    const rn = nfes.length ? await importNFeTexts(nfes.map((x) => x.xml), "email") : { ok: 0, fail: 0, dup: 0, corrigidas: [] };
     if (!rn) return null; // sem clientes cadastrados — mantém os XML pendentes
     const rc = ctes.length ? await importCTeTexts(ctes.map((x) => x.xml)) : { ok: 0, dup: 0, semOrdem: 0, vinculadas: [] as string[] };
     // CT-e sem NF-e correspondente continua pendente e é tentado de novo na próxima busca
@@ -378,6 +381,7 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
             </div>; })}
             <p className="text-[11px] text-muted-foreground">Ao remover uma NF, ela forma uma nova sugestão junto com as outras removidas do mesmo grupo. O número da OC só é gerado ao salvar.</p></div>) : null; })()}
         <RegularizationPreview />
+        {isImp && <ImportLog orders={orders.list} ctes={ctes.list} />}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Lista */}
           <div className={`panel overflow-x-auto ${sel ? "lg:col-span-2" : "lg:col-span-3"}`}>
@@ -403,7 +407,7 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
                     <td className="px-2 py-3 num text-primary text-xs">{o.id.slice(0, 12)}</td>
                     <td className="text-xs">
                       <div className="font-medium">{o.clienteNome}</div>
-                      <div className="num text-muted-foreground">NF {o.numeroNFe}</div>
+                      <div className="num text-muted-foreground">NF {o.numeroNFe}{isImp ? ` · implantada ${fmtDate(o.importadoEm ?? o.criadoEm)}` : ""}</div>
                     </td>
                     <td className="text-xs">{o.cidadeColeta}/{o.ufColeta} → {o.cidadeEntrega}/{o.ufEntrega}</td>
                     <td className="text-right num text-xs">
@@ -463,6 +467,58 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
         {criarOc && <CriarOcPanel nfs={orders.list.filter((o) => marcadas.includes(o.id))} onClose={(ok) => { setCriarOc(false); if (ok) setMarcadas([]); }} />}
       </div>
     </AppShell>
+  );
+}
+
+// Log de integração: hora da implantação de cada XML (NF-e e CT-e) no sistema.
+function ImportLog({ orders, ctes }: { orders: Order[]; ctes: { numero?: string; chave: string; criadoEm?: string }[] }) {
+  const [aberto, setAberto] = useState(true);
+  const eventos = useMemo(() => {
+    const origemNf = (o: Order) => o.importOrigem ?? (o.timeline?.[0]?.autor === "automacao" ? "automacao" : "manual");
+    const nfs = orders
+      .map((o) => ({ quando: o.importadoEm ?? o.criadoEm, tipo: "NF-e", numero: String(o.numeroNFe), detalhe: o.clienteNome, origem: origemNf(o) }))
+      .filter((e) => !!e.quando);
+    const cts = ctes
+      .filter((c) => c.criadoEm)
+      .map((c) => ({ quando: c.criadoEm as string, tipo: "CT-e", numero: c.numero || c.chave.slice(-8), detalhe: "CT-e vinculado à(s) NF(s)", origem: "" }));
+    return [...nfs, ...cts].sort((a, b) => b.quando.localeCompare(a.quando)).slice(0, 40);
+  }, [orders, ctes]);
+  const rotulo: Record<string, string> = { manual: "Manual", email: "E-mail", automacao: "Automação" };
+  return (
+    <div className="panel p-3">
+      <button onClick={() => setAberto(!aberto)} className="flex w-full items-center gap-2 text-left">
+        <span className="font-display text-sm">Log de integração</span>
+        <span className="num text-xs text-muted-foreground">{eventos.length} XML(ns) implantado(s)</span>
+        <span className="ml-auto text-xs text-muted-foreground">{aberto ? "ocultar" : "mostrar"}</span>
+      </button>
+      {aberto && (
+        <div className="mt-2 max-h-48 overflow-auto text-xs">
+          <table className="w-full">
+            <thead>
+              <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                <th className="py-1 pr-3 font-normal">Hora da implantação</th>
+                <th className="py-1 pr-3 font-normal">Tipo</th>
+                <th className="py-1 pr-3 font-normal">Documento</th>
+                <th className="py-1 pr-3 font-normal">Origem</th>
+                <th className="py-1 font-normal">Detalhe</th>
+              </tr>
+            </thead>
+            <tbody>
+              {eventos.map((e, i) => (
+                <tr key={`${e.tipo}-${e.numero}-${e.quando}-${i}`} className="border-t border-border">
+                  <td className="num whitespace-nowrap py-1.5 pr-3">{fmtDate(e.quando)}</td>
+                  <td className="num py-1.5 pr-3">{e.tipo}</td>
+                  <td className="num py-1.5 pr-3">{e.numero}</td>
+                  <td className="py-1.5 pr-3">{e.origem ? rotulo[e.origem] ?? e.origem : "—"}</td>
+                  <td className="max-w-[280px] truncate py-1.5 text-muted-foreground">{e.detalhe}</td>
+                </tr>
+              ))}
+              {eventos.length === 0 && <tr><td colSpan={5} className="py-3 text-center text-muted-foreground">Nenhum XML implantado ainda.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
 
