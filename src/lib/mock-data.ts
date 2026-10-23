@@ -223,6 +223,10 @@ export interface Order {
   latDestino?: number;
   lngDestino?: number;
 
+  // Log de integração — hora da implantação do XML no sistema
+  importadoEm?: string;
+  importOrigem?: "manual" | "email" | "automacao";
+
   criadoEm: string;
   atualizadoEm: string;
 }

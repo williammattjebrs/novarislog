@@ -5,14 +5,14 @@ import { AppShell } from "@/components/AppShell";
 import { RoleGate } from "@/components/RoleGate";
 import { useState, useRef, useMemo, useEffect } from "react";
 import { FileUp, FileCheck2, Package, Truck, AlertTriangle, ArrowRight, Link2, Search, Download, Printer } from "lucide-react";
-import { useOrders, useClients, useFreightTables, useRouteRates, useQuotations, useInvoices, useConfig, useOrdensColeta, newId } from "@/lib/mock-store";
+import { useOrders, useClients, useFreightTables, useRouteRates, useQuotations, useInvoices, useConfig, useOrdensColeta, useCteDocuments, newId } from "@/lib/mock-store";
 import { CriarOcPanel } from "@/components/CriarOcPanel";
 import { AcompanhamentoColeta } from "@/components/AcompanhamentoColeta";
 import { useEmpresaFiltro, filtrarNfs } from "@/lib/empresa-filter";
 import { ocAtivaDaNf } from "@/lib/oc-model";
 import { OC_STATUS } from "@/lib/mock-data";
 import {
-  ORDER_STAGES, statusTone, toneClass, stageLabel, fmtBRL,
+  ORDER_STAGES, statusTone, toneClass, stageLabel, fmtBRL, fmtDate,
   type Order, type OrderStage,
 } from "@/lib/mock-data";
 import { parseNFe, parseCTe, readFileText } from "@/lib/xml-parser";
@@ -55,6 +55,7 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
   const routeRates = useRouteRates();
   const quotes = useQuotations();
   const invoices = useInvoices();
+  const ctes = useCteDocuments();
   const [cfg] = useConfig();
   const { user } = useAuth();
   const autor = user?.nome ?? "sistema";
@@ -107,7 +108,7 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
     if (nfeInput.current) nfeInput.current.value = "";
   }
 
-  async function importNFeTexts(texts: string[]) {
+  async function importNFeTexts(texts: string[], origem: "manual" | "email" = "manual") {
     // Sem cliente cadastrado para o CNPJ, a ordem entra como "(sem cliente)" na fila de tratamento.
     await sharedReady;
     let ok = 0, fail = 0, dup = 0;
@@ -215,6 +216,8 @@ export function NfQueuePage({ modo, registro }: { modo: "rotas" | "importacao"; 
             texto: `NF-e ${p.numero} importada · ${valorFrete > 0 ? `valorizada por ${origemValor} (${refValor})` : "sem match de tabela — aguarda vinculação"}`,
           },
         ],
+        importadoEm: new Date().toISOString(),
+        importOrigem: origem,
         criadoEm: new Date().toISOString(),
         atualizadoEm: new Date().toISOString(),
       };
